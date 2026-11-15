@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
 
 describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence', () => {
   beforeEach(() => {

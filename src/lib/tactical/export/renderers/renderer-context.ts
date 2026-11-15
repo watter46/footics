@@ -1,4 +1,4 @@
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
 import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import type { AspectRatio, PitchTransform } from '@/lib/types/tactical-unified';
 

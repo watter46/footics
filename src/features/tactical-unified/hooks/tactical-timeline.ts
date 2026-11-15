@@ -6,7 +6,7 @@ import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import {
   resolvePlaybackDurationMs,
   type SlideTimingLike,
-} from '@/lib/tactical/unified-interpolation';
+} from '@/lib/tactical/engine/director-camera';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { Slide } from '@/lib/types/tactical-unified';
 

@@ -2,15 +2,21 @@ import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
 } from '@/lib/tactical/marker-assets';
-import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 import type { AnyCanvasRenderingContext2D } from './renderer-context';
+
+export interface PlayerRingRenderState {
+  readonly opacity: number;
+  readonly style?: {
+    readonly markerType?: string;
+  };
+}
 
 const CACHED_COMBINED_MARKER_PATH: Path2D | null =
   typeof Path2D !== 'undefined' ? new Path2D(MARKER_PATHS.join(' ')) : null;
 
 export function renderPlayerRingMarker(
   ctx: AnyCanvasRenderingContext2D,
-  p: InterpolatedPlayerState,
+  p: PlayerRingRenderState,
   px: number,
   py: number,
   radius: number,

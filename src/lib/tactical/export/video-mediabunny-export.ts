@@ -5,18 +5,11 @@ import {
   Output,
   WebMOutputFormat,
 } from 'mediabunny';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
-import {
-  hasCameraDelta,
-  type InterpolatedPitchTransformState,
-} from '@/lib/tactical/interpolation-camera';
-import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
-import {
-  type AnyCanvasRenderingContext2D,
-  hasActiveFrameEffects,
-  renderTacticalFrameToCanvas,
-} from './tactical-frame-renderer';
+import { hasActiveDirectorCameraTrack } from '@/lib/tactical/engine/director-camera';
+import type { AnyCanvasRenderingContext2D } from './renderers/renderer-context';
+import { hasActiveFrameEffects, isPauseFrame } from './tactical-frame-effects';
+import { renderTacticalPhaseFrameToCanvas } from './tactical-phase-frame-renderer';
 import { calculateBoundaryCrop } from './video-crop-calc';
 import type { VideoExportOptions } from './video-export-types';
 
@@ -112,35 +105,9 @@ export async function exportVideoWithMediabunny(
   const aspectRatio = options.aspectRatio ?? '16:9';
   const boundaryBox = options.boundaryBox;
 
-  const useSingleSlideOverride = !slides || slides.length <= 1;
-  const pitchTransform = options.pitchTransform;
-  const hasTransform =
-    pitchTransform &&
-    (pitchTransform.tilt !== 0 ||
-      pitchTransform.zoom !== 1 ||
-      pitchTransform.panX !== 0 ||
-      pitchTransform.panY !== 0);
-
-  const mvpMatrix =
-    useSingleSlideOverride && hasTransform
-      ? new Float32Array(
-          buildExportMVPMatrix(
-            pitchTransform,
-            exportWidth,
-            exportHeight,
-            aspectRatio,
-          ),
-        )
-      : useSingleSlideOverride
-        ? (options.mvpMatrix ?? undefined)
-        : undefined;
-
   if (transparent) {
     options.onSetBackgroundVisible?.(false);
   }
-
-  let lastRenderedSlideIdx = -1;
-  let lastRenderedTransform: InterpolatedPitchTransformState | null = null;
 
   const phase =
     slides && slides.length > 0
@@ -162,29 +129,25 @@ export async function exportVideoWithMediabunny(
       const timeMs = (frameIdx / fps) * 1000;
       const timestamp = frameIdx / fps;
 
-      if (slides && slides.length > 0) {
-        const interpolated = getInterpolatedUnifiedSlideFrame(
+      if (slides && slides.length > 0 && phase) {
+        const isPaused = isPauseFrame(
           slides,
           timeMs,
           options.directorCamera,
           options.directorCameraOptions,
         );
-        const isTransformIdentical =
-          lastRenderedTransform !== null &&
-          !hasCameraDelta(lastRenderedTransform, interpolated.pitchTransform);
-
         const hasDynamicEffect = hasActiveFrameEffects(slides);
+        const hasDirectorCamera = hasActiveDirectorCameraTrack(
+          options.directorCamera,
+        );
 
         const shouldSkipRender =
-          frameIdx > 0 &&
-          interpolated.isPaused &&
-          !hasDynamicEffect &&
-          isTransformIdentical &&
-          lastRenderedSlideIdx === interpolated.currentSlideIndex;
+          frameIdx > 0 && isPaused && !hasDynamicEffect && !hasDirectorCamera;
 
         if (!shouldSkipRender) {
-          renderTacticalFrameToCanvas(ctx, {
-            slides,
+          renderTacticalPhaseFrameToCanvas({
+            ctx,
+            phase,
             timeMs,
             width: exportWidth,
             height: exportHeight,
@@ -192,22 +155,17 @@ export async function exportVideoWithMediabunny(
             baseHeight: options.stageHeight,
             aspectRatio,
             boundaryBox,
-            transparent,
-            mvpMatrix,
-            playerPhotos: options.playerPhotos,
+            pitchTransform: options.pitchTransform,
+            directorCamera: options.directorCamera,
+            directorCameraOptions: options.directorCameraOptions,
             pitchAppearance: options.pitchAppearance,
             marbleTexture: options.marbleTexture,
             screenBackground: options.screenBackground,
-            directorCamera: options.directorCamera,
-            directorCameraOptions: options.directorCameraOptions,
-            precomputedFrame: interpolated,
+            transparent,
+            playerPhotos: options.playerPhotos,
             teamVisibility: options.teamVisibility,
-            phase,
+            applyEffects: true,
           });
-          lastRenderedSlideIdx = interpolated.isPaused
-            ? interpolated.currentSlideIndex
-            : -1;
-          lastRenderedTransform = interpolated.pitchTransform;
         }
       } else {
         await options.onRenderFrame?.(timeMs);

@@ -1,5 +1,14 @@
-import type { InterpolatedBallState } from '@/lib/tactical/unified-interpolation';
 import type { FrameRenderContext } from './renderer-context';
+
+export interface RenderBallState {
+  readonly x: number;
+  readonly y: number;
+  readonly size?: number;
+  readonly sizeScale?: number;
+  readonly rotation?: number;
+  readonly visible?: boolean;
+  readonly opacity?: number;
+}
 
 export const SOCCER_BALL_PATCH_PATHS = [
   'M 36.5,5.2 A 47.5,47.5 0 0,1 63.5,5.2 L 68.0,21.5 L 50.0,16.5 L 32.0,21.5 Z',
@@ -44,7 +53,7 @@ const CACHED_SOCCER_BALL_PATCH_PATHS: readonly Path2D[] =
  */
 export function renderBall(
   context: FrameRenderContext,
-  ball: InterpolatedBallState,
+  ball: RenderBallState,
 ): void {
   if (!ball.visible) return;
 
@@ -57,7 +66,7 @@ export function renderBall(
     Math.max(8, Math.round(Math.min(w, h) * 0.022)) * (ball.sizeScale ?? 1.0);
 
   ctx.save();
-  ctx.globalAlpha = ball.opacity;
+  ctx.globalAlpha = ball.opacity ?? 1;
 
   // 100x100 viewBox スケール変換 & 自転描画
   const ballScale = (ballRadius * 2) / 100;

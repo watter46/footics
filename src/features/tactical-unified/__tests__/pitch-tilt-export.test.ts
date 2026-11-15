@@ -12,7 +12,7 @@ import {
 import {
   buildExportMVPMatrix,
   REFERENCE_STAGE_HEIGHT,
-} from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+} from '@/lib/tactical/engine/projection-3d';
 
 describe('Pitch Center-Anchored Transform & Tilt 3D Inversion', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };

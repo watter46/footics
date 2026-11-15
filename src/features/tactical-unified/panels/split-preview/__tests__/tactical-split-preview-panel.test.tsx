@@ -7,7 +7,7 @@ import { createSessionStore } from '@/features/tactical-unified/stores/session-s
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import * as sharePayload from '@/lib/tactical/export/share-payload';
-import * as frameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
+import * as frameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { TacticalSplitPreviewPanel } from '../tactical-split-preview-panel';
 
@@ -131,14 +131,16 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(containerDiv?.style.aspectRatio).toBe('1920 / 1080');
   });
 
-  it('passes screenBackground from store to renderTacticalFrameToCanvas', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+  it('passes screenBackground from store to renderTacticalPhaseFrameToCanvas', () => {
+    const renderSpy = vi.spyOn(
+      frameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
+    );
     createSplitPreviewHarness({
       screenBackground: { type: 'cinematic' },
     }).renderPanel();
 
     expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         screenBackground: {
           type: 'cinematic',
@@ -148,7 +150,10 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
   });
 
   it('passes boundaryBox as null during stopped, and active boundaryBox during playback to useExportPreviewAnimation', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+    const renderSpy = vi.spyOn(
+      frameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
+    );
     const { playbackStore, renderPanel } = createSplitPreviewHarness({
       boundaryBox: { x: 10, y: 10, width: 80, height: 80, enabled: true },
     });
@@ -156,7 +161,6 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
 
     // 停止時は境界線オーバーレイで編集するため、レンダラーには boundaryBox: null (16:9 全体) を渡す
     expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ boundaryBox: null }),
     );
 
@@ -166,7 +170,6 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
 
     // 再生時は境界線内のみをクロップ再生するため、レンダラーに boundaryBox を渡す
     expect(renderSpy).toHaveBeenLastCalledWith(
-      expect.anything(),
       expect.objectContaining({
         boundaryBox: expect.objectContaining({
           x: 10,
@@ -290,16 +293,20 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(activeSlide.pitchTransform?.zoom).toBe(1.3);
   });
 
-  it('passes mvpMatrix as null when camera is at default front angle', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+  it('passes default pitchTransform when camera is at default front angle, and updated pitchTransform on change', () => {
+    const renderSpy = vi.spyOn(
+      frameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
+    );
     const { documentStore, phaseId, slideId, renderPanel } =
       createSplitPreviewHarness();
 
     renderPanel();
 
     expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ mvpMatrix: null }),
+      expect.objectContaining({
+        pitchTransform: null,
+      }),
     );
 
     act(() => {
@@ -319,9 +326,14 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     });
 
     expect(renderSpy).toHaveBeenLastCalledWith(
-      expect.anything(),
       expect.objectContaining({
-        mvpMatrix: expect.any(Float32Array),
+        pitchTransform: expect.objectContaining({
+          tilt: 15,
+          yaw: 75,
+          zoom: 1,
+          panX: 0,
+          panY: 0,
+        }),
       }),
     );
   });
@@ -347,16 +359,18 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(preloadSpy).toHaveBeenCalledTimes(initialCallCount);
   });
 
-  it('passes playerPhotos from usePlayerPhotoRegistry to renderTacticalFrameToCanvas', () => {
+  it('passes playerPhotos from usePlayerPhotoRegistry to renderTacticalPhaseFrameToCanvas', () => {
     const mockImage = {} as HTMLImageElement;
     vi.spyOn(playerPhotoRegistryHook, 'usePlayerPhotoRegistry').mockReturnValue(
       new Map([['p1', mockImage]]),
     );
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+    const renderSpy = vi.spyOn(
+      frameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
+    );
     createSplitPreviewHarness().renderPanel();
 
     expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         playerPhotos: expect.objectContaining({ p1: mockImage }),
       }),

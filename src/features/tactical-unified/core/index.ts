@@ -119,7 +119,6 @@ export {
 } from './utils/canvas-coordinates';
 export {
   applyPitchTransformToGroups,
-  buildExportMVPMatrix,
   calculateExportCropRect,
   calculatePitchRect,
   calculatePitchTransform,

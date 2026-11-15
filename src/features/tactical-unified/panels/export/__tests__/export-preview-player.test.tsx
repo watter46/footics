@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
-import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
+import * as tacticalPhaseFrameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import {
   createXBoundaryBox,
   type ScreenBackgroundConfig,
@@ -192,10 +192,10 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
 });
 
 describe('ExportPreviewPlayer ScreenBackground', () => {
-  it('forwards screenBackground to renderTacticalFrameToCanvas', async () => {
+  it('forwards screenBackground to renderTacticalPhaseFrameToCanvas', async () => {
     const renderSpy = vi.spyOn(
-      tacticalFrameRenderer,
-      'renderTacticalFrameToCanvas',
+      tacticalPhaseFrameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
     );
     const screenBackground: ScreenBackgroundConfig = {
       type: 'cinematic',
@@ -215,7 +215,6 @@ describe('ExportPreviewPlayer ScreenBackground', () => {
     });
 
     expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         screenBackground,
       }),

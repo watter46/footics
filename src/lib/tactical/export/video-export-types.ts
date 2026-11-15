@@ -1,4 +1,4 @@
-import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/engine/director-camera';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type {
@@ -33,7 +33,6 @@ export interface VideoExportOptions {
   aspectRatio?: AspectRatio;
   pitchTransform?: PitchTransform | null;
   pitchAppearance?: PitchAppearanceConfig;
-  mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   teamVisibility?: 'both' | 'home' | 'away';
   fullCodecString?: string;

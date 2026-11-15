@@ -1,18 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
+import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
 import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';
 import type { ScreenBackgroundConfig } from '@/lib/types/tactical-unified';
+import * as pitchCacheHelpers from '../pitch-cache-helpers';
 import { renderPitchMarkings3D } from '../renderers/pitch-markings-3d';
 import {
   clearPitchRendererCache,
   renderPitch,
   renderScreenBackground,
 } from '../renderers/pitch-renderer';
-import type { FrameRenderContext } from '../renderers/renderer-context';
-import {
-  type AnyCanvasRenderingContext2D,
-  renderTacticalFrameToCanvas,
-} from '../tactical-frame-renderer';
+import type {
+  AnyCanvasRenderingContext2D,
+  FrameRenderContext,
+} from '../renderers/renderer-context';
+import { renderTacticalPhaseFrameToCanvas } from '../tactical-phase-frame-renderer';
 
 interface MockGradient {
   addColorStop: ReturnType<typeof vi.fn>;
@@ -227,24 +229,38 @@ describe('pitch-renderer cinematic and screen background', () => {
     expect(ctx.createRadialGradient).not.toHaveBeenCalled();
   });
 
-  it('forwards screenBackground from renderTacticalFrameToCanvas to renderPitch', () => {
+  it('forwards screenBackground from renderTacticalPhaseFrameToCanvas to renderPitch', () => {
+    vi.spyOn(
+      pitchCacheHelpers,
+      'createPitchCanvasAndContext',
+    ).mockReturnValueOnce(null);
     const ctx = createMockContext();
-
-    renderTacticalFrameToCanvas(ctx, {
-      slides: [
+    const [phase] = normalizePhases({
+      phases: [
         {
-          id: 's1',
-          index: 0,
-          players: [],
-          arrows: [],
-          zones: [],
-          texts: [],
-          ball: { x: 50, y: 50, visible: true },
-          transitionDurationMs: 1000,
-          pauseMs: 500,
-          easing: 'ease-in-out',
+          id: 'phase-1',
+          name: 'Phase 1',
+          slides: [
+            {
+              id: 's1',
+              index: 0,
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'ease-in-out',
+            },
+          ],
         },
       ],
+    });
+
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
+      phase,
       timeMs: 0,
       width: 1920,
       height: 1080,
@@ -268,6 +284,10 @@ describe('pitch-renderer cinematic and screen background', () => {
     });
 
     it('renders screen background at 1920x1080 while centering 4:5 pitch at (528, 0, 864, 1080)', () => {
+      vi.spyOn(
+        pitchCacheHelpers,
+        'createPitchCanvasAndContext',
+      ).mockReturnValueOnce(null);
       const ctx = createMockContext();
       const moveToCoords: { x: number; y: number }[] = [];
       const lineToCoords: { x: number; y: number }[] = [];
@@ -282,21 +302,32 @@ describe('pitch-renderer cinematic and screen background', () => {
         },
       );
 
-      renderTacticalFrameToCanvas(ctx, {
-        slides: [
+      const [phase] = normalizePhases({
+        phases: [
           {
-            id: 's1',
-            index: 0,
-            players: [],
-            arrows: [],
-            zones: [],
-            texts: [],
-            ball: { x: 50, y: 50, visible: false },
-            transitionDurationMs: 1000,
-            pauseMs: 500,
-            easing: 'ease-in-out',
+            id: 'phase-1',
+            name: 'Phase 1',
+            slides: [
+              {
+                id: 's1',
+                index: 0,
+                players: [],
+                arrows: [],
+                zones: [],
+                texts: [],
+                ball: { x: 50, y: 50, visible: false },
+                transitionDurationMs: 1000,
+                pauseMs: 500,
+                easing: 'ease-in-out',
+              },
+            ],
           },
         ],
+      });
+
+      renderTacticalPhaseFrameToCanvas({
+        ctx,
+        phase,
         timeMs: 0,
         width: 1920,
         height: 1080,
@@ -379,26 +410,37 @@ describe('pitch-renderer cinematic and screen background', () => {
 
       const ctx = createMockContext();
 
-      renderTacticalFrameToCanvas(ctx, {
-        slides: [
+      const [phase] = normalizePhases({
+        phases: [
           {
-            id: 's1',
-            index: 0,
-            players: [],
-            arrows: [],
-            zones: [],
-            texts: [],
-            ball: { x: 50, y: 50, visible: true },
-            transitionDurationMs: 1000,
-            pauseMs: 500,
-            easing: 'ease-in-out',
+            id: 'phase-1',
+            name: 'Phase 1',
+            slides: [
+              {
+                id: 's1',
+                index: 0,
+                players: [],
+                arrows: [],
+                zones: [],
+                texts: [],
+                ball: { x: 50, y: 50, visible: true },
+                transitionDurationMs: 1000,
+                pauseMs: 500,
+                easing: 'ease-in-out',
+              },
+            ],
           },
         ],
+      });
+
+      renderTacticalPhaseFrameToCanvas({
+        ctx,
+        phase,
         timeMs: 0,
         width: 1920,
         height: 1080,
         aspectRatio: '16:9',
-        mvpMatrix: mvp,
+        pitchTransform: transform,
       });
 
       const moveToCalls = (ctx.moveTo as unknown as ReturnType<typeof vi.fn>)

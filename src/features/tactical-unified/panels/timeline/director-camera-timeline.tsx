@@ -7,7 +7,7 @@ import {
   usePlaybackStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import { calculateUnifiedTotalDuration } from '@/lib/tactical/engine/director-camera';
 import { DirectorActionTrack } from './director-action-track';
 import { DirectorGlobalTrack } from './director-global-track';
 

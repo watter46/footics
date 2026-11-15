@@ -1,6 +1,5 @@
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
-import { renderTacticalFrameToCanvas } from './tactical-frame-renderer';
+import { renderTacticalPhaseFrameToCanvas } from './tactical-phase-frame-renderer';
 import { calculateBoundaryCrop } from './video-crop-calc';
 import type { VideoExportOptions } from './video-export-types';
 
@@ -39,17 +38,6 @@ export async function exportVideoWithMediaRecorder(
     scale,
   );
   const { exportWidth, exportHeight } = cropInfo;
-
-  const mvpMatrix = options.pitchTransform
-    ? new Float32Array(
-        buildExportMVPMatrix(
-          options.pitchTransform,
-          exportWidth,
-          exportHeight,
-          aspectRatio,
-        ),
-      )
-    : (options.mvpMatrix ?? null);
 
   const streamCanvas = document.createElement('canvas');
   streamCanvas.width = exportWidth;
@@ -151,9 +139,10 @@ export async function exportVideoWithMediaRecorder(
 
       const timeMs = (frameIdx / fps) * 1000;
 
-      if (slides && slides.length > 0) {
-        renderTacticalFrameToCanvas(streamCtx, {
-          slides,
+      if (slides && slides.length > 0 && phase) {
+        renderTacticalPhaseFrameToCanvas({
+          ctx: streamCtx,
+          phase,
           timeMs,
           width: exportWidth,
           height: exportHeight,
@@ -161,16 +150,16 @@ export async function exportVideoWithMediaRecorder(
           baseHeight: options.stageHeight,
           aspectRatio,
           boundaryBox,
-          transparent,
-          mvpMatrix,
-          playerPhotos: options.playerPhotos,
+          pitchTransform: options.pitchTransform,
+          directorCamera: options.directorCamera,
+          directorCameraOptions: options.directorCameraOptions,
           pitchAppearance: options.pitchAppearance,
           marbleTexture: options.marbleTexture,
           screenBackground: options.screenBackground,
-          directorCamera: options.directorCamera,
-          directorCameraOptions: options.directorCameraOptions,
+          transparent,
+          playerPhotos: options.playerPhotos,
           teamVisibility: options.teamVisibility,
-          phase,
+          applyEffects: true,
         });
       } else {
         await onRenderFrame?.(timeMs);

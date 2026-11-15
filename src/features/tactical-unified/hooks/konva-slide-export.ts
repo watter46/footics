@@ -6,7 +6,7 @@
 import { zipSync } from 'fflate';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
-import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
+import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
@@ -91,8 +91,8 @@ export async function renderSlideToPngBlob(
   })[0];
 
   try {
-    renderTacticalFrameToCanvas(ctx, {
-      slides: [options.slide],
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
       phase,
       timeMs: 0,
       width: crop.exportWidth,

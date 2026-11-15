@@ -8,7 +8,17 @@ import type {
   DomainSlide,
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
-import { computeBillboardDepthKey } from '../engine/projection-3d';
+import {
+  calculateUnifiedTotalDuration,
+  isDirectorCameraMoving,
+  resolvePlaybackDurationMs,
+  resolveSyntheticDirectorCamera,
+} from '../engine/director-camera';
+import {
+  buildExportMVPMatrix,
+  computeBillboardDepthKey,
+  projectStagePixelWithPitchTransform,
+} from '../engine/projection-3d';
 import {
   evaluateStaticSlideFrame,
   evaluateTimelineFrame,
@@ -23,11 +33,12 @@ describe('projection-3d', () => {
     const textDepth = computeBillboardDepthKey(point, 'text', tiltDeg);
     const ballDepth = computeBillboardDepthKey(point, 'ball', tiltDeg);
 
-    expect(playerDepth).toBeCloseTo(200, 5);
-    expect(textDepth).toBeCloseTo(200.1, 5);
-    expect(ballDepth).toBeCloseTo(200.2, 5);
-    expect(playerDepth).toBeLessThan(textDepth);
-    expect(textDepth).toBeLessThan(ballDepth);
+    const base = 200 * Math.cos((tiltDeg * Math.PI) / 180);
+    expect(playerDepth).toBeCloseTo(base, 5);
+    expect(ballDepth).toBeCloseTo(base + 0.1, 5);
+    expect(textDepth).toBeCloseTo(base + 0.2, 5);
+    expect(playerDepth).toBeLessThan(ballDepth);
+    expect(ballDepth).toBeLessThan(textDepth);
   });
 });
 
@@ -162,5 +173,108 @@ describe('timeline-evaluator', () => {
     expect(frame.slide.players[0].x).toBe(20);
     expect(frame.playerOpacityMap.p1.visible).toBe(true);
     expect(frame.playerOpacityMap.p1.opacity).toBe(1);
+  });
+});
+
+describe('projection-3d 3D yaw/tilt & pan scaling', () => {
+  it('projects coordinates with yaw=75 vs yaw=90 and tilt=30 without NaN/Infinity', () => {
+    const viewport = { width: 640, height: 360, offsetX: 0, offsetY: 0 };
+    const point = toStagePixelPoint(480, 90);
+
+    const proj90 = projectStagePixelWithPitchTransform(point, viewport, {
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      tilt: 30,
+      yaw: 90,
+      isLocked: false,
+    });
+    const proj75 = projectStagePixelWithPitchTransform(point, viewport, {
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      tilt: 30,
+      yaw: 75,
+      isLocked: false,
+    });
+
+    expect(Number.isFinite(proj90.x)).toBe(true);
+    expect(Number.isFinite(proj90.y)).toBe(true);
+    expect(Number.isFinite(proj90.scale)).toBe(true);
+    expect(Number.isFinite(proj75.x)).toBe(true);
+    expect(Number.isFinite(proj75.y)).toBe(true);
+    expect(Number.isFinite(proj75.scale)).toBe(true);
+    expect(proj75.x).not.toBeCloseTo(proj90.x, 2);
+  });
+
+  it('scales panX/panY by exportHeight / 360 in buildExportMVPMatrix and 2D fast path', () => {
+    const mvp360 = buildExportMVPMatrix(
+      { zoom: 1, panX: 20, panY: 10, tilt: 30, yaw: 0, isLocked: false },
+      640,
+      360,
+    );
+    const mvp720 = buildExportMVPMatrix(
+      { zoom: 1, panX: 20, panY: 10, tilt: 30, yaw: 0, isLocked: false },
+      1280,
+      720,
+    );
+    expect(mvp360).toHaveLength(16);
+    expect(mvp720).toHaveLength(16);
+    expect(mvp720[12]).toBeCloseTo(mvp360[12], 5);
+
+    const pt = toStagePixelPoint(640, 360);
+    const res720 = projectStagePixelWithPitchTransform(
+      pt,
+      { width: 1280, height: 720, offsetX: 0, offsetY: 0 },
+      { zoom: 1, panX: 20, panY: 10, tilt: 0, yaw: 0, isLocked: false },
+    );
+    expect(res720.x).toBeCloseTo(640 + 40, 4);
+    expect(res720.y).toBeCloseTo(360 + 20, 4);
+    expect(res720.scale).toBe(1);
+  });
+});
+
+describe('director-camera', () => {
+  it('calculates unified total duration and single-slide playback duration', () => {
+    const single = [{ transitionDurationMs: 2000, pauseMs: 1000 }];
+    expect(calculateUnifiedTotalDuration(single)).toBe(0);
+    expect(resolvePlaybackDurationMs(single)).toBe(3000);
+
+    const multi = [
+      { transitionDurationMs: 1000, pauseMs: 500 },
+      { transitionDurationMs: 1200, pauseMs: 300 },
+    ];
+    expect(calculateUnifiedTotalDuration(multi)).toBe(1500);
+    expect(resolvePlaybackDurationMs(multi)).toBe(1500);
+  });
+
+  it('resolves synthetic director camera and detects movement', () => {
+    const track = {
+      enabled: true,
+      globalKeyframes: [{ id: 'gk-1', timeMs: 0, tilt: 10, yaw: 90 }],
+      actionCues: [
+        {
+          id: 'cue-1',
+          startTimeMs: 1000,
+          durationMs: 1000,
+          transitionInMs: 200,
+          zoom: 1.5,
+          panX: 30,
+          panY: -20,
+          autoReturn: false,
+          easing: 'linear' as const,
+        },
+      ],
+    };
+
+    const before = resolveSyntheticDirectorCamera(track, 500);
+    expect(before.zoom).toBe(1);
+    expect(before.tilt).toBe(10);
+    expect(isDirectorCameraMoving(track, 500)).toBe(false);
+
+    const mid = resolveSyntheticDirectorCamera(track, 1100);
+    expect(mid.zoom).toBeCloseTo(1.25, 3);
+    expect(mid.panX).toBeCloseTo(15, 3);
+    expect(isDirectorCameraMoving(track, 1100)).toBe(true);
   });
 });

@@ -1,4 +1,3 @@
-import type { mat4 } from 'gl-matrix';
 import type Konva from 'konva';
 import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import type {
@@ -6,7 +5,6 @@ import type {
   BoundaryBox as BoundaryBoxType,
   PitchTransform,
 } from '@/lib/types/tactical-unified';
-import { buildMVPMatrix, type CameraParams } from './matrix-coordinates';
 
 export interface PitchTransformValues {
   x: number;
@@ -159,54 +157,4 @@ export function calculateExportCropRect({
   }
 
   return effectivePitchRect;
-}
-
-export const REFERENCE_STAGE_HEIGHT = 360;
-
-/**
- * エクスポート用MVPマトリクスを生成する。
- *
- * OffscreenCanvas/WebWorkerはCSS 3D（perspective/rotateX）が使えないため、
- * 画面表示と同一のカメラパラメータ（tilt/zoom/pan）を持つMVP行列を数学的に生成し、
- * `projectPitchToScreen` に渡すことで透視投影パースを再現する。
- *
- * @param pitchTransform - 画面のカメラ状態（tilt/zoom/panX/panY）
- * @param exportWidth - エクスポートキャンバスの幅（px）
- * @param exportHeight - エクスポートキャンバスの高さ（px）
- * @param aspectRatio - アスペクト比（ピッチ矩形の算出に使用）
- * @param referenceHeight - 基準ステージ高さ（デフォルト REFERENCE_STAGE_HEIGHT = 360）
- * @returns MVP行列（Float32Array, 16要素）
- */
-export function buildExportMVPMatrix(
-  pitchTransform: PitchTransform,
-  exportWidth: number,
-  exportHeight: number,
-  aspectRatio: AspectRatio = '16:9',
-  referenceHeight = REFERENCE_STAGE_HEIGHT,
-): mat4 {
-  const pitchRect = calculatePitchRect(
-    { width: exportWidth, height: exportHeight },
-    aspectRatio,
-  );
-
-  const scale = referenceHeight > 0 ? exportHeight / referenceHeight : 1;
-  const relativeYaw = 90 - (pitchTransform.yaw ?? 90);
-
-  const cameraParams: CameraParams = {
-    tilt: pitchTransform.tilt,
-    yaw: relativeYaw,
-    zoom: pitchTransform.zoom,
-    panX: (pitchTransform.panX || 0) * scale,
-    panY: (pitchTransform.panY || 0) * scale,
-    stageWidth: exportWidth,
-    stageHeight: exportHeight,
-    pitchRect: {
-      x: pitchRect.x,
-      y: pitchRect.y,
-      width: pitchRect.width,
-      height: pitchRect.height,
-    },
-  };
-
-  return buildMVPMatrix(cameraParams);
 }

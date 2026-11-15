@@ -1,9 +1,5 @@
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/engine/director-camera';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
-import {
-  hasActiveDirectorCameraTrack,
-  type ResolveSyntheticDirectorCameraOptions,
-} from '@/lib/tactical/unified-interpolation';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
@@ -70,37 +66,6 @@ export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
     pt.zoom !== 1 ||
     pt.panX !== 0 ||
     pt.panY !== 0
-  );
-}
-
-export function resolveExportPreviewMVPMatrix(params: {
-  effectiveIsPlaying: boolean;
-  slidesCount: number;
-  pitchTransform?: PitchTransform | null;
-  directorCamera?: DirectorCameraTrack | null;
-  width: number;
-  height: number;
-  aspectRatio: AspectRatio;
-}): Float32Array | null {
-  const {
-    effectiveIsPlaying,
-    slidesCount,
-    pitchTransform,
-    directorCamera,
-    width,
-    height,
-    aspectRatio,
-  } = params;
-  if (
-    (effectiveIsPlaying && slidesCount > 1) ||
-    (!pitchTransform && hasActiveDirectorCameraTrack(directorCamera)) ||
-    !hasActivePitchTransform(pitchTransform) ||
-    !pitchTransform
-  ) {
-    return null;
-  }
-  return new Float32Array(
-    buildExportMVPMatrix(pitchTransform, width, height, aspectRatio),
   );
 }
 

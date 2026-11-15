@@ -1,11 +1,11 @@
 import { calculateBezierPoint } from '@/lib/tactical/trajectory';
-import { interpolatePitchTransform } from '@/lib/tactical/unified-interpolation';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type {
   DomainBallState,
   DomainPlayer,
 } from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import { interpolatePitchTransform } from './director-camera';
 import {
   interpolateArrows,
   interpolateTexts,

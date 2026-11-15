@@ -4,31 +4,54 @@ import {
   computeZonePulseOpacity,
   type RippleRing,
 } from '@/lib/tactical/effect-geometry';
-import type {
-  InterpolatedArrowState,
-  InterpolatedZoneState,
-} from '@/lib/tactical/interpolation-annotation';
 import {
-  getInterpolatedUnifiedSlideFrame,
-  type InterpolatedPlayerState,
   type ResolveSyntheticDirectorCameraOptions,
   resolveEffectiveSlideSegments,
-} from '@/lib/tactical/unified-interpolation';
+} from '@/lib/tactical/engine/director-camera';
+import type {
+  ArrowEffectConfig,
+  ZoneEffectConfig,
+} from '@/lib/types/tactical/annotations';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
 import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type { Slide } from '@/lib/types/tactical/slide';
 
 type ExportSlide = Slide | DomainSlide;
 
+export interface EffectArrowState {
+  progress?: number;
+  opacity: number;
+  visible: boolean;
+  dashOffset?: number;
+  effect?: ArrowEffectConfig;
+  [key: string]: unknown;
+}
+
+export interface EffectZoneState {
+  opacity: number;
+  effect?: ZoneEffectConfig;
+  [key: string]: unknown;
+}
+
+export interface EffectPlayerState {
+  scale?: number;
+  style?: {
+    markerEffect?: MarkerEffectConfig;
+    sizeScale?: number;
+  };
+  [key: string]: unknown;
+}
+
 export interface ComputeFrameEffectsOptions {
   applyEffects?: boolean;
   effectTimeOverrideMs?: number;
-  zones?: Record<string, InterpolatedZoneState>;
+  zones?: Record<string, EffectZoneState>;
 }
 
 export interface FrameEffectsResult {
-  effectArrows: Record<string, InterpolatedArrowState>;
-  effectZones: Record<string, InterpolatedZoneState>;
+  effectArrows: Record<string, EffectArrowState>;
+  effectZones: Record<string, EffectZoneState>;
   playerRings: Record<string, RippleRing[]>;
   timeInSlideMs: number;
 }
@@ -65,25 +88,25 @@ export function hasActiveFrameEffects(slides: readonly ExportSlide[]): boolean {
 export function isPauseFrame(
   slides: readonly ExportSlide[],
   timeMs: number,
-  directorCamera?: DirectorCameraTrack | null,
-  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
+  _directorCamera?: DirectorCameraTrack | null,
+  _directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
 ): boolean {
   if (hasActiveFrameEffects(slides)) return false;
   if (slides.length <= 1) return false;
-  const frame = getInterpolatedUnifiedSlideFrame(
-    slides,
-    timeMs,
-    directorCamera,
-    directorCameraOptions,
+  const segments = resolveEffectiveSlideSegments(slides);
+  const seg = segments.find(
+    (s) =>
+      timeMs >= s.startTimeMs && timeMs < s.startTimeMs + s.effectiveDurationMs,
   );
-  return frame.isPaused;
+  if (!seg) return false;
+  return seg.playerPauseMs > 0 && timeMs - seg.startTimeMs >= seg.playerMoveMs;
 }
 
 export function computeFrameEffects(
   slides: readonly ExportSlide[],
   timeMs: number,
-  arrows: Record<string, InterpolatedArrowState>,
-  players: Record<string, InterpolatedPlayerState>,
+  arrows: Record<string, EffectArrowState>,
+  players: Record<string, EffectPlayerState>,
   nextSlideIndex: number,
   baseDim: number,
   options?: ComputeFrameEffectsOptions,
@@ -115,7 +138,7 @@ export function computeFrameEffects(
       : elapsedInSegmentMs;
 
   if (!applyEffects) {
-    const effectArrows: Record<string, InterpolatedArrowState> = {};
+    const effectArrows: Record<string, EffectArrowState> = {};
     for (const [arrowId, arrowState] of Object.entries(arrows)) {
       effectArrows[arrowId] = {
         ...arrowState,
@@ -124,7 +147,7 @@ export function computeFrameEffects(
       };
     }
 
-    const effectZones: Record<string, InterpolatedZoneState> = {};
+    const effectZones: Record<string, EffectZoneState> = {};
     if (options?.zones) {
       for (const [zoneId, zoneState] of Object.entries(options.zones)) {
         effectZones[zoneId] = {
@@ -142,7 +165,7 @@ export function computeFrameEffects(
     };
   }
 
-  const effectArrows: Record<string, InterpolatedArrowState> = {};
+  const effectArrows: Record<string, EffectArrowState> = {};
   for (const [arrowId, arrowState] of Object.entries(arrows)) {
     const activeArrow =
       activeSlide?.arrows?.find((a) => a.id === arrowId) ??
@@ -165,7 +188,7 @@ export function computeFrameEffects(
     };
   }
 
-  const effectZones: Record<string, InterpolatedZoneState> = {};
+  const effectZones: Record<string, EffectZoneState> = {};
   if (options?.zones) {
     for (const [zoneId, zoneState] of Object.entries(options.zones)) {
       const activeZone =

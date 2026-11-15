@@ -1,7 +1,7 @@
 import { unzipSync } from 'fflate';
 import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
-import * as frameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
+import * as frameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import * as videoCropCalc from '@/lib/tactical/export/video-crop-calc';
 import type { Slide } from '@/lib/types/tactical/slide';
 import {
@@ -133,7 +133,7 @@ describe('konva-export-helpers', () => {
   });
 
   describe('renderSlideToPngBlob', () => {
-    it('uses calculateBoundaryCrop and renderTacticalFrameToCanvas to render and return a Blob', async () => {
+    it('uses calculateBoundaryCrop and renderTacticalPhaseFrameToCanvas to render and return a Blob', async () => {
       const mockSlide: Slide = {
         id: 'slide-1',
         index: 0,
@@ -156,7 +156,7 @@ describe('konva-export-helpers', () => {
       };
 
       const renderSpy = vi
-        .spyOn(frameRenderer, 'renderTacticalFrameToCanvas')
+        .spyOn(frameRenderer, 'renderTacticalPhaseFrameToCanvas')
         .mockImplementation(() => {});
       const cropSpy = vi.spyOn(videoCropCalc, 'calculateBoundaryCrop');
 
@@ -186,12 +186,13 @@ describe('konva-export-helpers', () => {
           2,
         );
         expect(renderSpy).toHaveBeenCalledWith(
-          expect.anything(),
           expect.objectContaining({
-            slides: [mockSlide],
             timeMs: 0,
             aspectRatio: '16:9',
             boundaryBox: mockSlide.boundaryBox,
+            phase: expect.objectContaining({
+              slides: [expect.objectContaining({ id: mockSlide.id })],
+            }),
           }),
         );
         expect(result).toBe(mockBlob);
@@ -224,7 +225,7 @@ describe('konva-export-helpers', () => {
       };
 
       const renderSpy = vi
-        .spyOn(frameRenderer, 'renderTacticalFrameToCanvas')
+        .spyOn(frameRenderer, 'renderTacticalPhaseFrameToCanvas')
         .mockImplementation(() => {});
       const cropSpy = vi.spyOn(videoCropCalc, 'calculateBoundaryCrop');
 
@@ -254,12 +255,13 @@ describe('konva-export-helpers', () => {
           1,
         );
         expect(renderSpy).toHaveBeenCalledWith(
-          expect.anything(),
           expect.objectContaining({
-            slides: [mockSlide],
             timeMs: 0,
             aspectRatio: '4:5',
             boundaryBox: mockSlide.boundaryBox,
+            phase: expect.objectContaining({
+              slides: [expect.objectContaining({ id: mockSlide.id })],
+            }),
           }),
         );
         expect(result).toBe(mockBlob);
@@ -304,9 +306,10 @@ describe('konva-export-helpers', () => {
         },
       );
 
-      vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas').mockImplementation(
-        () => {},
-      );
+      vi.spyOn(
+        frameRenderer,
+        'renderTacticalPhaseFrameToCanvas',
+      ).mockImplementation(() => {});
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
         {} as unknown as CanvasRenderingContext2D,
       );
@@ -384,9 +387,10 @@ describe('konva-export-helpers', () => {
         },
       );
 
-      vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas').mockImplementation(
-        () => {},
-      );
+      vi.spyOn(
+        frameRenderer,
+        'renderTacticalPhaseFrameToCanvas',
+      ).mockImplementation(() => {});
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
         {} as unknown as CanvasRenderingContext2D,
       );

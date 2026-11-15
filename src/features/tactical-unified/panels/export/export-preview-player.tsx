@@ -11,8 +11,8 @@
  */
 
 import { useEffect, useRef } from 'react';
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/engine/director-camera';
 import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
-import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type { DirectorCameraTrack } from '@/lib/types/tactical/project';

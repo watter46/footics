@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
 import {
   calculatePitchGeometryForAspect,
   calculatePitchRect,

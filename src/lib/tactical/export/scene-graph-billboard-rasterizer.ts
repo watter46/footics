@@ -4,7 +4,6 @@ import type {
   ResolvedBillboardTextItem,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 import { renderPlayerRingMarker } from './renderers/player-ring-renderer';
 import {
   type AnyCanvasRenderingContext2D,
@@ -97,7 +96,7 @@ export function renderPlayerItem(
   // 2. Player Marker
   if (isRingMarker) {
     const scale = radius / 18;
-    const interpolatedPlayer: InterpolatedPlayerState = {
+    const interpolatedPlayer = {
       ...player,
       opacity: item.opacity,
       visible: item.visible,

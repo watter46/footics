@@ -25,9 +25,9 @@ import type {
 } from '@/lib/types/tactical/slide';
 import {
   calculateUnifiedTotalDuration,
-  matchSlidePlayers,
   type ResolveSyntheticDirectorCameraOptions,
-} from '../unified-interpolation';
+} from '../engine/director-camera';
+import { matchSlidePlayers } from '../interpolation-player';
 import {
   preloadMarbleTextureBitmap,
   preloadSlidePlayerPhotos,
@@ -60,7 +60,6 @@ export interface MultiSlideVideoExportOptions {
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
   pitchAppearance?: PitchAppearanceConfig;
-  mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   photos?: Record<string, string>;
   directorCamera?: DirectorCameraTrack | null;
@@ -146,7 +145,6 @@ export async function exportMultiSlideMp4Video(
       boundaryBox: options.boundaryBox,
       pitchTransform: options.pitchTransform,
       pitchAppearance: options.pitchAppearance,
-      mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       marbleTexture,
       screenBackground: options.screenBackground,
@@ -229,7 +227,6 @@ export async function exportMultiSlideWebmVideo(
       boundaryBox: options.boundaryBox,
       pitchTransform: options.pitchTransform,
       pitchAppearance: options.pitchAppearance,
-      mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       marbleTexture,
       screenBackground: options.screenBackground,

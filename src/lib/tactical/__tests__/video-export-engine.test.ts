@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportPngBlob } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import type { Slide } from '@/lib/types/tactical-unified';
-import {
-  type AnyCanvasRenderingContext2D,
-  renderTacticalFrameToCanvas,
-} from '../export/tactical-frame-renderer';
+import { normalizePhases } from '../acl/slide-normalizer';
+import type { AnyCanvasRenderingContext2D } from '../export/renderers/renderer-context';
+import { renderTacticalPhaseFrameToCanvas } from '../export/tactical-phase-frame-renderer';
 import {
   calculateBoundaryCrop,
   createVideoExportWorker,
@@ -157,10 +156,10 @@ describe('video-export-engine & pipeline', () => {
       expect(crop.exportHeight).toBe(2704);
       expect(crop.exportWidth / crop.exportHeight).toBeCloseTo(4 / 5, 2);
 
-      // small stage 540x675: baseline guarantees 720x904 (snapped to 8px) for scale=1, 1080x1352 for scale=1.5, 1440x1800 for scale=2.5
+      // small stage 540x675: baseline guarantees 1080x1352 (snapped to 8px) for scale=1 and scale=1.5, 1440x1800 for scale=2.5
       const cropSmall1 = calculateBoundaryCrop(null, 540, 675, 1);
-      expect(cropSmall1.exportWidth).toBe(720);
-      expect(cropSmall1.exportHeight).toBe(904);
+      expect(cropSmall1.exportWidth).toBe(1080);
+      expect(cropSmall1.exportHeight).toBe(1352);
 
       const cropSmall15 = calculateBoundaryCrop(null, 540, 675, 1.5);
       expect(cropSmall15.exportWidth).toBe(1080);
@@ -272,7 +271,7 @@ describe('video-export-engine & pipeline', () => {
     });
   });
 
-  describe('renderTacticalFrameToCanvas', () => {
+  describe('renderTacticalPhaseFrameToCanvas', () => {
     const mockSlide: Slide = {
       id: 'slide-1',
       index: 0,
@@ -358,11 +357,22 @@ describe('video-export-engine & pipeline', () => {
 
     it('renders tactical frame onto 2D canvas context without errors in 16:9 and 9:16', () => {
       const ctx = createMockCanvasContext();
+      const [phase16x9] = normalizePhases({
+        phases: [
+          {
+            id: 'phase-1',
+            name: 'Phase 1',
+            slides: [mockSlide],
+            aspectRatio: '16:9',
+          },
+        ],
+      });
 
       // 16:9 Opaque
       expect(() => {
-        renderTacticalFrameToCanvas(ctx, {
-          slides: [mockSlide],
+        renderTacticalPhaseFrameToCanvas({
+          ctx,
+          phase: phase16x9,
           timeMs: 500,
           width: 1920,
           height: 1080,
@@ -376,9 +386,20 @@ describe('video-export-engine & pipeline', () => {
 
       // 9:16 Transparent with Boundary Box
       const transparentCtx = createMockCanvasContext();
+      const [phase9x16] = normalizePhases({
+        phases: [
+          {
+            id: 'phase-1',
+            name: 'Phase 1',
+            slides: [mockSlide],
+            aspectRatio: '9:16',
+          },
+        ],
+      });
       expect(() => {
-        renderTacticalFrameToCanvas(transparentCtx, {
-          slides: [mockSlide],
+        renderTacticalPhaseFrameToCanvas({
+          ctx: transparentCtx,
+          phase: phase9x16,
           timeMs: 500,
           width: 1080,
           height: 1920,
@@ -393,7 +414,7 @@ describe('video-export-engine & pipeline', () => {
           transparent: true,
         });
       }).not.toThrow();
-      expect(transparentCtx.clearRect).toHaveBeenCalledWith(0, 0, 1080, 1920);
+      expect(transparentCtx.drawImage).toHaveBeenCalled();
     });
 
     describe('Mediabunny Pipeline & Backward Compatibility', () => {
@@ -817,6 +838,7 @@ function createMockCanvasContext(): AnyCanvasRenderingContext2D {
     strokeRect: vi.fn(),
     fillRect: vi.fn(),
     clearRect: vi.fn(),
+    drawImage: vi.fn(),
     fillText: vi.fn(),
     setLineDash: vi.fn(),
     translate: vi.fn(),

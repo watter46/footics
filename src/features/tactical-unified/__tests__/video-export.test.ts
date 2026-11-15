@@ -7,22 +7,20 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/use-export-preview-animation';
 import * as sharePayload from '@/lib/tactical/export/share-payload';
-import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
+import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
+import * as tacticalPhaseFrameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import {
   calculateBoundaryCrop,
   getSupportedH264Codec,
 } from '@/lib/tactical/export/video-export-engine';
 import { exportVideoWithMediabunny } from '@/lib/tactical/export/video-mediabunny-export';
 import {
-  type AspectRatio,
   type BoundaryBox,
   createDefaultSlide,
   ExportTargetSchema,
-  type PitchTransform,
   type Slide,
 } from '@/lib/types/tactical-unified';
 
@@ -193,38 +191,6 @@ describe('Video Export Engine & Boundary Crop', () => {
   });
 });
 
-describe('buildExportMVPMatrix for 4 Aspect Ratios', () => {
-  const pitchTransform: PitchTransform = {
-    tilt: 25,
-    zoom: 1.2,
-    panX: 30,
-    panY: -15,
-    isLocked: false,
-  };
-
-  const aspectCases: Array<{
-    aspect: AspectRatio;
-    width: number;
-    height: number;
-  }> = [
-    { aspect: '16:9', width: 640, height: 360 },
-    { aspect: '9:16', width: 360, height: 640 },
-    { aspect: '4:5', width: 360, height: 450 },
-    { aspect: '1:1', width: 360, height: 360 },
-  ];
-
-  it.each(aspectCases)(
-    'generates a valid 16-element Float32Array MVP matrix for $aspect ($width x $height)',
-    ({ aspect, width, height }) => {
-      const mvp = buildExportMVPMatrix(pitchTransform, width, height, aspect);
-      expect(mvp).toHaveLength(16);
-      for (let i = 0; i < 16; i++) {
-        expect(Number.isNaN(mvp[i])).toBe(false);
-      }
-    },
-  );
-});
-
 describe('ExportPreviewPlayer controls', () => {
   beforeEach(() => {
     const mockCtx = new Proxy(
@@ -320,7 +286,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     }
   });
 
-  it('マルチスライド動画出力時、固定 mvpMatrix ではなく mvpMatrix: undefined が渡され各フレーム動的カメラワークが使われること', async () => {
+  it('マルチスライド動画出力時、renderTacticalPhaseFrameToCanvas に phase と pitchTransform が渡され各フレーム動的カメラワークが使われること', async () => {
     const slide1: Slide = {
       ...createDefaultSlide(0, 'slide-1'),
       pitchTransform: {
@@ -343,9 +309,17 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     };
 
     const spyRender = vi.spyOn(
-      tacticalFrameRenderer,
-      'renderTacticalFrameToCanvas',
+      tacticalPhaseFrameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
     );
+
+    const pitchTransform = {
+      tilt: 10,
+      zoom: 1.1,
+      panX: 5,
+      panY: 0,
+      isLocked: false,
+    };
 
     await exportVideoWithMediabunny({
       format: 'mp4',
@@ -354,21 +328,16 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       stageWidth: 800,
       stageHeight: 450,
       slides: [slide1, slide2],
-      pitchTransform: {
-        tilt: 10,
-        zoom: 1.1,
-        panX: 5,
-        panY: 0,
-        isLocked: false,
-      },
+      pitchTransform,
     });
 
     expect(spyRender).toHaveBeenCalled();
-    const callArgs = spyRender.mock.calls[0][1];
-    expect(callArgs.mvpMatrix).toBeUndefined();
+    const callArgs = spyRender.mock.calls[0][0];
+    expect(callArgs.phase).toBeDefined();
+    expect(callArgs.pitchTransform).toEqual(pitchTransform);
   });
 
-  it('単一スライド時は options.pitchTransform から生成された mvpMatrix が渡されること', async () => {
+  it('単一スライド時は renderTacticalPhaseFrameToCanvas に phase と options.pitchTransform が渡されること', async () => {
     const slide1: Slide = {
       ...createDefaultSlide(0, 'slide-1'),
       pitchTransform: {
@@ -381,9 +350,17 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     };
 
     const spyRender = vi.spyOn(
-      tacticalFrameRenderer,
-      'renderTacticalFrameToCanvas',
+      tacticalPhaseFrameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
     );
+
+    const pitchTransform = {
+      tilt: 20,
+      zoom: 1.5,
+      panX: 10,
+      panY: 5,
+      isLocked: false,
+    };
 
     await exportVideoWithMediabunny({
       format: 'mp4',
@@ -392,22 +369,16 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       stageWidth: 800,
       stageHeight: 450,
       slides: [slide1],
-      pitchTransform: {
-        tilt: 20,
-        zoom: 1.5,
-        panX: 10,
-        panY: 5,
-        isLocked: false,
-      },
+      pitchTransform,
     });
 
     expect(spyRender).toHaveBeenCalled();
-    const callArgs = spyRender.mock.calls[0][1];
-    expect(callArgs.mvpMatrix).toBeInstanceOf(Float32Array);
-    expect(callArgs.mvpMatrix).toHaveLength(16);
+    const callArgs = spyRender.mock.calls[0][0];
+    expect(callArgs.phase).toBeDefined();
+    expect(callArgs.pitchTransform).toEqual(pitchTransform);
   });
 
-  it('useExportPreviewAnimation で複数スライド再生時は mvpMatrix: null が渡されること', () => {
+  it('useExportPreviewAnimation で複数スライド再生時は renderTacticalPhaseFrameToCanvas に phase と pitchTransform が渡されること', () => {
     const slide1 = {
       ...createDefaultSlide(0, 's1'),
       pitchTransform: {
@@ -436,21 +407,23 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     const sliderRef = { current: document.createElement('input') };
 
     const spyRender = vi.spyOn(
-      tacticalFrameRenderer,
-      'renderTacticalFrameToCanvas',
+      tacticalPhaseFrameRenderer,
+      'renderTacticalPhaseFrameToCanvas',
     );
+
+    const pitchTransform = {
+      tilt: 15,
+      zoom: 1.2,
+      panX: 0,
+      panY: 0,
+      isLocked: false,
+    };
 
     renderHook(() =>
       useExportPreviewAnimation({
         slides: [slide1, slide2],
         aspectRatio: '16:9',
-        pitchTransform: {
-          tilt: 15,
-          zoom: 1.2,
-          panX: 0,
-          panY: 0,
-          isLocked: false,
-        },
+        pitchTransform,
         externalIsPlaying: true,
         canvasRef,
         timeLabelRef,
@@ -459,8 +432,9 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     );
 
     expect(spyRender).toHaveBeenCalled();
-    const lastCall = spyRender.mock.calls[spyRender.mock.calls.length - 1][1];
-    expect(lastCall.mvpMatrix).toBeNull();
+    const lastCall = spyRender.mock.calls[spyRender.mock.calls.length - 1][0];
+    expect(lastCall.phase).toBeDefined();
+    expect(lastCall.pitchTransform).toEqual(pitchTransform);
   });
 
   describe('useExportPreviewAnimation bitmap lifecycle', () => {
@@ -575,9 +549,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
   describe('hasActiveFrameEffects and video export pause frame handling', () => {
     it('hasActiveFrameEffects returns true when arrow or zone has effect, even without player markerEffect', () => {
       const baseSlide = createDefaultSlide(0, 's1');
-      expect(tacticalFrameRenderer.hasActiveFrameEffects([baseSlide])).toBe(
-        false,
-      );
+      expect(hasActiveFrameEffects([baseSlide])).toBe(false);
 
       const slideWithArrow: Slide = {
         ...baseSlide,
@@ -607,9 +579,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
           },
         ],
       };
-      expect(
-        tacticalFrameRenderer.hasActiveFrameEffects([slideWithArrow]),
-      ).toBe(true);
+      expect(hasActiveFrameEffects([slideWithArrow])).toBe(true);
 
       const slideWithZone: Slide = {
         ...baseSlide,
@@ -636,9 +606,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
           },
         ],
       };
-      expect(tacticalFrameRenderer.hasActiveFrameEffects([slideWithZone])).toBe(
-        true,
-      );
+      expect(hasActiveFrameEffects([slideWithZone])).toBe(true);
     });
 
     it('exportVideoWithMediabunny renders every frame during pauseMs when arrow effect is active', async () => {
@@ -680,8 +648,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       };
 
       const spyRender = vi.spyOn(
-        tacticalFrameRenderer,
-        'renderTacticalFrameToCanvas',
+        tacticalPhaseFrameRenderer,
+        'renderTacticalPhaseFrameToCanvas',
       );
 
       // total 600ms @ 30fps = 18 frames

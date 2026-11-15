@@ -12,9 +12,8 @@ import {
 } from '@/lib/tactical/export/scene-graph-canvas2d-rasterizer';
 import {
   _resetSharedOffscreenCanvas,
-  renderTacticalFrameToCanvas,
   renderTacticalPhaseFrameToCanvas,
-} from '@/lib/tactical/export/tactical-frame-renderer';
+} from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import {
   toScreenNormCoord,
   toScreenNormPoint,
@@ -331,7 +330,7 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
     );
   });
 
-  it('delegates to renderTacticalPhaseFrameToCanvas when phase is passed in renderTacticalFrameToCanvas', () => {
+  it('renders empty phase directly via renderTacticalPhaseFrameToCanvas', () => {
     const phase: DomainTacticalPhase = {
       id: 'phase-1',
       name: 'Build up',
@@ -359,8 +358,8 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
     };
 
     const ctx = createMockCanvasContext();
-    renderTacticalFrameToCanvas(ctx, {
-      slides: [],
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
       phase,
       timeMs: 0,
       width: 1920,
@@ -588,7 +587,7 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
     );
   });
 
-  it('executes boundary cropping when boundaryBox is provided with phase in renderTacticalFrameToCanvas', () => {
+  it('executes boundary cropping when boundaryBox is provided in renderTacticalPhaseFrameToCanvas', () => {
     _resetSharedOffscreenCanvas();
     const offscreenCtx = createMockCanvasContext();
     const origCreateElement = document.createElement.bind(document);
@@ -631,8 +630,8 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
 
     try {
       const ctx = createMockCanvasContext();
-      renderTacticalFrameToCanvas(ctx, {
-        slides: [],
+      renderTacticalPhaseFrameToCanvas({
+        ctx,
         phase,
         timeMs: 0,
         width: 500,
@@ -666,7 +665,7 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
     }
   });
 
-  it('delegates to renderTacticalPhaseFrameToCanvas even when directorCamera is active', () => {
+  it('renders directorCamera with 3D tilt and yaw via renderTacticalPhaseFrameToCanvas', () => {
     const phase: DomainTacticalPhase = {
       id: 'phase-director',
       name: 'Director Camera Phase',
@@ -717,8 +716,8 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
     };
 
     const ctx = createMockCanvasContext();
-    renderTacticalFrameToCanvas(ctx, {
-      slides: [],
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
       phase,
       timeMs: 200,
       width: 1280,

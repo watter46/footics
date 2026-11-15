@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
-import * as frameRendererModule from '@/lib/tactical/export/tactical-frame-renderer';
+import * as frameRendererModule from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import {
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_1_1,
@@ -21,8 +21,8 @@ import {
   useExportPreviewAnimation,
 } from '../use-export-preview-animation';
 
-vi.mock('@/lib/tactical/export/tactical-frame-renderer', () => ({
-  renderTacticalFrameToCanvas: vi.fn(),
+vi.mock('@/lib/tactical/export/tactical-phase-frame-renderer', () => ({
+  renderTacticalPhaseFrameToCanvas: vi.fn(),
 }));
 
 const mockSlide1: Slide = SlideSchema.parse({
@@ -72,7 +72,7 @@ describe('useExportPreviewAnimation', () => {
     canvasRef.current = mockCanvas;
   });
 
-  it('calculates mvpMatrix even with multiple slides when animation is paused and pitchTransform is provided', () => {
+  it('passes pitchTransform even with multiple slides when animation is paused and pitchTransform is provided', () => {
     const pitchTransform: PitchTransform = {
       tilt: 30,
       yaw: 90,
@@ -94,12 +94,12 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    expect(lastCall[1].mvpMatrix).toBeInstanceOf(Float32Array);
-    expect(lastCall[1].mvpMatrix?.length).toBe(16);
+    expect(lastCall?.[0].pitchTransform).toEqual(pitchTransform);
   });
 
   it('reactively redraws frame when pitchTransform changes while paused', () => {
@@ -126,7 +126,7 @@ describe('useExportPreviewAnimation', () => {
     );
 
     const initialCallCount = vi.mocked(
-      frameRendererModule.renderTacticalFrameToCanvas,
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
     ).mock.calls.length;
 
     // カメラワーク（pitchTransform）を変更
@@ -142,7 +142,7 @@ describe('useExportPreviewAnimation', () => {
     rerender();
 
     const newCallCount = vi.mocked(
-      frameRendererModule.renderTacticalFrameToCanvas,
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
     ).mock.calls.length;
     expect(newCallCount).toBeGreaterThan(initialCallCount);
   });
@@ -175,12 +175,13 @@ describe('useExportPreviewAnimation', () => {
     expect(result.current.previewHeight).toBe(864);
     expect(result.current.previewAspectStyle).toBe('1536 / 864');
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    // renderTacticalFrameToCanvas に boundaryBox が渡されること
-    expect(lastCall[1].boundaryBox).toEqual(boundaryBox);
+    // renderTacticalPhaseFrameToCanvas に boundaryBox が渡されること
+    expect(lastCall?.[0].boundaryBox).toEqual(boundaryBox);
 
     // キャンバス自体がクロップされているため、外側シネマティックマスクの fillRect は呼ばれないこと
     expect(mockContext.fillRect).not.toHaveBeenCalled();
@@ -297,7 +298,7 @@ describe('useExportPreviewAnimation', () => {
     ).toBeCloseTo(4 / 5, 2);
   });
 
-  it('passes baseWidth and baseHeight to renderTacticalFrameToCanvas for canonical reference frame', () => {
+  it('passes baseWidth and baseHeight to renderTacticalPhaseFrameToCanvas for canonical reference frame', () => {
     const boundaryBox = {
       x: 10,
       y: 10,
@@ -320,12 +321,13 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    expect(lastCall[1].baseWidth).toBe(1920);
-    expect(lastCall[1].baseHeight).toBe(1080);
+    expect(lastCall?.[0].baseWidth).toBe(1920);
+    expect(lastCall?.[0].baseHeight).toBe(1080);
   });
 
   it('notifies seekTo throttled during playback and on stop in director mode', () => {
@@ -416,13 +418,14 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    expect(lastCall[1].directorCamera).toEqual(directorCamera);
-    expect(lastCall[1].screenBackground).toEqual(screenBackground);
-    expect(lastCall[1].teamVisibility).toBe('home');
+    expect(lastCall?.[0].directorCamera).toEqual(directorCamera);
+    expect(lastCall?.[0].screenBackground).toEqual(screenBackground);
+    expect(lastCall?.[0].teamVisibility).toBe('home');
   });
 
   it('runs requestAnimationFrame idle effect loop when paused with active frame effects and cancels on unmount', () => {
@@ -483,11 +486,12 @@ describe('useExportPreviewAnimation', () => {
       rafCallback?.(1500);
     });
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     const lastCall = calls[calls.length - 1];
-    expect(lastCall[1].timeMs).toBe(0);
-    expect(lastCall[1].effectTimeMs).toBeDefined();
+    expect(lastCall?.[0].timeMs).toBe(0);
+    expect(lastCall?.[0].effectTimeMs).toBeDefined();
 
     unmount();
     expect(cancelSpy).toHaveBeenCalledWith(12345);
@@ -496,7 +500,7 @@ describe('useExportPreviewAnimation', () => {
     cancelSpy.mockRestore();
   });
 
-  it('passes normalized phase to renderTacticalFrameToCanvas', () => {
+  it('passes normalized phase to renderTacticalPhaseFrameToCanvas', () => {
     renderHook(() =>
       useExportPreviewAnimation({
         slides: [mockSlide1, mockSlide2],
@@ -508,11 +512,12 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
-      .mock.calls;
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    expect(lastCall[1].phase).toBeDefined();
-    expect(lastCall[1].phase?.slides.length).toBe(2);
+    expect(lastCall?.[0].phase).toBeDefined();
+    expect(lastCall?.[0].phase?.slides.length).toBe(2);
   });
 });

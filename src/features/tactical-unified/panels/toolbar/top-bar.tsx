@@ -28,7 +28,7 @@ import {
   preloadSlidePlayerPhotos,
   type TacticalSceneLike,
 } from '@/lib/tactical/export/share-payload';
-import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
+import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
@@ -78,7 +78,7 @@ export function TopBar({
         sessState.teamVisibility,
       );
       const activeSlide = snapshot.activeSlide ?? snapshot.slides[0];
-      if (activeSlide) {
+      if (activeSlide && snapshot.activePhase) {
         const baseW = 1920;
         const baseH = 1080;
         const boundaryBox = snapshot.boundaryBox;
@@ -92,8 +92,8 @@ export function TopBar({
             activeSlide as TacticalSceneLike,
           ]);
           try {
-            renderTacticalFrameToCanvas(ctx, {
-              slides: [],
+            renderTacticalPhaseFrameToCanvas({
+              ctx,
               phase: snapshot.activePhase,
               timeMs: 0,
               width: crop.exportWidth,

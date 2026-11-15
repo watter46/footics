@@ -3,7 +3,6 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import {
   detectIOSDevice,
   IOS_ENCODER_PRESETS,
@@ -120,14 +119,6 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
       const effectivePitchTransform = isSingleSlide
         ? (shareData?.pitchTransform ?? null)
         : null;
-      const mvpMatrix = effectivePitchTransform
-        ? (buildExportMVPMatrix(
-            effectivePitchTransform,
-            stageWidth,
-            stageHeight,
-            effectiveAspectRatio,
-          ) as Float32Array)
-        : null;
 
       const blob = await exportMultiSlideMp4Video({
         slides,
@@ -145,7 +136,6 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
         directorCamera: shareData?.directorCamera ?? null,
         screenBackground: shareData?.screenBackground ?? undefined,
         pitchAppearance: shareData?.pitchAppearance,
-        mvpMatrix,
         stageWidth: 1920,
         stageHeight: 1080,
         aspectRatio: effectiveAspectRatio,

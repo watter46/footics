@@ -13,9 +13,9 @@ import { createPlaybackStore } from '@/features/tactical-unified/stores/playback
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
+import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/director-camera';
 import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
-import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
-import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
+import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
 
 const fallbackSessionStore = createSessionStore();
 const fallbackPlaybackStore = createPlaybackStore();
@@ -23,7 +23,6 @@ const fallbackPlaybackStore = createPlaybackStore();
 import {
   PREVIEW_DIMENSIONS,
   resolveExportPreviewCropInfo,
-  resolveExportPreviewMVPMatrix,
   type UseExportPreviewAnimationParams,
 } from './export-preview-constants';
 import { useAnimationFrameLoop } from './use-animation-frame-loop';
@@ -114,28 +113,6 @@ export function useExportPreviewAnimation({
     isEditing: !effectiveIsPlaying,
   };
 
-  const mvpMatrix = useMemo(
-    () =>
-      resolveExportPreviewMVPMatrix({
-        effectiveIsPlaying,
-        slidesCount: slides.length,
-        pitchTransform,
-        directorCamera,
-        width: basePreviewDim.width,
-        height: basePreviewDim.height,
-        aspectRatio,
-      }),
-    [
-      effectiveIsPlaying,
-      slides.length,
-      directorCamera,
-      pitchTransform,
-      basePreviewDim.width,
-      basePreviewDim.height,
-      aspectRatio,
-    ],
-  );
-
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
     (timeMs: number, effectTimeMs?: number) => {
@@ -143,15 +120,15 @@ export function useExportPreviewAnimation({
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx || !phase) return;
 
       const effectiveBoundaryBox =
         shouldCropPreview && boundaryBox?.enabled !== false
           ? boundaryBox
           : null;
 
-      renderTacticalFrameToCanvas(ctx, {
-        slides,
+      renderTacticalPhaseFrameToCanvas({
+        ctx,
         phase,
         timeMs,
         width: canvas.width,
@@ -161,7 +138,10 @@ export function useExportPreviewAnimation({
         aspectRatio,
         boundaryBox: effectiveBoundaryBox,
         transparent: false,
-        mvpMatrix,
+        pitchTransform,
+        pitchTransformOverride: !effectiveIsPlaying
+          ? pitchTransform
+          : undefined,
         playerPhotos: effectivePlayerPhotos,
         pitchAppearance,
         marbleTexture,
@@ -191,13 +171,13 @@ export function useExportPreviewAnimation({
       }
     },
     [
-      slides,
       phase,
       basePreviewDim,
       shouldCropPreview,
       boundaryBox,
       aspectRatio,
-      mvpMatrix,
+      pitchTransform,
+      effectiveIsPlaying,
       effectivePlayerPhotos,
       pitchAppearance,
       marbleTexture,

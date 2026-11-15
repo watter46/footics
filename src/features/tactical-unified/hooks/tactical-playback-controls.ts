@@ -1,9 +1,8 @@
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import {
-  getInterpolatedUnifiedSlideFrame,
   resolveEffectiveSlideSegments,
   type SlideTimingLike,
-} from '@/lib/tactical/unified-interpolation';
+} from '@/lib/tactical/engine/director-camera';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { Slide } from '@/lib/types/tactical-unified';
 import type { AnimationPlaybackRefs } from './tactical-timeline';
@@ -62,22 +61,35 @@ export function snapToSlideOnStop({
   if (slides.length === 0) return;
 
   const currentTime = refs.currentPlaybackTimeRef.current;
-  const frame = getInterpolatedUnifiedSlideFrame(
-    slides as Slide[],
-    currentTime,
+  const segments = resolveEffectiveSlideSegments(slides);
+  const segIndex = segments.findIndex(
+    (seg) =>
+      currentTime >= seg.startTimeMs &&
+      currentTime < seg.startTimeMs + seg.effectiveDurationMs,
   );
 
-  // 遷移中 (0 < progress < 1 かつ !isPaused) なら直後シーン (nextSlideIndex) にスナップ
-  // pause 時間中または完了時なら currentSlideIndex に留まる
-  const isTransitioning =
-    !frame.isPaused &&
-    frame.progress < 1 &&
-    frame.currentSlideIndex !== frame.nextSlideIndex;
+  let isTransitioning = false;
+  let currentSlideIndex = currentTime <= 0 ? 0 : Math.max(0, slides.length - 1);
+  let nextSlideIndex = currentSlideIndex;
+
+  if (segIndex !== -1) {
+    const seg = segments[segIndex];
+    const moveDurationInSeg =
+      seg.cameraMode === 'slow' ? seg.effectiveDurationMs : seg.playerMoveMs;
+    if (currentTime < seg.startTimeMs + moveDurationInSeg) {
+      isTransitioning = true;
+      currentSlideIndex = segIndex;
+      nextSlideIndex = Math.min(segIndex + 1, slides.length - 1);
+    } else {
+      currentSlideIndex = Math.min(segIndex + 1, slides.length - 1);
+      nextSlideIndex = currentSlideIndex;
+    }
+  }
 
   let targetTimeMs = currentTime;
 
   if (isTransitioning) {
-    const targetIndex = frame.nextSlideIndex;
+    const targetIndex = nextSlideIndex;
     const snapTimeMs = getSlideSnapTime(slides, targetIndex);
     refs.currentPlaybackTimeRef.current = snapTimeMs;
     refs.lastActiveSlideIndexRef.current = targetIndex;
@@ -98,7 +110,7 @@ export function snapToSlideOnStop({
     setPlaybackIndices?.(targetIndex, null);
     targetTimeMs = snapTimeMs;
   } else {
-    const targetIndex = frame.currentSlideIndex;
+    const targetIndex = currentSlideIndex;
     refs.lastActiveSlideIndexRef.current = targetIndex;
     refs.lastPlaybackIndicesRef.current = {
       slideIndex: targetIndex,

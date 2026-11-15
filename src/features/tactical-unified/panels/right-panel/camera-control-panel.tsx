@@ -15,7 +15,7 @@ import {
 import {
   hasActiveDirectorCameraTrack,
   resolveSyntheticDirectorCamera,
-} from '@/lib/tactical/unified-interpolation';
+} from '@/lib/tactical/engine/director-camera';
 import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { CameraPanControl } from './camera-pan-control';
 import { CameraSliderField } from './camera-slider-field';

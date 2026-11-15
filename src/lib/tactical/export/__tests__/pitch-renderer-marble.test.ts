@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
-import type { FrameRenderContext } from '../renderers/renderer-context';
-import {
-  type AnyCanvasRenderingContext2D,
-  renderTacticalFrameToCanvas,
-} from '../tactical-frame-renderer';
+import type {
+  AnyCanvasRenderingContext2D,
+  FrameRenderContext,
+} from '../renderers/renderer-context';
+import { renderTacticalPhaseFrameToCanvas } from '../tactical-phase-frame-renderer';
 
 function createMockContext(): AnyCanvasRenderingContext2D {
   return {
@@ -144,7 +145,7 @@ describe('pitch-renderer marble background', () => {
     expect(ctx.globalAlpha).toBe(0.85);
   });
 
-  it('forwards pitchAppearance and marbleTexture from renderTacticalFrameToCanvas to renderPitch', () => {
+  it('forwards pitchAppearance and marbleTexture from renderTacticalPhaseFrameToCanvas to renderPitch', () => {
     const ctx = createMockContext();
 
     const appearance: PitchAppearanceConfig = {
@@ -161,7 +162,8 @@ describe('pitch-renderer marble background', () => {
       height: 800,
     } as unknown as CanvasImageSource;
 
-    renderTacticalFrameToCanvas(ctx, {
+    const [phase] = normalizePhases({
+      aspectRatio: '1:1',
       slides: [
         {
           id: 's1',
@@ -176,6 +178,11 @@ describe('pitch-renderer marble background', () => {
           easing: 'ease-in-out',
         },
       ],
+    });
+
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
+      phase,
       timeMs: 0,
       width: 1000,
       height: 1000,

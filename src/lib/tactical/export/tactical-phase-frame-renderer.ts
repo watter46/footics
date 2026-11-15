@@ -1,14 +1,14 @@
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
 import {
+  hasActiveDirectorCameraTrack,
+  type ResolveSyntheticDirectorCameraOptions,
+  resolveSyntheticDirectorCamera,
+} from '@/lib/tactical/engine/director-camera';
+import {
   type EvaluatedTimelineFrame,
   evaluateStaticSlideFrame,
   evaluateTimelineFrame,
 } from '@/lib/tactical/engine/timeline-evaluator';
-import {
-  hasActiveDirectorCameraTrack,
-  type ResolveSyntheticDirectorCameraOptions,
-  resolveSyntheticDirectorCamera,
-} from '@/lib/tactical/interpolation-camera';
 import {
   type Milliseconds,
   toMilliseconds,
@@ -18,88 +18,33 @@ import type {
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
 import {
+  type AspectRatio,
+  type BoundaryBox,
   DEFAULT_PITCH_APPEARANCE,
   type DirectorCameraTrack,
   type PitchAppearanceConfig,
   type PitchTransform,
   type ScreenBackgroundConfig,
 } from '@/lib/types/tactical-unified';
+import {
+  createPitchCanvasAndContext,
+  type PitchCacheEntry,
+} from './pitch-cache-helpers';
+import {
+  _resetSharedOffscreenCanvas,
+  getOffscreenCanvas,
+} from './renderers/offscreen-canvas-pool';
 import { renderPitch } from './renderers/pitch-renderer';
 import {
   type AnyCanvasRenderingContext2D,
   createFrameRenderContext,
 } from './renderers/renderer-context';
 import { rasterizeSceneGraphToCanvas2D } from './scene-graph-canvas2d-rasterizer';
+import { calculateBoundaryCrop, isBoundaryCropActive } from './video-crop-calc';
 
-interface PitchCacheEntry {
-  key: string;
-  canvas: OffscreenCanvas | HTMLCanvasElement;
-}
+export { _resetSharedOffscreenCanvas };
 
 let pitchCache: PitchCacheEntry | null = null;
-
-function wrapContextSafe(
-  ctx: AnyCanvasRenderingContext2D,
-): AnyCanvasRenderingContext2D {
-  return new Proxy(ctx, {
-    get(target, prop) {
-      const val = Reflect.get(target, prop, target);
-      if (typeof val === 'function') {
-        return (val as (...args: unknown[]) => unknown).bind(target);
-      }
-      if (val === undefined && typeof prop === 'string') {
-        return () => {};
-      }
-      return val;
-    },
-    set(target, prop, value) {
-      return Reflect.set(target, prop, value, target);
-    },
-  });
-}
-
-function createPitchCanvasAndContext(
-  width: number,
-  height: number,
-): {
-  canvas: OffscreenCanvas | HTMLCanvasElement;
-  ctx: AnyCanvasRenderingContext2D;
-} | null {
-  if (typeof OffscreenCanvas !== 'undefined') {
-    try {
-      const offscreen = new OffscreenCanvas(width, height);
-      const ctx = offscreen.getContext('2d');
-      if (ctx) {
-        return {
-          canvas: offscreen,
-          ctx: wrapContextSafe(ctx as AnyCanvasRenderingContext2D),
-        };
-      }
-    } catch {
-      // ignore and fallback
-    }
-  }
-  if (
-    typeof document !== 'undefined' &&
-    typeof document.createElement === 'function'
-  ) {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        return {
-          canvas,
-          ctx: wrapContextSafe(ctx as AnyCanvasRenderingContext2D),
-        };
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return null;
-}
 
 export interface RenderTacticalPhaseFrameOptions {
   ctx: AnyCanvasRenderingContext2D;
@@ -109,6 +54,8 @@ export interface RenderTacticalPhaseFrameOptions {
   height: number;
   baseWidth?: number;
   baseHeight?: number;
+  aspectRatio?: AspectRatio;
+  boundaryBox?: BoundaryBox | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
   marbleTexture?: CanvasImageSource | null;
@@ -132,22 +79,57 @@ export function renderTacticalPhaseFrameToCanvas(
     timeMs,
     width: w,
     height: h,
-    playerPhotos,
-    pitchAppearance,
-    marbleTexture,
-    screenBackground,
-    transparent = false,
-    teamVisibility = 'both',
-    pitchTransform,
-    pitchTransformOverride,
-    directorCamera,
-    directorCameraOptions,
+    boundaryBox,
     applyEffects,
-    effectTimeMs,
   } = options;
   if (w <= 0 || h <= 0) return;
+
+  if (isBoundaryCropActive(boundaryBox)) {
+    const canonicalW =
+      options.baseWidth ??
+      Math.max(1, Math.round(w / Math.max(0.01, boundaryBox.width)));
+    const canonicalH =
+      options.baseHeight ??
+      Math.max(1, Math.round(h / Math.max(0.01, boundaryBox.height)));
+    const offscreen = getOffscreenCanvas(canonicalW, canonicalH);
+    if (offscreen) {
+      renderTacticalPhaseFrameToCanvas({
+        ...options,
+        ctx: offscreen.ctx,
+        width: canonicalW,
+        height: canonicalH,
+        baseWidth: canonicalW,
+        baseHeight: canonicalH,
+        boundaryBox: null,
+      });
+      const crop = calculateBoundaryCrop(
+        boundaryBox,
+        canonicalW,
+        canonicalH,
+        1,
+      );
+      ctx.save();
+      ctx.drawImage(
+        offscreen.canvas as CanvasImageSource,
+        crop.cropX,
+        crop.cropY,
+        crop.cropW,
+        crop.cropH,
+        0,
+        0,
+        w,
+        h,
+      );
+      ctx.restore();
+      return;
+    }
+  }
+
   const baseWidth = options.baseWidth ?? w;
   const baseHeight = options.baseHeight ?? h;
+  const effectiveAspectRatio = options.aspectRatio ?? phase.aspectRatio;
+  const transparent = options.transparent ?? false;
+  const teamVisibility = options.teamVisibility ?? 'both';
 
   ctx.save();
   ctx.beginPath();
@@ -159,20 +141,22 @@ export function renderTacticalPhaseFrameToCanvas(
     toMilliseconds(Number(timeMs)),
   );
   const effectiveDirectorCamera =
-    directorCamera !== undefined ? directorCamera : phase.directorCamera;
+    options.directorCamera !== undefined
+      ? options.directorCamera
+      : phase.directorCamera;
   const directorPitchTransform = hasActiveDirectorCameraTrack(
     effectiveDirectorCamera,
   )
     ? resolveSyntheticDirectorCamera(
         effectiveDirectorCamera,
         Number(timeMs),
-        directorCameraOptions,
+        options.directorCameraOptions,
       )
     : undefined;
 
   const effectivePitchTransform =
-    pitchTransformOverride ??
-    pitchTransform ??
+    options.pitchTransformOverride ??
+    options.pitchTransform ??
     directorPitchTransform ??
     evaluated.slide.pitchTransform;
 
@@ -189,23 +173,23 @@ export function renderTacticalPhaseFrameToCanvas(
   const transformCacheSuffix = hasNonIdentityTransform
     ? `:${JSON.stringify(effectivePitchTransform)}`
     : '';
-  const cacheKey = `${baseWidth}x${baseHeight}:${phase.aspectRatio}:${JSON.stringify(pitchAppearance ?? DEFAULT_PITCH_APPEARANCE)}:${Boolean(marbleTexture)}:${transparent}${transformCacheSuffix}`;
+  const cacheKey = `${baseWidth}x${baseHeight}:${effectiveAspectRatio}:${JSON.stringify(options.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE)}:${Boolean(options.marbleTexture)}:${transparent}:${JSON.stringify(options.screenBackground ?? null)}${transformCacheSuffix}`;
 
   const drawPitchTo = (targetCtx: AnyCanvasRenderingContext2D) => {
     const frameContext = createFrameRenderContext({
       ctx: targetCtx,
       baseWidth,
       baseHeight,
-      aspectRatio: phase.aspectRatio,
+      aspectRatio: effectiveAspectRatio,
       framePitchTransform: effectivePitchTransform,
     });
     renderPitch(
       frameContext,
-      phase.aspectRatio,
+      effectiveAspectRatio,
       transparent,
-      pitchAppearance,
-      marbleTexture,
-      screenBackground,
+      options.pitchAppearance,
+      options.marbleTexture,
+      options.screenBackground,
     );
   };
 
@@ -234,10 +218,7 @@ export function renderTacticalPhaseFrameToCanvas(
       pitchDrawn = true;
     }
   }
-
-  if (!pitchDrawn) {
-    drawPitchTo(ctx);
-  }
+  if (!pitchDrawn) drawPitchTo(ctx);
 
   let players = evaluated.slide.players;
   if (teamVisibility === 'home' || teamVisibility === 'away') {
@@ -260,7 +241,7 @@ export function renderTacticalPhaseFrameToCanvas(
   };
 
   let frameToCompile: EvaluatedTimelineFrame;
-  if (applyEffects === false) {
+  if (options.applyEffects === false) {
     const staticMaps = evaluateStaticSlideFrame(
       slideToCompile,
       evaluated.slideIndex,
@@ -275,7 +256,9 @@ export function renderTacticalPhaseFrameToCanvas(
   } else {
     frameToCompile = {
       ...evaluated,
-      ...(effectTimeMs !== undefined ? { timeInSlideMs: effectTimeMs } : {}),
+      ...(options.effectTimeMs !== undefined
+        ? { timeInSlideMs: options.effectTimeMs }
+        : {}),
       slide: slideToCompile,
     };
   }
@@ -287,12 +270,13 @@ export function renderTacticalPhaseFrameToCanvas(
   const sceneGraph = compileSceneGraph(
     frameToCompile,
     null,
-    {
-      width: baseWidth,
-      height: baseHeight,
-    },
+    { width: baseWidth, height: baseHeight },
     prevSlide,
   );
-  rasterizeSceneGraphToCanvas2D({ ctx, sceneGraph, playerPhotos });
+  rasterizeSceneGraphToCanvas2D({
+    ctx,
+    sceneGraph,
+    playerPhotos: options.playerPhotos,
+  });
   ctx.restore();
 }

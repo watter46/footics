@@ -15,11 +15,11 @@ import {
   usePlaybackStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import {
   hasActiveDirectorCameraTrack,
   resolveSyntheticDirectorCamera,
-} from '@/lib/tactical/unified-interpolation';
+} from '@/lib/tactical/engine/director-camera';
+import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { PreviewBoundaryOverlay } from './preview-boundary-overlay';
 import { buildPlayerPhotoRecord } from './preview-player-photos';

@@ -12,7 +12,7 @@ import type {
   BoundaryBox,
   Slide,
 } from '@/lib/types/tactical-unified';
-import { calculateUnifiedTotalDuration } from '../unified-interpolation';
+import { calculateUnifiedTotalDuration } from '../engine/director-camera';
 import { exportMultiSlideVideo } from './tactical-video-exporter';
 
 export interface WorkerSegmentProfile {

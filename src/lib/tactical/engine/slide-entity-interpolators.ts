@@ -1,4 +1,3 @@
-import { interpolatePolygonPoints } from '@/lib/tactical/unified-interpolation';
 import {
   clampToScreenNorm,
   toScreenNormPoint,
@@ -13,6 +12,36 @@ import type {
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+function interpolatePolygonPoints(
+  pointsA: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  pointsB: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  t: number,
+): Array<{ x: number; y: number }> {
+  if (pointsA.length === 0 || pointsB.length === 0) {
+    return t < 0.5
+      ? pointsA.map((p) => ({ x: p.x, y: p.y }))
+      : pointsB.map((p) => ({ x: p.x, y: p.y }));
+  }
+
+  const maxLen = Math.max(pointsA.length, pointsB.length);
+  const result: Array<{ x: number; y: number }> = [];
+
+  for (let i = 0; i < maxLen; i++) {
+    const idxA =
+      maxLen === 1 ? 0 : Math.round((i * (pointsA.length - 1)) / (maxLen - 1));
+    const idxB =
+      maxLen === 1 ? 0 : Math.round((i * (pointsB.length - 1)) / (maxLen - 1));
+    const pA = pointsA[idxA];
+    const pB = pointsB[idxB];
+    result.push({
+      x: lerp(pA.x, pB.x, t),
+      y: lerp(pA.y, pB.y, t),
+    });
+  }
+
+  return result;
 }
 
 export function interpolateZones(
