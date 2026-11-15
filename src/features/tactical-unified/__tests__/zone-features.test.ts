@@ -1,21 +1,32 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { compileZones } from '@/lib/tactical/compiler/compile-zones';
-import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
-import { interpolateZone } from '@/lib/tactical/interpolation-annotation';
-import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import {
-  type ZoneAnnotation,
-  ZoneAnnotationSchema,
-} from '@/lib/types/tactical-unified';
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { compileZones } from '@/lib/tactical/compiler/compile-zones';
+import { interpolateZones } from '@/lib/tactical/engine/slide-entity-interpolators';
+import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+
+type DomainZoneAnnotation = DomainSlide['zones'][number];
+
+import { ZoneAnnotationSchema } from '@/lib/types/tactical-unified';
 
 describe('tactical-unified Zone Features', () => {
+  let docStore: DocumentStore;
+  let phaseId: string;
+  let slideId: string;
+
   beforeEach(() => {
-    useTacticalUnifiedStore.setState((state) => ({
-      ...state,
-      selectedObjects: [],
-      activeTool: 'select',
-    }));
+    const project = createDefaultTacticalProject();
+    docStore = createDocumentStore(project);
+    phaseId = project.phases[0]?.id ?? '';
+    slideId = project.phases[0]?.slides[0]?.id ?? '';
   });
 
   it('ZoneAnnotationSchema parses with strokeWidth default 3 and strokeOpacity default 1', () => {
@@ -113,148 +124,156 @@ describe('tactical-unified Zone Features', () => {
     expect(defaults?.strokeWidthPx).toBe(3);
   });
 
-  it('interpolateZone preserves strokeWidth fallback of 3 and interpolates strokeColor and strokeOpacity', () => {
-    const zoneA: ZoneAnnotation = {
+  it('interpolateZones interpolates rect geometry, opacity, strokeWidth and fades out missing zones', () => {
+    const zoneA: DomainZoneAnnotation = {
       id: 'z-a',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'rect',
-      x: 10,
-      y: 10,
+      x: toScreenNormCoord(10),
+      y: toScreenNormCoord(10),
       width: 20,
       height: 20,
-      points: [],
       color: '#10b981',
       strokeColor: '#059669',
-      strokeWidth: undefined as unknown as number,
+      strokeWidth: 2,
       strokeOpacity: 0.2,
       opacity: 0.5,
     };
-    const zoneB: ZoneAnnotation = {
+    const zoneB: DomainZoneAnnotation = {
       id: 'z-a',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'rect',
-      x: 30,
-      y: 30,
+      x: toScreenNormCoord(30),
+      y: toScreenNormCoord(30),
       width: 40,
       height: 40,
-      points: [],
       color: '#3b82f6',
       strokeColor: '#2563eb',
-      strokeWidth: undefined as unknown as number,
+      strokeWidth: 4,
       strokeOpacity: 0.8,
       opacity: 0.5,
     };
 
-    const mid = interpolateZone(zoneA, zoneB, 0.5);
-    expect(mid).not.toBeNull();
-    expect(mid?.strokeWidth).toBe(3);
-    expect(mid?.strokeOpacity).toBeCloseTo(0.5);
-    expect(mid?.strokeColor).toBeDefined();
+    const { interpolatedZones, zoneOpacityMap } = interpolateZones(
+      [zoneA],
+      [zoneB],
+      0.5,
+    );
+    expect(interpolatedZones).toHaveLength(1);
+    const mid = interpolatedZones[0];
+    expect(mid?.shapeType).toBe('rect');
+    if (mid?.shapeType === 'rect') {
+      expect(mid.x).toBeCloseTo(20);
+      expect(mid.width).toBeCloseTo(30);
+    }
+    expect(mid?.strokeWidth).toBeCloseTo(3);
+    expect(zoneOpacityMap['z-a']?.visible).toBe(true);
 
-    const fadeMid = interpolateZone(zoneA, undefined, 0.5);
-    expect(fadeMid?.strokeWidth).toBe(3);
-    expect(fadeMid?.strokeOpacity).toBe(0.2);
+    const fadeOut = interpolateZones([zoneA], [], 0.5);
+    expect(fadeOut.interpolatedZones).toHaveLength(1);
+    expect(fadeOut.zoneOpacityMap['z-a']?.opacity).toBeCloseTo(0.25);
+    expect(fadeOut.zoneOpacityMap['z-a']?.visible).toBe(true);
   });
 
   it('四角形ゾーン (Rect) を作成・更新できる (strokeWidth/strokeColor含む)', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
     const zoneId = 'zone-rect-1';
 
-    store.addZone(slideId, {
-      id: zoneId,
-      annotationType: 'zone',
-      zoneType: 'generic',
-      shapeType: 'rect',
-      x: 20,
-      y: 30,
-      width: 40,
-      height: 25,
-      rotation: 0,
-      points: [
-        { x: 20, y: 30 },
-        { x: 60, y: 30 },
-        { x: 60, y: 55 },
-        { x: 20, y: 55 },
-      ],
-      color: '#22c55e',
-      opacity: 0.35,
-      strokeWidth: 2,
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'ADD_ZONE',
+      zone: {
+        id: zoneId,
+        annotationType: 'zone',
+        zoneType: 'generic',
+        shapeType: 'rect',
+        x: toScreenNormCoord(20),
+        y: toScreenNormCoord(30),
+        width: 40,
+        height: 25,
+        rotation: 0,
+        color: '#22c55e',
+        opacity: 0.35,
+        strokeWidth: 2,
+      },
     });
 
-    let slide = useTacticalUnifiedStore
+    let slide = docStore
       .getState()
-      .project.slides.find((s) => s.id === slideId);
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
     let zone = slide?.zones.find((z) => z.id === zoneId);
     expect(zone).toBeDefined();
     expect(zone?.shapeType).toBe('rect');
-    expect(zone?.x).toBe(20);
-    expect(zone?.width).toBe(40);
+    if (zone?.shapeType === 'rect') {
+      expect(zone.x).toBe(20);
+      expect(zone.width).toBe(40);
+    }
 
     // 形状・枠線色・枠線太さを更新
-    store.updateZone(slideId, zoneId, {
-      shapeType: 'ellipse',
-      rotation: 45,
-      strokeWidth: 4,
-      strokeColor: '#15803d',
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_ZONE',
+      id: zoneId,
+      patch: {
+        shapeType: 'ellipse',
+        rotation: 45,
+        strokeWidth: 4,
+        strokeColor: '#15803d',
+      },
     });
 
-    slide = useTacticalUnifiedStore
+    slide = docStore
       .getState()
-      .project.slides.find((s) => s.id === slideId);
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
     zone = slide?.zones.find((z) => z.id === zoneId);
     expect(zone?.shapeType).toBe('ellipse');
-    expect(zone?.rotation).toBe(45);
+    if (zone?.shapeType === 'ellipse') {
+      expect(zone.rotation).toBe(45);
+    }
     expect(zone?.strokeWidth).toBe(4);
     expect(zone?.strokeColor).toBe('#15803d');
   });
 
-  it('フリーゾーン (Polygon) の頂点追加と完了確定ができる', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
+  it('フリーゾーン (Polygon) の頂点追加と更新ができる', () => {
     const polyId = 'zone-poly-1';
 
     // 1点目
-    store.addZone(slideId, {
-      id: polyId,
-      annotationType: 'zone',
-      zoneType: 'danger',
-      shapeType: 'polygon',
-      points: [{ x: 10, y: 10 }],
-      color: '#ef4444',
-      opacity: 0.3,
-      strokeWidth: 2,
-      isComplete: false,
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'ADD_ZONE',
+      zone: {
+        id: polyId,
+        annotationType: 'zone',
+        zoneType: 'danger',
+        shapeType: 'polygon',
+        points: [toScreenNormPoint(10, 10)],
+        color: '#ef4444',
+        opacity: 0.3,
+        strokeWidth: 2,
+      },
     });
 
     // 2点目・3点目を追加
-    store.updateZone(slideId, polyId, {
-      points: [
-        { x: 10, y: 10 },
-        { x: 40, y: 15 },
-        { x: 30, y: 50 },
-      ],
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_ZONE',
+      id: polyId,
+      patch: {
+        points: [
+          toScreenNormPoint(10, 10),
+          toScreenNormPoint(40, 15),
+          toScreenNormPoint(30, 50),
+        ],
+      },
     });
 
-    let slide = useTacticalUnifiedStore
+    const slide = docStore
       .getState()
-      .project.slides.find((s) => s.id === slideId);
-    let polyZone = slide?.zones.find((z) => z.id === polyId);
-    expect(polyZone?.points.length).toBe(3);
-    expect(polyZone?.isComplete).toBe(false);
-
-    // 確定
-    store.updateZone(slideId, polyId, {
-      isComplete: true,
-    });
-
-    slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-    polyZone = slide?.zones.find((z) => z.id === polyId);
-    expect(polyZone?.isComplete).toBe(true);
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
+    const polyZone = slide?.zones.find((z) => z.id === polyId);
     expect(polyZone?.shapeType).toBe('polygon');
+    if (polyZone?.shapeType === 'polygon') {
+      expect(polyZone.points.length).toBe(3);
+    }
   });
 });

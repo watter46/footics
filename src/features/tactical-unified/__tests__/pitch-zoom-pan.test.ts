@@ -1,51 +1,88 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { normToPx, pxToNorm } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
 describe('L2-Tactical-026: PitchTransform Store Actions & Lock Behavior', () => {
+  let docStore: DocumentStore;
+  let phaseId: string;
+  let slideId: string;
+
   beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
+    const project = createDefaultTacticalProject();
+    docStore = createDocumentStore(project);
+    phaseId = project.phases[0]?.id ?? '';
+    slideId = project.phases[0]?.slides[0]?.id ?? '';
   });
+
+  const getSlide = (targetSlideId = slideId) =>
+    docStore
+      .getState()
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === targetSlideId);
+
   it('初期状態ではピッチはアンロック(isLocked = false)である', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const activeSlide = store.project.slides.find(
-      (s) => s.id === store.activeSlideId,
-    );
+    const activeSlide = getSlide();
     expect(activeSlide?.pitchTransform?.isLocked ?? false).toBe(false);
   });
 
   it('togglePitchLock でロック状態がトグルされる', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
+    const toggleLock = () => {
+      const current = getSlide()?.pitchTransform ?? {
+        panX: 0,
+        panY: 0,
+        zoom: 1,
+        tilt: 0,
+        isLocked: false,
+      };
+      docStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_SLIDE_META',
+        patch: {
+          pitchTransform: { ...current, isLocked: !current.isLocked },
+        },
+      });
+    };
 
-    store.togglePitchLock(slideId);
-    let slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-    expect(slide?.pitchTransform?.isLocked).toBe(true);
+    toggleLock();
+    expect(getSlide()?.pitchTransform?.isLocked).toBe(true);
 
-    store.togglePitchLock(slideId);
-    slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-    expect(slide?.pitchTransform?.isLocked).toBe(false);
+    toggleLock();
+    expect(getSlide()?.pitchTransform?.isLocked).toBe(false);
   });
 
   it('updatePitchTransform で panX, panY, zoom が更新され、既存の isLocked 状態が維持される', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.togglePitchLock(slideId); // lock it first
-    store.updatePitchTransform(slideId, {
-      panX: 120,
-      panY: -50,
-      zoom: 1.8,
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: { panX: 0, panY: 0, zoom: 1, tilt: 0, isLocked: true },
+      },
     });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const current = getSlide()?.pitchTransform ?? {
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      tilt: 0,
+      isLocked: false,
+    };
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: {
+          ...current,
+          panX: 120,
+          panY: -50,
+          zoom: 1.8,
+        },
+      },
+    });
+
+    const slide = getSlide();
     expect(slide?.pitchTransform?.panX).toBe(120);
     expect(slide?.pitchTransform?.panY).toBe(-50);
     expect(slide?.pitchTransform?.zoom).toBe(1.8);
@@ -53,41 +90,53 @@ describe('L2-Tactical-026: PitchTransform Store Actions & Lock Behavior', () => 
   });
 
   it('ピッチのズーム・パンを変更しても境界線(boundaryBox)の配置・サイズは影響を受けない', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-    const initialBox = store.project.slides[0]?.boundaryBox;
+    const getBoundaryBox = () =>
+      docStore.getState().project.phases.find((p) => p.id === phaseId)
+        ?.boundaryBox;
+    const initialBox = getBoundaryBox();
 
     expect(initialBox).toBeDefined();
 
     // ピッチを大きくズーム・パン
-    store.updatePitchTransform(slideId, {
-      panX: 200,
-      panY: 150,
-      zoom: 2.5,
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: {
+          panX: 200,
+          panY: 150,
+          zoom: 2.5,
+          tilt: 0,
+          isLocked: false,
+        },
+      },
     });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
     // boundaryBox はピッチの transform と無関係に固定値を維持
-    expect(slide?.boundaryBox).toEqual(initialBox);
+    expect(getBoundaryBox()).toEqual(initialBox);
   });
 
   it('スライド複製(duplicateSlide)時に pitchTransform のズーム・パン・ロック状態が保持される', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.updatePitchTransform(slideId, {
-      panX: 45,
-      panY: 60,
-      zoom: 1.4,
-      isLocked: true,
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: {
+          panX: 45,
+          panY: 60,
+          zoom: 1.4,
+          tilt: 0,
+          isLocked: true,
+        },
+      },
     });
 
-    const newSlideId = store.duplicateSlide(slideId);
-    const newSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === newSlideId);
+    const newSlideId = 'slide-duplicated-1';
+    docStore.getState().dispatch({
+      type: 'DUPLICATE_SLIDE',
+      phaseId,
+      slideId,
+      newSlideId,
+    });
+    const newSlide = getSlide(newSlideId);
 
     expect(newSlide?.pitchTransform?.panX).toBe(45);
     expect(newSlide?.pitchTransform?.panY).toBe(60);
@@ -174,11 +223,22 @@ describe('Pitch Coordinate & Screen Mapping', () => {
 
 describe('L2-Tactical-026: Marquee Selection under Pitch Zoom', () => {
   it('ピッチズーム時に Marquee 選択ボックスがピッチ上の選手を正確に包含判定する', () => {
-    const store = useTacticalUnifiedStore.getState();
+    const project = createDefaultTacticalProject();
+    const docStore = createDocumentStore(project);
+    const phaseId = project.phases[0]?.id ?? '';
+    const slideId = project.phases[0]?.slides[0]?.id ?? '';
 
     // 選手をピッチ中央 (50%, 50%) に配置
-    const player = createDefaultPlayer('home', 50, 50, '#034694');
-    store.addPlayer(player);
+    const player = {
+      ...createDefaultPlayer('home', 50, 50, '#034694'),
+      area: 'pitch' as const,
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(50),
+      trajectory: undefined,
+    };
+    docStore
+      .getState()
+      .dispatchSlide(phaseId, slideId, { type: 'ADD_PLAYER', player });
 
     const pitchRect = { x: 0, y: 0, width: 800, height: 450 };
     const panX = 100;

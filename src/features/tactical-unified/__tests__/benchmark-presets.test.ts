@@ -4,7 +4,7 @@ import {
   createLowBlockBenchmarkProject,
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import { calculateUnifiedTotalDuration } from '@/lib/tactical/engine/director-camera';
 
 describe('Benchmark Test Presets', () => {
   describe('Low Block Benchmark Preset', () => {

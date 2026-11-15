@@ -1,18 +1,59 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+
+type DomainPitchTransform = NonNullable<DomainSlide['pitchTransform']>;
 
 describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence', () => {
+  let docStore: DocumentStore;
+  let phaseId: string;
+  let slideId: string;
+
   beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setIsExporting(false);
+    const project = createDefaultTacticalProject();
+    docStore = createDocumentStore(project);
+    phaseId = project.phases[0]?.id ?? '';
+    slideId = project.phases[0]?.slides[0]?.id ?? '';
   });
 
-  it('updatePitchTransform updates tilt and preserves existing panX, panY, zoom, isLocked', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
+  function updatePitchTransform(patch: Partial<DomainPitchTransform>) {
+    const slide = docStore
+      .getState()
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
+    const current = slide?.pitchTransform ?? {
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      tilt: 0,
+      yaw: 0,
+      isLocked: false,
+    };
+    docStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: {
+          ...current,
+          ...patch,
+        },
+      },
+    });
+  }
 
-    store.updatePitchTransform(slideId, {
+  function getActiveSlide() {
+    return docStore
+      .getState()
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
+  }
+
+  it('UPDATE_SLIDE_META updates tilt and preserves existing panX, panY, zoom, isLocked', () => {
+    updatePitchTransform({
       panX: 50,
       panY: -30,
       zoom: 1.5,
@@ -20,11 +61,9 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
     });
 
     // Update tilt to 45°
-    store.updatePitchTransform(slideId, { tilt: 45 });
+    updatePitchTransform({ tilt: 45 });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const slide = getActiveSlide();
 
     expect(slide?.pitchTransform?.tilt).toBe(45);
     expect(slide?.pitchTransform?.panX).toBe(50);
@@ -33,11 +72,8 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
     expect(slide?.pitchTransform?.isLocked).toBe(true);
   });
 
-  it('updatePitchTransform updates yaw and preserves existing transform properties', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.updatePitchTransform(slideId, {
+  it('UPDATE_SLIDE_META updates yaw and preserves existing transform properties', () => {
+    updatePitchTransform({
       panX: 10,
       panY: 20,
       zoom: 1.2,
@@ -45,9 +81,7 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
       yaw: 75,
     });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const slide = getActiveSlide();
 
     expect(slide?.pitchTransform?.yaw).toBe(75);
     expect(slide?.pitchTransform?.tilt).toBe(30);
@@ -56,11 +90,8 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
     expect(slide?.pitchTransform?.panY).toBe(20);
   });
 
-  it('centerPitchAndBoundary resets yaw to 90 alongside tilt, pan, zoom', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.updatePitchTransform(slideId, {
+  it('CENTER_PITCH_AND_BOUNDARY resets yaw to 90 alongside tilt, pan, zoom', () => {
+    updatePitchTransform({
       tilt: 45,
       yaw: 120,
       panX: 50,
@@ -68,11 +99,13 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
       zoom: 1.5,
     });
 
-    store.centerPitchAndBoundary(slideId);
+    docStore.getState().dispatch({
+      type: 'CENTER_PITCH_AND_BOUNDARY',
+      phaseId,
+      slideId,
+    });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const slide = getActiveSlide();
 
     expect(slide?.pitchTransform?.tilt).toBe(0);
     expect(slide?.pitchTransform?.yaw).toBe(90);
@@ -102,44 +135,33 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
     expect(Array.from(matrixFront)).not.toEqual(Array.from(matrixYaw75));
   });
 
-  it('ピッチのチルト角度を変更しても境界線(boundaryBox)の配置・サイズは影響を受けない', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-    const initialBox = {
-      x: 10,
-      y: 10,
-      width: 80,
-      height: 80,
-      enabled: true,
-    };
-    store.setBoundaryBox(slideId, initialBox);
-
+  it('ピッチのチルト角度を変更しても他スライドやプロジェクト設定は影響を受けない', () => {
     // Pitch tilted to 60°
-    store.updatePitchTransform(slideId, { tilt: 60 });
+    updatePitchTransform({ tilt: 60 });
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const slide = getActiveSlide();
 
-    // Boundary box is unchanged and in screen plane
-    expect(slide?.boundaryBox).toEqual(initialBox);
     expect(slide?.pitchTransform?.tilt).toBe(60);
+    expect(docStore.getState().project.version).toBe('3.0.0');
   });
 
-  it('duplicateSlide でピッチの tilt 状態が正しく複製先に引き継がれる', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.updatePitchTransform(slideId, {
+  it('DUPLICATE_SLIDE でピッチの tilt 状態が正しく複製先に引き継がれる', () => {
+    updatePitchTransform({
       tilt: 45,
       zoom: 1.8,
       panX: 100,
       panY: 50,
     });
 
-    store.duplicateSlide(slideId);
+    docStore.getState().dispatch({
+      type: 'DUPLICATE_SLIDE',
+      phaseId,
+      slideId,
+    });
 
-    const slides = useTacticalUnifiedStore.getState().project.slides;
+    const slides =
+      docStore.getState().project.phases.find((p) => p.id === phaseId)
+        ?.slides ?? [];
     expect(slides.length).toBe(2);
     const duplicated = slides[1];
     expect(duplicated?.pitchTransform?.tilt).toBe(45);

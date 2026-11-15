@@ -1,32 +1,32 @@
 import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { evaluateTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import {
-  selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
-import { interpolateBall } from '@/lib/tactical/unified-interpolation';
+  type ScreenNormCoord,
+  toMilliseconds,
+  toScreenNormCoord,
+} from '@/lib/types/tactical/branded';
 
 describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
   describe('GhostTrajectoryArrow: Handle & Bezier Apex Mathematical Parity', () => {
     it('ポインタドラッグ時、逆算された制御点によってベジェ曲線上の点(t=0.5)がポインタ位置と寸分狂わず一致する', () => {
-      // 始点(前スライド位置)と終点(現スライド位置)
       const sPx = { x: 150, y: 300 };
       const ePx = { x: 650, y: 300 };
 
-      // ユーザーがポインタ(ハンドル)を任意の位置に動かしたケース
       const testHandlePositions = [
-        { x: 400, y: 150 }, // 上に大きく曲げる
-        { x: 400, y: 450 }, // 下に大きく曲げる
-        { x: 200, y: 100 }, // 左上に急カーブ
-        { x: -50, y: -80 }, // 画面外(負の値)
-        { x: 900, y: 700 }, // 画面外(正の超過)
+        { x: 400, y: 150 },
+        { x: 400, y: 450 },
+        { x: 200, y: 100 },
+        { x: -50, y: -80 },
+        { x: 900, y: 700 },
       ];
 
       for (const pos of testHandlePositions) {
-        // GhostTrajectoryArrow の onDragMove と同一の計算式
         const calcCpX = 2 * pos.x - 0.5 * (sPx.x + ePx.x);
         const calcCpY = 2 * pos.y - 0.5 * (sPx.y + ePx.y);
 
-        // 2次ベジェ曲線 B(0.5)
         const t = 0.5;
         const oneMinusT = 1 - t;
         const curveApexX =
@@ -48,16 +48,13 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
       const sPx = { x: 200, y: 300 };
       const ePx = { x: 800, y: 300 };
 
-      // 画面上枠を大きく超える位置にドラッグ (Y = -60px)
       const pos = { x: 500, y: -60 };
       const calcCpX = 2 * pos.x - 0.5 * (sPx.x + ePx.x);
       const calcCpY = 2 * pos.y - 0.5 * (sPx.y + ePx.y);
 
-      // クランプなしの正規化座標 (0-100%)
       const normX = (calcCpX / stageSize.width) * 100;
       const normY = (calcCpY / stageSize.height) * 100;
 
-      // Yは 2*(-60) - 300 = -420px -> (-420 / 600) * 100 = -70%
       expect(normY).toBe(-70);
       expect(normX).toBe(50);
     });
@@ -67,97 +64,181 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
       const ePx = { x: 300, y: 200 };
       const midPx = { x: (sPx.x + ePx.x) / 2, y: (sPx.y + ePx.y) / 2 };
 
-      // 1. 中点から 3px 離れた位置（直線へリセット対象）
       const nearPos = { x: midPx.x, y: midPx.y + 3 };
       const distNear = Math.hypot(nearPos.x - midPx.x, nearPos.y - midPx.y);
       expect(distNear < 6.0).toBe(true);
 
-      // 2. 中点から 10px 離れた位置（カスタムカーブ対象）
       const farPos = { x: midPx.x, y: midPx.y + 10 };
       const distFar = Math.hypot(farPos.x - midPx.x, farPos.y - midPx.y);
       expect(distFar < 6.0).toBe(false);
     });
   });
 
-  describe('Ball Trajectory in Unified Store', () => {
-    it('ボールに updateBallTrajectory でベジェ曲線の軌道を設定・更新・解除できる', () => {
-      const store = useTacticalUnifiedStore.getState();
-      const slideId = store.activeSlideId;
+  describe('Ball Trajectory in Document Store', () => {
+    it('ボールに UPDATE_BALL でベジェ曲線の軌道を設定・更新・解除できる', () => {
+      const initialProject = createDefaultTacticalProject();
+      const documentStore = createDocumentStore(initialProject);
+      const phaseId = initialProject.phases[0]?.id ?? 'default-phase-1';
+      const slideId =
+        initialProject.phases[0]?.slides[0]?.id ?? 'default-slide-1';
 
-      // 1. ボールにカスタムベジェ軌道を設定
-      store.updateBallTrajectory(slideId, {
-        type: 'custom',
-        controlPoint: { x: 45, y: -15 }, // 範囲外の制御点
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_BALL',
+        patch: {
+          trajectory: {
+            type: 'custom',
+            controlPoint: {
+              x: toScreenNormCoord(45),
+              y: -15 as ScreenNormCoord,
+            },
+          },
+        },
       });
 
-      let curSlide = selectActiveSlide(useTacticalUnifiedStore.getState());
+      let curSlide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        phaseId,
+        slideId,
+      );
       expect(curSlide?.ball.trajectory).toEqual({
         type: 'custom',
         controlPoint: { x: 45, y: -15 },
       });
 
-      // 2. 直線にリセット
-      store.updateBallTrajectory(slideId, {
-        type: 'straight',
-        controlPoint: undefined,
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_BALL',
+        patch: {
+          trajectory: {
+            type: 'straight',
+            controlPoint: undefined,
+          },
+        },
       });
 
-      curSlide = selectActiveSlide(useTacticalUnifiedStore.getState());
+      curSlide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        phaseId,
+        slideId,
+      );
       expect(curSlide?.ball.trajectory?.type).toBe('straight');
       expect(curSlide?.ball.trajectory?.controlPoint).toBeUndefined();
     });
 
-    it('interpolateBall でボールが設定された trajectory に沿ってベジェ補間移動する', () => {
-      const ballA = { x: 20, y: 50, visible: true };
-      const ballB = {
-        x: 80,
-        y: 50,
-        visible: true,
-        trajectory: {
-          type: 'custom' as const,
-          controlPoint: { x: 50, y: 10 },
+    it('evaluateTimelineFrame でボールが設定された trajectory に沿ってベジェ補間移動する', () => {
+      const initialProject = createDefaultTacticalProject();
+      const documentStore = createDocumentStore(initialProject);
+      const phaseId = initialProject.phases[0]?.id ?? 'default-phase-1';
+      const slide1Id =
+        initialProject.phases[0]?.slides[0]?.id ?? 'default-slide-1';
+
+      documentStore.getState().dispatchSlide(phaseId, slide1Id, {
+        type: 'UPDATE_BALL',
+        patch: {
+          x: toScreenNormCoord(20),
+          y: toScreenNormCoord(50),
+          visible: true,
         },
-      };
-
-      // t=0 (開始)
-      const pt0 = interpolateBall(ballA, ballB, 0);
-      expect(pt0.x).toBeCloseTo(20, 4);
-      expect(pt0.y).toBeCloseTo(50, 4);
-
-      // t=0.5 (中間頂点 M: 0.25*20 + 0.5*50 + 0.25*80 = 5 + 25 + 20 = 50, Y: 0.25*50 + 0.5*10 + 0.25*50 = 12.5 + 5 + 12.5 = 30)
-      const ptHalf = interpolateBall(ballA, ballB, 0.5);
-      expect(ptHalf.x).toBeCloseTo(50, 4);
-      expect(ptHalf.y).toBeCloseTo(30, 4);
-
-      // t=1 (終了)
-      const pt1 = interpolateBall(ballA, ballB, 1);
-      expect(pt1.x).toBeCloseTo(80, 4);
-      expect(pt1.y).toBeCloseTo(50, 4);
-    });
-
-    it('swapTeamSides でボールの trajectory.controlPoint も正しく反転される', () => {
-      const store = useTacticalUnifiedStore.getState();
-      const slideId = store.activeSlideId;
-
-      // 16:9 横向きピッチに設定
-      store.setAspectRatio('16:9');
-
-      store.setBallPosition(slideId, 30, 40);
-      store.updateBallTrajectory(slideId, {
-        type: 'custom',
-        controlPoint: { x: 25, y: 15 },
       });
 
-      // 左右反転
-      store.swapTeamSides(slideId);
+      const slide2Id = 'slide-2';
+      documentStore.getState().dispatch({
+        type: 'ADD_SLIDE',
+        phaseId,
+        afterSlideId: slide1Id,
+        mode: 'object-free',
+        newSlideId: slide2Id,
+      });
 
-      const flippedSlide = selectActiveSlide(
-        useTacticalUnifiedStore.getState(),
+      documentStore.getState().dispatchSlide(phaseId, slide2Id, {
+        type: 'UPDATE_BALL',
+        patch: {
+          x: toScreenNormCoord(80),
+          y: toScreenNormCoord(50),
+          visible: true,
+          trajectory: {
+            type: 'custom',
+            controlPoint: {
+              x: toScreenNormCoord(50),
+              y: toScreenNormCoord(10),
+            },
+          },
+        },
+      });
+
+      documentStore.getState().dispatchSlide(phaseId, slide1Id, {
+        type: 'UPDATE_SLIDE_META',
+        patch: {
+          pauseMs: 0,
+        },
+      });
+
+      documentStore.getState().dispatchSlide(phaseId, slide2Id, {
+        type: 'UPDATE_SLIDE_META',
+        patch: {
+          transitionDurationMs: 1000,
+          pauseMs: 0,
+          easing: 'linear',
+        },
+      });
+
+      const phase = documentStore.getState().project.phases[0];
+      expect(phase).toBeDefined();
+      if (!phase) return;
+
+      const frame0 = evaluateTimelineFrame(phase, toMilliseconds(0));
+      expect(frame0.slide.ball.x).toBeCloseTo(20, 4);
+      expect(frame0.slide.ball.y).toBeCloseTo(50, 4);
+
+      const frameHalf = evaluateTimelineFrame(phase, toMilliseconds(500));
+      expect(frameHalf.slide.ball.x).toBeCloseTo(50, 4);
+      expect(frameHalf.slide.ball.y).toBeCloseTo(30, 4);
+
+      const frame1 = evaluateTimelineFrame(phase, toMilliseconds(1000));
+      expect(frame1.slide.ball.x).toBeCloseTo(80, 4);
+      expect(frame1.slide.ball.y).toBeCloseTo(50, 4);
+    });
+
+    it('SWAP_TEAM_SIDES でボールの trajectory.controlPoint も正しく反転される', () => {
+      const initialProject = createDefaultTacticalProject();
+      const documentStore = createDocumentStore(initialProject);
+      const phaseId = initialProject.phases[0]?.id ?? 'default-phase-1';
+      const slideId =
+        initialProject.phases[0]?.slides[0]?.id ?? 'default-slide-1';
+
+      documentStore.getState().dispatch({
+        type: 'CHANGE_PHASE_ASPECT_RATIO',
+        phaseId,
+        aspectRatio: '16:9',
+      });
+
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_BALL',
+        patch: {
+          x: toScreenNormCoord(30),
+          y: toScreenNormCoord(40),
+          trajectory: {
+            type: 'custom',
+            controlPoint: {
+              x: toScreenNormCoord(25),
+              y: toScreenNormCoord(15),
+            },
+          },
+        },
+      });
+
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'SWAP_TEAM_SIDES',
+      });
+
+      const flippedSlide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        phaseId,
+        slideId,
       );
-      expect(flippedSlide?.ball.x).toBe(70); // 100 - 30
-      expect(flippedSlide?.ball.y).toBe(60); // 100 - 40
-      expect(flippedSlide?.ball.trajectory?.controlPoint?.x).toBe(75); // 100 - 25
-      expect(flippedSlide?.ball.trajectory?.controlPoint?.y).toBe(85); // 100 - 15
+      expect(flippedSlide?.ball.x).toBe(70);
+      expect(flippedSlide?.ball.y).toBe(60);
+      expect(flippedSlide?.ball.trajectory?.controlPoint?.x).toBe(75);
+      expect(flippedSlide?.ball.trajectory?.controlPoint?.y).toBe(85);
     });
   });
 });

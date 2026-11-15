@@ -1,6 +1,6 @@
 # TASK-201b: `tactical-unified/__tests__/*` 機能結合テスト群の 3-frequency store 移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Assign**: `worker`
 - **Commit**: `test(tactical-unified): migrate tactical feature test suites to three-frequency stores and engine helpers`
 - **Execution Waves**:
