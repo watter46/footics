@@ -1,11 +1,18 @@
 import { toast } from 'sonner';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { mergeLegacyPlayersAndPhotos } from '@/lib/db';
 import type { PlayerMaster } from '@/lib/db/schema';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   CHELSEA_PRESETS_BY_SEASON,
   type Season,
 } from '@/lib/tactical/chelsea-preset';
-import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
+import { applyTacticalCommand } from '@/lib/tactical/domain/project-reducer';
+import { buildDomainSquadPlayers } from '@/lib/tactical/domain/squad-placement';
+import {
+  loadActiveProjectFromDb,
+  saveActiveProjectToDb,
+} from '@/lib/tactical/tactical-storage';
 import type { SupportedTeam } from '@/lib/tactical/teams-config';
 import type { Player } from '@/types';
 import type { EditablePlayerData } from '../components/EditPlayerDialog';
@@ -134,18 +141,55 @@ export function createSquadActionHandlers(
     });
   };
 
-  const handleOpenTacticalCanvas = () => {
-    injectTeamSquadToTactical({
-      teamName: teamConfig.name,
-      team: 'home',
-      players: mergedPlayers,
-      formation: '4-2-3-1',
-      mode: 'half',
-    });
-    toast.success(
-      `${teamConfig.shortName} のスカッドを Tactical Canvas に読み込みました`,
-    );
-    router.push('/tactical');
+  const handleOpenTacticalCanvas = async () => {
+    try {
+      const existing = await loadActiveProjectFromDb();
+      const bundle = existing
+        ? normalizeTacticalProject(existing)
+        : (() => {
+            const fresh = createDefaultTacticalProject();
+            return {
+              project: fresh,
+              activePhaseId: fresh.phases[0]?.id ?? '',
+              activeSlideId: fresh.phases[0]?.slides[0]?.id ?? '',
+            };
+          })();
+      const phase =
+        bundle.project.phases.find((p) => p.id === bundle.activePhaseId) ??
+        bundle.project.phases[0];
+      const slide =
+        phase?.slides.find((s) => s.id === bundle.activeSlideId) ??
+        phase?.slides[0];
+      if (phase && slide) {
+        const newTeamPlayers = buildDomainSquadPlayers(mergedPlayers, {
+          team: 'home',
+          formation: '4-2-3-1',
+          mode: 'half',
+          primaryColor: bundle.project.homeColor.primary,
+          aspectRatio: phase.aspectRatio,
+        }).map((p) => ({
+          ...p,
+          style: { ...p.style, insideContent: 'photo' as const },
+        }));
+        const otherTeamPlayers = slide.players.filter((p) => p.team !== 'home');
+        const updatedProject = applyTacticalCommand(bundle.project, {
+          type: 'APPLY_SLIDE_COMMAND',
+          phaseId: phase.id,
+          slideId: slide.id,
+          command: {
+            type: 'REPLACE_PLAYERS',
+            players: [...otherTeamPlayers, ...newTeamPlayers],
+          },
+        });
+        await saveActiveProjectToDb(updatedProject);
+      }
+      toast.success(
+        `${teamConfig.shortName} のスカッドを Tactical Canvas に読み込みました`,
+      );
+      router.push('/tactical');
+    } catch {
+      toast.error('Tactical Canvas への読み込みに失敗しました');
+    }
   };
 
   const handlePhotoUpload = async (

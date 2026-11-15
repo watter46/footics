@@ -33,9 +33,9 @@ export const TacticalStoresContext =
   createContext<TacticalStoresContextValue | null>(null);
 
 export function createDefaultTacticalProject(): DomainTacticalProject {
-  const now = new Date().toISOString();
+  const now = '1970-01-01T00:00:00.000Z';
   return {
-    id: crypto.randomUUID(),
+    id: 'default-project',
     version: '3.0.0',
     title: 'Untitled Tactical Plan',
     createdAt: now,
@@ -53,7 +53,7 @@ export function createDefaultTacticalProject(): DomainTacticalProject {
     screenBackground: { type: 'cinematic' },
     phases: [
       {
-        id: crypto.randomUUID(),
+        id: 'default-phase-1',
         name: 'Phase 1',
         aspectRatio: '4:5',
         boundaryBox: {
@@ -68,10 +68,17 @@ export function createDefaultTacticalProject(): DomainTacticalProject {
         backgroundType: 'pitch',
         slides: [
           {
-            id: crypto.randomUUID(),
+            id: 'default-slide-1',
             index: 0,
             label: 'Scene 1',
-            players: createDefaultDomainPlayers('#034694', '#ef4444', '4:5'),
+            players: createDefaultDomainPlayers(
+              '#034694',
+              '#ef4444',
+              '4:5',
+            ).map((player, index) => ({
+              ...player,
+              id: `default-player-${player.team}-${index}`,
+            })),
             arrows: [],
             zones: [],
             texts: [],
