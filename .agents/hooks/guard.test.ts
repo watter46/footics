@@ -116,11 +116,11 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res2.overwrite?.CommandLine).toBe('rtk read -m 1:50 src/file.ts');
     });
 
-    test('denies tail and suggests ai:outline or view_file', () => {
+    test('denies tail and suggests ai:peek or read_file', () => {
       const res = evaluateCommand('tail -n 120 src/file.ts');
       expect(res.decision).toBe('deny');
       expect(res.reason).toContain("'tail' is prohibited");
-      expect(res.reason).toContain('ai:outline');
+      expect(res.reason).toContain('ai:peek');
     });
 
     test('rewrites raw grep to rtk grep', () => {
@@ -262,11 +262,10 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.reason).toContain('Guessing file paths');
     });
 
-    test('view_file transparently rewrites slicing for small files (<= 400 lines)', () => {
-      // safety-filter.ts is 282 lines (<= 400 lines)
+    test('read_file allows explicit slicing without overwrite', () => {
       const resSliced = evaluatePayload({
         toolCall: {
-          name: 'view_file',
+          name: 'read_file',
           args: {
             AbsolutePath:
               '/home/watter46/src/footics/.agents/hooks/guard/safety-filter.ts',
@@ -276,15 +275,12 @@ describe('guard.ts Security & Token Guard Tests', () => {
         },
       });
       expect(resSliced.decision).toBe('allow');
-      expect(resSliced.overwrite).toEqual({
-        StartLine: 1,
-        EndLine: 282,
-      });
+      expect(resSliced.overwrite).toBeUndefined();
 
-      // view_file without slice is allowed
+      // read_file without slice is allowed
       const resWhole = evaluatePayload({
         toolCall: {
-          name: 'view_file',
+          name: 'read_file',
           args: {
             AbsolutePath:
               '/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts',
@@ -356,10 +352,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
         },
       });
       expect(res.decision).toBe('allow');
-      expect(res.overwrite).toEqual({
-        StartLine: 1,
-        EndLine: 282,
-      });
+      expect(res.overwrite).toBeUndefined();
     });
   });
 
@@ -847,7 +840,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
       const resAllowedCmd = evaluatePayload({
         toolCall: {
           name: 'run_command',
-          args: { CommandLine: 'bun run ai:outline src/foo.ts' },
+          args: { CommandLine: 'bun run ai:peek src/foo.ts' },
         },
         transcriptPath: transcript,
       });

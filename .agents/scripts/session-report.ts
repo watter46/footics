@@ -107,8 +107,9 @@ function isReadOnly(call: {
   if (call.name !== 'run_command') return false;
   const cmd = String(call.args.CommandLine ?? '');
   if (
-    cmd.includes('ai:outline') ||
-    cmd.includes('ai:find') ||
+    cmd.includes('ai:peek') ||
+    cmd.includes('ai:impact') ||
+    cmd.includes('ast-grep') ||
     /^\s*rg\b/.test(cmd)
   ) {
     return true;

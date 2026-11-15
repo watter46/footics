@@ -363,8 +363,9 @@ export function detectSubagentContracts(
           const mentionsRules =
             prompt.includes('efficient-exploration') ||
             prompt.includes('トークン') ||
-            prompt.includes('400行') ||
-            prompt.includes('repo_summary');
+            prompt.includes('150行') ||
+            prompt.includes('ai:peek') ||
+            prompt.includes('ai:impact');
           if (!mentionsRules) missing.push('token_reduction_rules');
 
           const mentionsCheck =

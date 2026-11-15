@@ -40,11 +40,10 @@ describe('view-filter: planner investigation guard', () => {
     return p;
   }
 
-  // テスト用ダミーファイルの作成ヘルパー (存在チェックを通過させるため)
-  function createDummyFile(relPath: string, lineCount = 500): string {
+  // テスト用ダミーファイルの作成ヘルパー (存在チェック・150行以下ゲートを通過させるため)
+  function createDummyFile(relPath: string, lineCount = 100): string {
     const fullPath = path.resolve(relPath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    // 400行を超えるダミーファイルを作成して小型ファイルスライスガードを回避
     const content = Array.from(
       { length: lineCount },
       (_, i) => `// line ${i + 1}`,
@@ -460,38 +459,182 @@ describe('view-filter: planner investigation guard', () => {
   });
 });
 
-describe('view-filter: small file transparent overwrite', () => {
+describe('view-filter: adaptive read guard (no forced overwrite + 150-line structure gate)', () => {
   const testDir = path.resolve(
     '.agents/hooks/guard/__tests__/fixtures-small-view',
   );
 
   beforeEach(() => {
     fs.mkdirSync(testDir, { recursive: true });
+    fs.mkdirSync(path.join(testDir, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(testDir, 'tasks'), { recursive: true });
+    fs.mkdirSync(path.join(testDir, 'notes'), { recursive: true });
+    fs.mkdirSync(path.join(testDir, 'docs'), { recursive: true });
+    fs.mkdirSync(path.join(testDir, '.agents'), { recursive: true });
   });
 
   afterEach(() => {
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('transparently overwrites slice arguments to whole file for small files (<=400 lines)', () => {
-    const smallFile = path.join(testDir, 'small.ts');
+  const makeTranscript = (steps: unknown[]) => {
+    const p = path.join(testDir, `t-${Date.now()}-${Math.random()}.jsonl`);
+    fs.writeFileSync(p, steps.map((s) => JSON.stringify(s)).join('\n'));
+    return p;
+  };
+
+  const makeLines = (filePath: string, count: number) => {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(
-      smallFile,
-      Array.from({ length: 50 }, (_, i) => `// line ${i + 1}`).join('\n'),
+      filePath,
+      Array.from({ length: count }, (_, i) => `// line ${i + 1}`).join('\n'),
     );
+  };
+
+  it('allows explicit slice on <=400 line files without overwrite', () => {
+    const smallFile = path.join(testDir, 'src/small.ts');
+    makeLines(smallFile, 50);
 
     const res = checkViewGuard({
+      workspacePaths: [testDir],
       toolCall: {
-        name: 'view_file',
+        name: 'read_file',
         args: { AbsolutePath: smallFile, StartLine: 10, EndLine: 30 },
       },
     });
 
     expect(res?.decision).toBe('allow');
-    expect(res?.overwrite).toEqual({
-      StartLine: 1,
-      EndLine: 50,
+    expect(res?.overwrite).toBeUndefined();
+  });
+
+  it('denies planner full read of >150-line investigation file without prior structure probe', () => {
+    const target = path.join(testDir, 'src/foo.ts');
+    makeLines(target, 180);
+    const t = makeTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Inspect foo.ts' },
+    ]);
+
+    const res = checkViewGuard({
+      transcriptPath: t,
+      workspacePaths: [testDir],
+      toolCall: { name: 'read_file', args: { Path: target } },
     });
+
+    expect(res?.decision).toBe('deny');
+    expect(res?.reason).toContain('ai:peek');
+  });
+
+  it('allows planner >150-line read after ai:peek (file or parent dir) or with StartLine/EndLine slice', () => {
+    const target = path.join(testDir, 'src/foo.ts');
+    makeLines(target, 220);
+
+    const tFilePeek = makeTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Inspect foo.ts' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'run_command',
+            args: { CommandLine: 'bun run ai:peek src/foo.ts' },
+          },
+        ],
+      },
+    ]);
+    expect(
+      checkViewGuard({
+        transcriptPath: tFilePeek,
+        workspacePaths: [testDir],
+        toolCall: { name: 'read_file', args: { Path: target } },
+      })?.decision,
+    ).toBe('allow');
+
+    const tDirPeek = makeTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Inspect src' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'run_command',
+            args: { CommandLine: 'bun run ai:peek src/' },
+          },
+        ],
+      },
+    ]);
+    expect(
+      checkViewGuard({
+        transcriptPath: tDirPeek,
+        workspacePaths: [testDir],
+        toolCall: { name: 'read_file', args: { Path: target } },
+      })?.decision,
+    ).toBe('allow');
+
+    const tUnprobed = makeTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Read slice' },
+    ]);
+    expect(
+      checkViewGuard({
+        transcriptPath: tUnprobed,
+        workspacePaths: [testDir],
+        toolCall: {
+          name: 'read_file',
+          args: { Path: target, StartLine: 10, EndLine: 50 },
+        },
+      })?.decision,
+    ).toBe('allow');
+  });
+
+  it('allows worker full read of >150-line file without prior probe', () => {
+    const target = path.join(testDir, 'src/foo.ts');
+    makeLines(target, 250);
+    const t = makeTranscript([
+      {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "TASK_ASSIGN"\ntarget_phase: 1',
+      },
+    ]);
+
+    const res = checkViewGuard({
+      transcriptPath: t,
+      workspacePaths: [testDir],
+      toolCall: { name: 'read_file', args: { Path: target } },
+    });
+    expect(res?.decision).toBe('allow');
+  });
+
+  it('allows planner full read of non-code dirs and <=150-line source files without prior probe', () => {
+    const t = makeTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Read docs and small src' },
+    ]);
+
+    const smallSrc = path.join(testDir, 'src/small.ts');
+    makeLines(smallSrc, 150);
+    expect(
+      checkViewGuard({
+        transcriptPath: t,
+        workspacePaths: [testDir],
+        toolCall: { name: 'read_file', args: { Path: smallSrc } },
+      })?.decision,
+    ).toBe('allow');
+
+    for (const rel of [
+      'tasks/TASK-1.md',
+      'notes/design.md',
+      '.agents/rules/r.md',
+      'docs/arch.md',
+    ]) {
+      const f = path.join(testDir, rel);
+      makeLines(f, 300);
+      expect(
+        checkViewGuard({
+          transcriptPath: t,
+          workspacePaths: [testDir],
+          toolCall: { name: 'read_file', args: { Path: f } },
+        })?.decision,
+      ).toBe('allow');
+    }
   });
 });
 
@@ -573,7 +716,7 @@ describe('view-filter: sequential slice (paging) guard', () => {
     ]);
     const res = guard(t, f, 201, 300);
     expect(res?.decision).toBe('deny');
-    expect(res?.reason).toContain('ai:outline');
+    expect(res?.reason).toContain('ai:peek');
   });
 
   it('denies the 3rd paged slice read when current call is already in transcript', () => {
@@ -643,15 +786,15 @@ describe('view-filter: sequential slice (paging) guard', () => {
     expect(guard(t, f, 201, 300, 'read_file')?.decision).toBe('deny');
   });
 
-  it('does not block small files (auto-overwritten to whole file)', () => {
-    const f = createFile('small.ts', 200);
+  it('does not block small files <=150 lines (no auto-overwrite)', () => {
+    const f = createFile('small.ts', 120);
     const t = createTranscript([
       user,
-      readStep(1, f, 1, 50),
-      readStep(3, f, 51, 100),
+      readStep(1, f, 1, 40),
+      readStep(3, f, 41, 80),
     ]);
-    const res = guard(t, f, 101, 150);
+    const res = guard(t, f, 81, 120);
     expect(res?.decision).toBe('allow');
-    expect(res?.overwrite).toEqual({ StartLine: 1, EndLine: 200 });
+    expect(res?.overwrite).toBeUndefined();
   });
 });

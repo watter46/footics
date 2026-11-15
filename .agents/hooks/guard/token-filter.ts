@@ -74,7 +74,7 @@ function checkTokenGuard(
     if (isCriticalTarget) {
       return {
         decision: 'deny',
-        reason: `[GUARD] '${targetPath}' is critical. Use 'view_file' or uncompressed 'rtk read'.`,
+        reason: `[GUARD] '${targetPath}' is critical. Use 'read_file' or uncompressed 'rtk read'.`,
       };
     }
   }
@@ -160,7 +160,7 @@ function checkTokenGuard(
       return {
         decision: 'deny',
         reason:
-          "[GUARD] 'ai:check:red' and 'ai:reviewer:check' are abolished. Workers must use 'bun run ai:check <files>' after implementing code + tests; Planner must use 'bun run ai:preflight' or 'bun run ai:commit' after all phases complete.",
+          "[GUARD] Deprecated check commands ('ai:check:red', legacy reviewer checks) are abolished. Workers must use 'bun run ai:check <files>' after implementing code + tests; Planner must use 'bun run ai:preflight' or 'bun run ai:commit' after all phases complete.",
       };
     }
     // 全体検証コマンド (:all) の無断実行抑止 (Scope-First Guard: ユーザー承認必須)
@@ -241,7 +241,7 @@ function checkTokenGuard(
     return {
       decision: 'deny',
       reason:
-        "[GUARD] 'tail' is prohibited for code exploration. Use 'bun run ai:outline <file>' to locate signatures, or 'view_file' with specific StartLine/EndLine.",
+        "[GUARD] 'tail' is prohibited for code exploration. Use 'bun run ai:peek <file>' to locate structure/signatures, or 'read_file' with specific StartLine/EndLine.",
     };
   }
   if (
@@ -249,7 +249,7 @@ function checkTokenGuard(
   ) {
     return {
       decision: 'deny',
-      reason: `[GUARD] '${executable}' is prohibited to prevent file read / line count guard bypass. Use 'bun run ai:outline <file>' or 'view_file' instead.`,
+      reason: `[GUARD] '${executable}' is prohibited to prevent file read / line count guard bypass. Use 'bun run ai:peek <file>' or 'read_file' instead.`,
     };
   }
 

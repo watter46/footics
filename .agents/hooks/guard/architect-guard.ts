@@ -20,17 +20,16 @@ export const ARCHITECT_ALLOWED_EXECUTABLES: readonly string[] = [
 ];
 
 const ALLOWED_BUN_SCRIPTS = new Set([
-  'ai:outline',
-  'ai:find',
+  'ai:peek',
+  'ai:impact',
   'ai:report',
   'ai:audit',
   'task:validate',
-  '.agents/scripts/outline.ts',
+  '.agents/scripts/peek.ts',
+  '.agents/scripts/impact.ts',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',
   '.agents/scripts/validate-task.ts',
-  'scripts/map/find-symbol.ts',
-  'scripts/ast/extract-types.ts',
 ]);
 
 const ALLOWED_GIT_SUBCOMMANDS = new Set([
@@ -58,7 +57,7 @@ export function checkArchitectGuard(payload: any): GuardDecision | null {
   const toolName = payload?.toolCall?.name;
 
   // 1. サブエージェント起動の制御
-  // Scout / Reviewer 廃止に伴い、Architect からのサブエージェント起動は全面遮断（ai:outline や read_file を直接使用する）。
+  // Scout / Reviewer 廃止に伴い、Architect からのサブエージェント起動は全面遮断（ai:peek や read_file を直接使用する）。
   if (toolName === 'invoke_subagent') {
     const rawTypeName =
       payload?.toolCall?.args?.TypeName ||
@@ -66,7 +65,7 @@ export function checkArchitectGuard(payload: any): GuardDecision | null {
       '';
     return {
       decision: 'deny',
-      reason: `[GUARD] Access Denied: Architect is prohibited from spawning subagents ('${rawTypeName || 'unknown'}'). Use 'bun run ai:outline <files>', 'rg -l', and 'read_file' directly.`,
+      reason: `[GUARD] Access Denied: Architect is prohibited from spawning subagents ('${rawTypeName || 'unknown'}'). Use 'bun run ai:peek <files>', 'bun run ai:impact <target>', 'rg -l', and 'read_file' directly.`,
     };
   }
 

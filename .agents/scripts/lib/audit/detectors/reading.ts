@@ -13,50 +13,6 @@ import type { AuditContext, Detector, Finding } from '../types';
 const LINES_REGEX = /Showing lines (\d+)-(\d+) of (\d+)/;
 
 /**
- * READ-01: SMALL_SLICED
- * 400行以下の小型ファイルをスライス読込
- */
-export const detectSmallSliced: Detector = (ctx: AuditContext): Finding[] => {
-  const findings: Finding[] = [];
-
-  for (let i = 0; i < ctx.records.length; i++) {
-    const r = ctx.records[i];
-    if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
-      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
-        const tc = r.tool_calls[tcIdx];
-        if (isReadToolName(tc.name)) {
-          const hasSlice =
-            tc.args?.StartLine !== undefined || tc.args?.EndLine !== undefined;
-          if (hasSlice) {
-            const next = findToolResultRecord(ctx.records, i, tcIdx);
-            if (next?.type === 'GENERIC' && next.content) {
-              const m = LINES_REGEX.exec(next.content);
-              if (m) {
-                const totalLines = Number.parseInt(m[3], 10);
-                if (totalLines <= 400) {
-                  const file = extractTargetFile(tc);
-                  findings.push({
-                    id: 'READ-01',
-                    name: 'SMALL_SLICED',
-                    severity: 'MED',
-                    sessionId: ctx.sessionId,
-                    steps: [r.step_index],
-                    evidence: `Sliced small file (${totalLines} lines <= 400): '${file}' (StartLine: ${String(tc.args?.StartLine)}, EndLine: ${String(tc.args?.EndLine)})`,
-                    layers: ['planner', 'worker'],
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return findings;
-};
-
-/**
  * READ-02: SEQ_SLICING
  * 同一ファイルへの連続スライス読込または遮断
  */
@@ -94,7 +50,8 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
       }
     } else if (
       r.status === 'ERROR' &&
-      r.content?.includes('Sequential slicing loop')
+      (r.content?.includes('Sequential slicing loop') ||
+        r.content?.includes('Sequential slice paging blocked'))
     ) {
       findings.push({
         id: 'READ-02',
@@ -117,13 +74,25 @@ function isFileProbed(file: string, probedTokens: Set<string>): boolean {
   for (const p of probedTokens) {
     if (path.resolve(p) === resolved) return true;
     if (file.endsWith(p) || p.endsWith(file)) return true;
+    const cleanDir = p.replace(/\/+$/, '');
+    if (
+      cleanDir &&
+      (cleanDir.includes('/') ||
+        cleanDir === 'src' ||
+        cleanDir === 'extension' ||
+        cleanDir === 'tests' ||
+        cleanDir === 'scripts') &&
+      file.startsWith(`${cleanDir}/`)
+    ) {
+      return true;
+    }
   }
   return false;
 }
 
 /**
  * READ-03: LARGE_FULL_BLIND
- * 400行超の巨大ファイルを grep/outline なしに全文一括読込
+ * 150行超のファイルを peek/impact/rg/grep なしに全文一括読込
  */
 export const detectLargeFullBlind: Detector = (
   ctx: AuditContext,
@@ -138,8 +107,10 @@ export const detectLargeFullBlind: Detector = (
         const tc = r.tool_calls[tcIdx];
         const cmd = String(tc.args?.CommandLine ?? '');
         if (
+          cmd.includes('peek') ||
+          cmd.includes('impact') ||
+          cmd.includes('ast-grep') ||
           cmd.includes('grep') ||
-          cmd.includes('outline') ||
           cmd.includes('find') ||
           /\brg\b/.test(cmd)
         ) {
@@ -152,8 +123,9 @@ export const detectLargeFullBlind: Detector = (
                 'bun',
                 'run',
                 'rtk',
-                'ai:outline',
-                'ai:find',
+                'ai:peek',
+                'ai:impact',
+                'ast-grep',
                 'rg',
                 'grep',
                 'find',
@@ -162,6 +134,10 @@ export const detectLargeFullBlind: Detector = (
               continue;
             }
             probedTokens.add(clean);
+            const colonIdx = clean.lastIndexOf(':');
+            if (colonIdx > 0 && clean.slice(0, colonIdx).includes('.')) {
+              probedTokens.add(clean.slice(0, colonIdx));
+            }
           }
         }
 
@@ -175,14 +151,14 @@ export const detectLargeFullBlind: Detector = (
               const m = LINES_REGEX.exec(next.content);
               if (m) {
                 const totalLines = Number.parseInt(m[3], 10);
-                if (totalLines > 400 && !isFileProbed(file, probedTokens)) {
+                if (totalLines > 150 && !isFileProbed(file, probedTokens)) {
                   findings.push({
                     id: 'READ-03',
                     name: 'LARGE_FULL_BLIND',
                     severity: 'MED',
                     sessionId: ctx.sessionId,
                     steps: [r.step_index],
-                    evidence: `Full-file blind read on large file (${totalLines} lines > 400) without prior grep/outline: '${file}'`,
+                    evidence: `Full-file blind read on large file (${totalLines} lines > 150) without prior peek/impact/rg: '${file}'`,
                     layers: ['planner', 'worker'],
                   });
                 }
@@ -429,7 +405,7 @@ export const detectReadUnused: Detector = (ctx: AuditContext): Finding[] => {
       for (const tc of r.tool_calls) {
         if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          if (file && !file.includes('repo_summary')) {
+          if (file) {
             readFilesWithStep.set(file, r.step_index);
           }
         }
@@ -569,8 +545,57 @@ export const detectWorkerExplores: Detector = (
   return findings;
 };
 
+/**
+ * READ-11: COMPACT_LOOP_ALERT
+ * Planner ターン間で cache_read_tokens (>= 80K) が 50% 超急落したオートコンパクション発生を検知
+ */
+export const detectCompactLoopAlert: Detector = (
+  ctx: AuditContext,
+): Finding[] => {
+  const drops: Array<{ step: number; prev: number; curr: number }> = [];
+  let prevTokens: number | null = null;
+
+  for (const r of ctx.records) {
+    if (
+      r.type === 'PLANNER_RESPONSE' &&
+      typeof r.cache_read_tokens === 'number'
+    ) {
+      const curr = r.cache_read_tokens;
+      if (
+        prevTokens !== null &&
+        prevTokens >= 80_000 &&
+        curr <= prevTokens * 0.5
+      ) {
+        drops.push({ step: r.step_index, prev: prevTokens, curr });
+      }
+      prevTokens = curr;
+    }
+  }
+
+  if (drops.length === 0) return [];
+
+  const isHigh = drops.length >= 2 || drops.some((d) => d.prev >= 150_000);
+  const summary = drops
+    .map(
+      (d) =>
+        `step ${d.step}: ${Math.round(d.prev / 1000)}K->${Math.round(d.curr / 1000)}K`,
+    )
+    .join(', ');
+
+  return [
+    {
+      id: 'READ-11',
+      name: 'COMPACT_LOOP_ALERT',
+      severity: isHigh ? 'HIGH' : 'MED',
+      sessionId: ctx.sessionId,
+      steps: drops.map((d) => d.step),
+      evidence: `Auto-compaction cache drop(s) detected (${drops.length}x): ${summary}`,
+      layers: ['planner'],
+    },
+  ];
+};
+
 export const READING_DETECTORS: Detector[] = [
-  detectSmallSliced,
   detectSeqSlicing,
   detectLargeFullBlind,
   detectDuplicateRead,
@@ -580,4 +605,5 @@ export const READING_DETECTORS: Detector[] = [
   detectHeavyReadTop,
   detectReadUnused,
   detectWorkerExplores,
+  detectCompactLoopAlert,
 ];

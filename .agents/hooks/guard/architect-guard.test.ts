@@ -129,8 +129,8 @@ describe('architect-guard', () => {
   describe('command execution restrictions', () => {
     it('allows permitted analysis tools and scripts', () => {
       const permitted = [
-        'bun run ai:outline src/components/Stage.tsx',
-        'bun run ai:find Stage',
+        'bun run ai:peek src/components/Stage.tsx',
+        'bun run ai:impact Stage',
         'bun run ai:report latest',
         'bun test ./.agents',
         'bun test .agents/hooks/guard',
@@ -157,6 +157,8 @@ describe('architect-guard', () => {
 
     it('denies unauthorized executables and write/build commands', () => {
       const unauthorized = [
+        'bun run ' + 'ai:' + 'outline src/a.ts',
+        'bun run ' + 'ai:' + 'find Stage',
         'npm install',
         'vitest run src/test.ts',
         'bun run dev',

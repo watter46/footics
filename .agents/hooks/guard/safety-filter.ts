@@ -45,7 +45,7 @@ function checkSafetyGuard(
     };
   }
 
-  // sed によるインライン編集・閲覧・スライス抽出の遮断 (view_file / replace_file_content への一本化)
+  // sed によるインライン編集・閲覧・スライス抽出の遮断 (read_file / edit_file への一本化)
   if (executable === 'sed') {
     const isInline = args.some(
       (a) => a === '-i' || /^-[a-zA-Z]*i/.test(a) || a.startsWith('--in-place'),
@@ -54,20 +54,20 @@ function checkSafetyGuard(
       return {
         decision: 'deny',
         reason:
-          "[GUARD] Inline editing with 'sed -i' is prohibited to prevent guard bypass and syntax errors. Use 'replace_file_content' or 'write_to_file' instead.",
+          "[GUARD] Inline editing with 'sed -i' is prohibited to prevent guard bypass and syntax errors. Use 'edit_file' or 'write_file' instead.",
       };
     }
     return {
       decision: 'deny',
       reason:
-        "[GUARD] File slicing or reading with 'sed' is prohibited to prevent guard bypass and token explosion. Use 'bun run ai:outline <file>' for signatures, or 'view_file' with StartLine/EndLine instead.",
+        "[GUARD] File slicing or reading with 'sed' is prohibited to prevent guard bypass and token explosion. Use 'bun run ai:peek <file>' for structure/signatures, or 'read_file' with StartLine/EndLine instead.",
     };
   }
 
   if (executable === 'awk' || executable === 'cut') {
     return {
       decision: 'deny',
-      reason: `[GUARD] Ad-hoc file slicing with '${executable}' is prohibited. Use 'bun run ai:outline <file>' or 'view_file' with StartLine/EndLine instead.`,
+      reason: `[GUARD] Ad-hoc file slicing with '${executable}' is prohibited. Use 'bun run ai:peek <file>' or 'read_file' with StartLine/EndLine instead.`,
     };
   }
 
@@ -78,7 +78,7 @@ function checkSafetyGuard(
     return {
       decision: 'deny',
       reason:
-        "[GUARD] Inline editing with 'perl -i' is prohibited. Use 'replace_file_content' or 'write_to_file' instead.",
+        "[GUARD] Inline editing with 'perl -i' is prohibited. Use 'edit_file' or 'write_file' instead.",
     };
   }
 
@@ -89,7 +89,7 @@ function checkSafetyGuard(
     return {
       decision: 'deny',
       reason:
-        "[GUARD] Shell redirection directly into source or configuration files is prohibited. Use 'write_to_file' or 'replace_file_content' instead.",
+        "[GUARD] Shell redirection directly into source or configuration files is prohibited. Use 'write_file' or 'edit_file' instead.",
     };
   }
 

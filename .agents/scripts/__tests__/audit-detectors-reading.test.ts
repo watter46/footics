@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
+  detectCompactLoopAlert,
   detectDuplicateRead,
   detectEditWithoutRawRead,
   detectHeavyReadTop,
@@ -10,90 +11,12 @@ import {
   detectReadUnused,
   detectRtkReadBasis,
   detectSeqSlicing,
-  detectSmallSliced,
   detectWorkerExplores,
   READING_DETECTORS,
 } from '../lib/audit/detectors/reading';
 import type { AuditContext } from '../lib/audit/types';
 
-describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () => {
-  describe('READ-01: SMALL_SLICED', () => {
-    test('detects slicing a file that has <= 400 lines', () => {
-      const ctx: AuditContext = {
-        sessionId: 'test-small-sliced',
-        role: 'planner',
-        childIds: [],
-        records: [
-          {
-            step_index: 1,
-            type: 'PLANNER_RESPONSE',
-            tool_calls: [
-              {
-                name: 'view_file',
-                args: {
-                  AbsolutePath: 'src/small.ts',
-                  StartLine: 1,
-                  EndLine: 50,
-                },
-              },
-            ],
-          },
-          {
-            step_index: 2,
-            type: 'GENERIC',
-            status: 'DONE',
-            content: 'Showing lines 1-50 of 120\n1: export const a = 1;',
-          },
-        ],
-      };
-
-      const findings = detectSmallSliced(ctx);
-      expect(findings.length).toBe(1);
-      expect(findings[0].id).toBe('READ-01');
-      expect(findings[0].severity).toBe('MED');
-    });
-
-    test('matches parallel read_file tool_calls to individual results', () => {
-      const ctx: AuditContext = {
-        sessionId: 'test-small-parallel',
-        role: 'planner',
-        childIds: [],
-        records: [
-          {
-            step_index: 1,
-            type: 'PLANNER_RESPONSE',
-            tool_calls: [
-              {
-                name: 'read_file',
-                args: { Path: 'src/large.ts', StartLine: 1, EndLine: 50 },
-              },
-              {
-                name: 'read_file',
-                args: { Path: 'src/small.ts', StartLine: 1, EndLine: 20 },
-              },
-            ],
-          },
-          {
-            step_index: 2,
-            type: 'GENERIC',
-            status: 'DONE',
-            content: 'Showing lines 1-50 of 600\n1: large',
-          },
-          {
-            step_index: 3,
-            type: 'GENERIC',
-            status: 'DONE',
-            content: 'Showing lines 1-20 of 80\n1: small',
-          },
-        ],
-      };
-
-      const findings = detectSmallSliced(ctx);
-      expect(findings.length).toBe(1);
-      expect(findings[0].evidence).toContain('src/small.ts');
-    });
-  });
-
+describe('audit-session Phase 1-3: reading detectors (READ-02〜READ-11)', () => {
   describe('READ-02: SEQ_SLICING', () => {
     test('detects sequential slicing on same file or slicing denial', () => {
       const ctx: AuditContext = {
@@ -132,7 +55,7 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
   });
 
   describe('READ-03: LARGE_FULL_BLIND', () => {
-    test('detects full file read on 400+ lines file without preceding grep/outline', () => {
+    test('detects full file read on 151+ lines file without preceding peek/impact/rg', () => {
       const ctx: AuditContext = {
         sessionId: 'test-large-full',
         role: 'planner',
@@ -142,14 +65,14 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
             step_index: 1,
             type: 'PLANNER_RESPONSE',
             tool_calls: [
-              { name: 'view_file', args: { AbsolutePath: 'src/large.ts' } },
+              { name: 'read_file', args: { Path: 'src/medium.ts' } },
             ],
           },
           {
             step_index: 2,
             type: 'GENERIC',
             status: 'DONE',
-            content: 'Showing lines 1-600 of 600\n1: // large file',
+            content: 'Showing lines 1-180 of 180\n1: // medium file',
           },
         ],
       };
@@ -160,9 +83,9 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings[0].severity).toBe('MED');
     });
 
-    test('returns empty if multi-arg ai:outline already inspected the file', () => {
+    test('returns empty if multi-arg ai:peek or :Symbol probe already inspected the file', () => {
       const ctx: AuditContext = {
-        sessionId: 'test-large-outlined',
+        sessionId: 'test-large-peeked',
         role: 'planner',
         childIds: [],
         records: [
@@ -173,7 +96,8 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
               {
                 name: 'run_command',
                 args: {
-                  CommandLine: 'bun run ai:outline src/other.ts src/large.ts',
+                  CommandLine:
+                    'bun run ai:peek src/other.ts src/large.ts:MyFunc',
                 },
               },
             ],
@@ -529,6 +453,63 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       } finally {
         fs.rmSync(fixtureDir, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe('READ-11: COMPACT_LOOP_ALERT', () => {
+    test('detects cache_read_tokens 160K -> 20K drop as HIGH and ignores steady growth', () => {
+      const ctxDrop: AuditContext = {
+        sessionId: 'test-compact-drop',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 90_000,
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 160_000,
+          },
+          {
+            step_index: 3,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 20_000,
+          },
+        ],
+      };
+      const findings = detectCompactLoopAlert(ctxDrop);
+      expect(findings.length).toBe(1);
+      expect(findings[0].id).toBe('READ-11');
+      expect(findings[0].name).toBe('COMPACT_LOOP_ALERT');
+      expect(findings[0].severity).toBe('HIGH');
+      expect(findings[0].layers).toEqual(['planner']);
+
+      const ctxSteady: AuditContext = {
+        sessionId: 'test-compact-steady',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 50_000,
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 110_000,
+          },
+          {
+            step_index: 3,
+            type: 'PLANNER_RESPONSE',
+            cache_read_tokens: 140_000,
+          },
+        ],
+      };
+      expect(detectCompactLoopAlert(ctxSteady)).toEqual([]);
     });
   });
 

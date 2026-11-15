@@ -70,7 +70,7 @@ export function checkSubagentInvokeGuard(payload: any): GuardDecision | null {
   if (typeName === 'scout' || typeName === 'reviewer') {
     return {
       decision: 'deny',
-      reason: `[GUARD] Subagent '${typeName}' is abolished in the 2-tier (Planner + Worker) workflow.\n- For exploration: Use 'bun run ai:outline <files>', 'rg -l <pattern> src/ extension/', and 'read_file' directly.\n- For verification: After all Worker phases complete, run 'bun run ai:preflight' or 'bun run ai:commit' directly from Planner.`,
+      reason: `[GUARD] Subagent '${typeName}' is abolished in the 2-tier (Planner + Worker) workflow.\n- For exploration: Use 'bun run ai:peek <files>', 'bun run ai:impact <target>', 'rg -l <pattern> src/ extension/', and 'read_file' directly.\n- For verification: After all Worker phases complete, run 'bun run ai:preflight' or 'bun run ai:commit' directly from Planner.`,
     };
   }
 

@@ -7,7 +7,7 @@ import type { AuditContext, Detector, Finding } from '../types';
 
 /**
  * EXP-01: OUTLINE_BYPASS
- * Planner が ai:outline / ai:find / rg / repo_summary を使わずに 3 件以上のソースファイルを直接読込
+ * Planner が ai:peek / ai:impact / ast-grep / rg を使わずに 3 件以上のソースファイルを直接読込
  * （※旧 Scout 時代ログで invoke_subagent(scout) がある場合は対象外）
  */
 export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
@@ -32,10 +32,10 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
         if (tc.name === 'run_command') {
           const cmd = String(tc.args?.CommandLine ?? '');
           if (
-            cmd.includes('ai:outline') ||
-            cmd.includes('ai:find') ||
-            /\b(?:rg|rtk\s+grep)\b/.test(cmd) ||
-            cmd.includes('repo_summary.txt')
+            cmd.includes('ai:peek') ||
+            cmd.includes('ai:impact') ||
+            cmd.includes('ast-grep') ||
+            /\b(?:rg|rtk\s+grep)\b/.test(cmd)
           ) {
             usedDiscoveryTool = true;
           }
@@ -43,9 +43,7 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
 
         if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          if (file.includes('repo_summary.txt')) {
-            usedDiscoveryTool = true;
-          } else if (
+          if (
             file.startsWith('src/') ||
             file.startsWith('extension/') ||
             /\/(?:src|extension)\//.test(file)
@@ -66,7 +64,7 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
         severity: 'HIGH',
         sessionId: ctx.sessionId,
         steps: Array.from(new Set(steps)),
-        evidence: `Planner read ${readSourceFiles.size} source files directly without using ai:outline / ai:find / rg: ${Array.from(readSourceFiles).slice(0, 5).join(', ')}`,
+        evidence: `Planner read ${readSourceFiles.size} source files directly without using ai:peek / ai:impact / rg: ${Array.from(readSourceFiles).slice(0, 5).join(', ')}`,
         layers: ['planner', 'rule'],
       },
     ];
@@ -77,7 +75,7 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * EXP-02: BAD_FIRST_MOVE
- * 初動 3 ターンで repo_summary.txt / ai:find / ai:outline / rg -l / tasks/TASK-*.md を使わず漫然探索
+ * 初動 3 ターンで ai:peek / ai:impact / ast-grep / rg -l / tasks/TASK-*.md / notes/*.md を使わず漫然探索
  */
 export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
   if (ctx.role !== 'planner') return [];
@@ -98,11 +96,11 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
       const file = extractTargetFile(tc);
 
       if (
-        file.includes('repo_summary.txt') ||
         /(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) ||
-        cmd.includes('repo_summary.txt') ||
-        cmd.includes('ai:find') ||
-        cmd.includes('ai:outline') ||
+        /(?:^|\/)notes\/[^/]+\.md$/.test(file) ||
+        cmd.includes('ai:peek') ||
+        cmd.includes('ai:impact') ||
+        cmd.includes('ast-grep') ||
         /\brg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd)
       ) {
         hasGoodFirstMove = true;
@@ -110,8 +108,8 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
 
       if (
         (isReadToolName(tc.name) &&
-          !file.includes('repo_summary.txt') &&
-          !/(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file)) ||
+          !/(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) &&
+          !/(?:^|\/)notes\/[^/]+\.md$/.test(file)) ||
         (/^(?:grep|rg|find|ls)\b/.test(cmd) &&
           !/^rg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd))
       ) {
@@ -130,7 +128,7 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
         sessionId: ctx.sessionId,
         steps,
         evidence:
-          'Initial 3 turns used raw file exploration without repo_summary.txt, ai:find, ai:outline, rg -l, or TASK file',
+          'Initial 3 turns used raw file exploration without ai:peek, ai:impact, ast-grep, rg -l, notes, or TASK file',
         layers: ['planner', 'rule'],
       },
     ];

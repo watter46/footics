@@ -10,7 +10,7 @@ import {
   type RecordedToolCall,
 } from './transcript-calls';
 
-const SMALL_FILE_LINE_LIMIT = 400;
+const STRUCTURE_GATE_LINE_LIMIT = 150;
 const MAX_SEQUENTIAL_SLICES = 3;
 const PAGING_TOLERANCE_LINES = 10;
 const DEFAULT_VIEW_WINDOW_LINES = 800;
@@ -217,6 +217,121 @@ function getRecentInvestigatedFiles(
   return viewedFiles;
 }
 
+function matchesSubcommandProbeTarget(
+  subCmd: string,
+  tokens: string[],
+  isPeek: boolean,
+  relPath: string,
+  normResolved: string,
+  baseName: string,
+  parentDir: string,
+  baseRoot: string,
+): boolean {
+  const normSub = subCmd.replace(/\\/g, '/');
+  if (normSub.includes(normResolved)) return true;
+  if (relPath && normSub.includes(relPath)) return true;
+  if (baseName && normSub.includes(baseName)) return true;
+
+  if (isPeek && parentDir) {
+    const resolvedDir = path.posix.dirname(normResolved);
+    for (const token of tokens) {
+      if (token.startsWith('-') || token === 'bun' || token === 'run') {
+        continue;
+      }
+      if (token === 'ai:peek' || token.endsWith('peek.ts')) continue;
+      const cleanTok = token.replace(/\\/g, '/').replace(/\/+$/, '');
+      if (
+        cleanTok === parentDir ||
+        cleanTok === `./${parentDir}` ||
+        path.resolve(baseRoot, cleanTok) === resolvedDir
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * 直近 USER_INPUT 以降に、対象ファイルに対して構造先行コマンド
+ * (ai:peek / ai:impact / rg / rtk grep / ast-grep) が実行されたかを判定する。
+ */
+function hasPriorStructureProbe(
+  transcriptPath: string | undefined,
+  resolvedPath: string,
+  workspacePath?: string,
+): boolean {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return false;
+
+  const baseRoot = workspacePath || process.cwd();
+  const relPath = normalizeRelativePath(resolvedPath, workspacePath)
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '');
+  const normResolved = resolvedPath.replace(/\\/g, '/');
+  const baseName = path.basename(resolvedPath);
+  const rawDir = path.posix.dirname(relPath);
+  const parentDir = rawDir && rawDir !== '.' ? rawDir : '';
+
+  try {
+    const transcript = fs.readFileSync(transcriptPath, 'utf8');
+    const lines = transcript.trim().split('\n');
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i]) continue;
+      try {
+        const step = JSON.parse(lines[i]);
+        if (step.type === 'USER_INPUT') {
+          break;
+        }
+        if (!step.tool_calls) continue;
+
+        for (const tc of step.tool_calls) {
+          if (tc.name !== 'run_command' || !tc.args?.CommandLine) continue;
+          const cmdLine = String(tc.args.CommandLine);
+          for (const sub of splitCommands(cmdLine)) {
+            const tokens = tokenize(sub);
+            if (tokens.length === 0) continue;
+            const parsed = parseExecutable(tokens);
+            if (!parsed.executable) continue;
+
+            const isPeek =
+              parsed.executable === 'bun' &&
+              parsed.args.some((a) => a === 'ai:peek' || a.endsWith('peek.ts'));
+            const isImpact =
+              parsed.executable === 'bun' &&
+              parsed.args.some(
+                (a) => a === 'ai:impact' || a.endsWith('impact.ts'),
+              );
+            const isSearch =
+              parsed.executable === 'rg' ||
+              parsed.executable === 'ast-grep' ||
+              (parsed.executable === 'rtk' && parsed.args[0] === 'grep');
+
+            if (!isPeek && !isImpact && !isSearch) continue;
+
+            if (
+              matchesSubcommandProbeTarget(
+                sub,
+                tokens,
+                isPeek,
+                relPath,
+                normResolved,
+                baseName,
+                parentDir,
+                baseRoot,
+              )
+            ) {
+              return true;
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+  } catch (_e) {}
+
+  return false;
+}
+
 function checkViewGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
   if (!toolCall || !isReadTool(toolCall.name) || !toolCall.args) {
@@ -244,7 +359,7 @@ function checkViewGuard(payload: any): GuardDecision | null {
     if (!hasSlice || range > 100) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Reading entire log files with 'view_file' causes token explosion (${rawPath}). Use 'rtk log <file>' or specify StartLine/EndLine with a range under 100 lines.`,
+        reason: `[GUARD] Reading entire log files with 'read_file' causes token explosion (${rawPath}). Use 'rtk log <file>' or specify StartLine/EndLine with a range under 100 lines.`,
       };
     }
     return { decision: 'allow' };
@@ -254,11 +369,11 @@ function checkViewGuard(payload: any): GuardDecision | null {
   if (!fs.existsSync(resolvedPath)) {
     return {
       decision: 'deny',
-      reason: `[GUARD] File not found: '${rawPath}'. Guessing file paths without verifying is strictly prohibited.\nAction: Locate the target file using 'bun run ai:find <keyword>' or 'rtk find . -name "<glob>"' first.`,
+      reason: `[GUARD] File not found: '${rawPath}'. Guessing file paths without verifying is strictly prohibited.\nAction: Locate the target file using 'bun run ai:impact <symbol>' or 'fd -t f <pattern>' first.`,
     };
   }
 
-  // 3. 小型ファイル判定 & 総行数取得
+  // 3. 総行数取得・適応型 Read 制御
   let fileLines: string[] = [];
   try {
     const content = fs.readFileSync(resolvedPath, 'utf8');
@@ -272,27 +387,8 @@ function checkViewGuard(payload: any): GuardDecision | null {
   const endLine = parseLineNum(toolCall.args.EndLine);
   const hasSlice = startLine !== undefined || endLine !== undefined;
 
-  // 3a. 小型ファイル (400行以下) のスライス読込の自動補正 (Transparent Overwrite)
-  // view_file は最大 800 行まで一括取得可能。小型ファイルに対するスライス指定は
-  // deny で弾いてエージェントに事前 wc -l を強要するのではなく、自動で全文読込に書き換えて許可する。
-  if (totalLines <= SMALL_FILE_LINE_LIMIT && hasSlice) {
-    const isWholeFile =
-      (startLine === undefined || startLine <= 1) &&
-      (endLine === undefined || endLine >= totalLines);
-
-    if (!isWholeFile) {
-      return {
-        decision: 'allow',
-        overwrite: {
-          StartLine: 1,
-          EndLine: totalLines,
-        },
-      };
-    }
-  }
-
-  // 3b. 大型ファイルの連続ページ送りスライス読込の遮断 (全ロール共通)
-  if (totalLines > SMALL_FILE_LINE_LIMIT && hasSlice) {
+  // 3a. 連続ページ送りスライス読込の遮断 (150行超・全ロール共通)
+  if (totalLines > STRUCTURE_GATE_LINE_LIMIT && hasSlice) {
     const current = toSliceRange({
       name: toolCall.name,
       args: toolCall.args,
@@ -305,10 +401,27 @@ function checkViewGuard(payload: any): GuardDecision | null {
       if (chain >= MAX_SEQUENTIAL_SLICES) {
         return {
           decision: 'deny',
-          reason: `[GUARD] Sequential slice paging blocked: '${baseName}' (${totalLines} lines) has been read in ${chain} consecutive contiguous slices.\nAction: Run 'bun run ai:outline ${rawPath}' first to get signatures with line numbers, then locate the target with 'rtk grep' and read only that range (with 5-10 lines of margin).`,
+          reason: `[GUARD] Sequential slice paging blocked: '${baseName}' (${totalLines} lines) has been read in ${chain} consecutive contiguous slices.\nAction: Run 'bun run ai:peek ${rawPath}' or 'bun run ai:impact <symbol>' first to get signatures with line numbers, then locate the target with 'rg' and read only that range (with 5-10 lines of margin).`,
         };
       }
     }
+  }
+
+  // 3b. Planner / Architect の 150行超コード無探索丸読み遮断 (Structure-First Gate)
+  const role = detectAgentRole(payload.transcriptPath);
+  const workspacePath = payload.workspacePaths?.[0];
+  const relPath = normalizeRelativePath(resolvedPath, workspacePath);
+  if (
+    (role === 'planner' || role === 'architect') &&
+    isInvestigationTarget(relPath) &&
+    totalLines > STRUCTURE_GATE_LINE_LIMIT &&
+    !hasSlice &&
+    !hasPriorStructureProbe(payload.transcriptPath, resolvedPath, workspacePath)
+  ) {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Structure-first read gate: '${baseName}' is ${totalLines} lines (> ${STRUCTURE_GATE_LINE_LIMIT}) and has not been inspected with ai:peek / ai:impact yet.\nAction: Run 'bun run ai:peek ${rawPath}' (or 'bun run ai:impact <symbol>') first, or specify StartLine/EndLine for a targeted slice.`,
+    };
   }
 
   return { decision: 'allow' };
@@ -329,6 +442,7 @@ export {
   checkCommandInvestigationGuard,
   checkViewGuard,
   getRecentInvestigatedFiles,
+  hasPriorStructureProbe,
   isInvestigationTarget,
-  SMALL_FILE_LINE_LIMIT,
+  STRUCTURE_GATE_LINE_LIMIT,
 };

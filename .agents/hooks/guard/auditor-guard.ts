@@ -29,16 +29,16 @@ export function isRawTranscriptTarget(s: string): boolean {
 const ALLOWED_BUN_SCRIPTS = new Set([
   'ai:audit',
   'ai:report',
-  'ai:find',
-  'ai:outline',
+  'ai:peek',
+  'ai:impact',
   'ai:preflight',
   'task:validate',
+  '.agents/scripts/peek.ts',
+  '.agents/scripts/impact.ts',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',
   '.agents/scripts/preflight.ts',
   '.agents/scripts/validate-task.ts',
-  'scripts/map/find-symbol.ts',
-  'scripts/ast/extract-types.ts',
 ]);
 
 const ALLOWED_GIT_SUBCOMMANDS = new Set([
@@ -159,7 +159,7 @@ export function checkAuditorGuard(payload: any): GuardDecision | null {
         if (!isAllowedScript) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:find, ai:outline, ai:preflight .agents/..., task:validate, or bun test ./.agents). '${targetScript ?? 'bun'}' is not allowed.`,
+            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:peek, ai:impact, ai:preflight .agents/..., task:validate, or bun test ./.agents). '${targetScript ?? 'bun'}' is not allowed.`,
           };
         }
 

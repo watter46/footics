@@ -16,7 +16,7 @@ import type { AuditContext } from '../lib/audit/types';
 
 describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () => {
   describe('EXP-01: OUTLINE_BYPASS', () => {
-    test('detects planner reading 3+ source files without ai:outline or rg/ai:find', () => {
+    test('detects planner reading 3+ source files without ai:peek / ai:impact / rg', () => {
       const ctx: AuditContext = {
         sessionId: 'test-scout-bypass',
         role: 'planner',
@@ -53,9 +53,9 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings[0].layers).toEqual(['planner', 'rule']);
     });
 
-    test('returns empty if ai:outline or rg/ai:find was used', () => {
-      const ctx: AuditContext = {
-        sessionId: 'test-outline-ok',
+    test('returns empty if ai:peek or ai:impact was used', () => {
+      const ctxPeek: AuditContext = {
+        sessionId: 'test-peek-ok',
         role: 'planner',
         childIds: [],
         records: [
@@ -66,7 +66,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
               {
                 name: 'run_command',
                 args: {
-                  CommandLine: 'bun run ai:outline src/a.ts src/b.ts src/c.ts',
+                  CommandLine: 'bun run ai:peek src/a.ts src/b.ts src/c.ts',
                 },
               },
             ],
@@ -83,7 +83,36 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
         ],
       };
 
-      expect(detectOutlineBypass(ctx).length).toBe(0);
+      expect(detectOutlineBypass(ctxPeek).length).toBe(0);
+
+      const ctxImpact: AuditContext = {
+        sessionId: 'test-impact-ok',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun run ai:impact Stage' },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'src/a.ts' } },
+              { name: 'read_file', args: { Path: 'src/b.ts' } },
+              { name: 'read_file', args: { Path: 'src/c.ts' } },
+            ],
+          },
+        ],
+      };
+
+      expect(detectOutlineBypass(ctxImpact).length).toBe(0);
     });
 
     test('returns empty if legacy scout was invoked', () => {
@@ -114,7 +143,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
   });
 
   describe('EXP-02: BAD_FIRST_MOVE', () => {
-    test('detects raw file read in first turns without repo_summary / ai:find / ai:outline', () => {
+    test('detects raw file read in first turns without ai:peek / ai:impact / rg / notes', () => {
       const ctx: AuditContext = {
         sessionId: 'test-bad-first',
         role: 'planner',
@@ -136,9 +165,9 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings[0].severity).toBe('MED');
     });
 
-    test('returns empty if first move read repo_summary.txt or used ai:find', () => {
-      const ctx: AuditContext = {
-        sessionId: 'test-good-first',
+    test('returns empty if first move uses ai:peek, ai:impact, or notes/*.md', () => {
+      const peekCtx: AuditContext = {
+        sessionId: 'test-good-first-peek',
         role: 'planner',
         childIds: [],
         records: [
@@ -148,16 +177,48 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
             tool_calls: [
               {
                 name: 'run_command',
-                args: {
-                  CommandLine: 'rtk read .agents/.cache/repo_summary.txt',
-                },
+                args: { CommandLine: 'bun run ai:peek src/app.ts' },
               },
             ],
           },
         ],
       };
+      expect(detectBadFirstMove(peekCtx).length).toBe(0);
 
-      expect(detectBadFirstMove(ctx).length).toBe(0);
+      const impactCtx: AuditContext = {
+        sessionId: 'test-good-first-impact',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun run ai:impact AppState' },
+              },
+            ],
+          },
+        ],
+      };
+      expect(detectBadFirstMove(impactCtx).length).toBe(0);
+
+      const notesCtx: AuditContext = {
+        sessionId: 'test-good-first-notes',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'notes/design.md' } },
+            ],
+          },
+        ],
+      };
+      expect(detectBadFirstMove(notesCtx).length).toBe(0);
     });
 
     test('returns empty if first move reads tasks/TASK-*.md or runs rg -l', () => {
@@ -304,7 +365,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
             tool_calls: [
               {
                 name: 'run_command',
-                args: { CommandLine: 'bun run ai:outline src/1.ts' },
+                args: { CommandLine: 'bun run ai:peek src/1.ts' },
               },
             ],
           },
