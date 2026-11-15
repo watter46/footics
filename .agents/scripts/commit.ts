@@ -88,27 +88,31 @@ export async function runCommit(
   }
 
   // 0. Task File Validation (対象ファイルに tasks/ が含まれるか、全体コミット時のみ実行)
+  const explicitTaskFiles = targetFiles.filter(
+    (f) => f.startsWith('tasks/') && f.endsWith('.md'),
+  );
   const shouldValidateTask =
-    targetFiles.length === 0 || targetFiles.some((f) => f.startsWith('tasks/'));
+    targetFiles.length === 0 || explicitTaskFiles.length > 0;
   if (shouldValidateTask) {
-    const taskCheckProc = spawnSync(
-      'bun',
-      [
+    const taskTargets = explicitTaskFiles.length > 0 ? explicitTaskFiles : [''];
+    for (const taskTarget of taskTargets) {
+      const validateArgs = [
         path.resolve(__dirname, 'validate-task.ts'),
+        ...(taskTarget ? [taskTarget] : []),
         '--verify-contracts',
         '--require-done',
-      ],
-      {
+      ];
+      const taskCheckProc = spawnSync('bun', validateArgs, {
         cwd,
         encoding: 'utf8',
-      },
-    );
-    if (taskCheckProc.status !== 0) {
-      console.error(taskCheckProc.stdout || taskCheckProc.stderr);
-      console.error(
-        '\n[COMMIT ABORTED] Task file validation failed. Ensure Status is DONE, [DELETE] files are removed, and Negative Contracts match 0 files.',
-      );
-      return 1;
+      });
+      if (taskCheckProc.status !== 0) {
+        console.error(taskCheckProc.stdout || taskCheckProc.stderr);
+        console.error(
+          '\n[COMMIT ABORTED] Task file validation failed. Ensure Status is DONE, [DELETE] files are removed, and Negative Contracts match 0 files.',
+        );
+        return 1;
+      }
     }
   }
 

@@ -17,8 +17,8 @@
     "extension:sync": "bun scripts/extension/sync-windows.ts",
     "extension:dev:sync": "bun scripts/extension/sync-windows.ts --watch",
     "ai:check": "bun .agents/scripts/check-worker.ts",
-    "ai:find": "bun scripts/map/find-symbol.ts",
-    "ai:outline": "bun .agents/scripts/outline.ts",
+    "ai:peek": "bun .agents/scripts/peek.ts",
+    "ai:impact": "bun .agents/scripts/impact.ts",
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",
     "ai:report": "bun .agents/scripts/session-report.ts",
@@ -31,8 +31,7 @@
     "test": "rtk vitest run",
     "test:coverage": "rtk vitest run --coverage",
     "test:agents": "bun test ./.agents",
-    "task:validate": "bun .agents/scripts/validate-task.ts",
-    "map": "bun scripts/map/generate-repo-map.ts"
+    "task:validate": "bun .agents/scripts/validate-task.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
