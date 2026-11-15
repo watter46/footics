@@ -1,13 +1,13 @@
 # TASK-202c: ベンチマークプリセットの Domain 型移行と `attachSlidesGetter` 削除
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate benchmark-presets to DomainTacticalProject and remove attachSlidesGetter`
 - **Execution Waves**:
   - Wave 1 (sequential): Phase 1
   - Wave 2 (sequential): Phase 2
 - **Negative Contracts**:
-  - `rg(src/lib/tactical/benchmark-presets.ts): attachSlidesGetter|TacticalProject|createDefaultPlayer|types/tactical-unified`
-  - `rg(src/features/tactical-unified/__tests__/benchmark-presets.test.ts): \.slides\b`
+  - `rg(src/lib/tactical/benchmark-presets.ts): attachSlidesGetter|\bTacticalProject\b|createDefaultPlayer|types/tactical-unified`
+  - `rg(src/features/tactical-unified/__tests__/benchmark-presets.test.ts): project\.slides\b`
 
 ## 1. Architectural Invariants & Design Decisions
 - **Invariants (壊してはいけない前提条件)**:

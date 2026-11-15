@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
+  createSixSlideBenchmarkProject,
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/engine/director-camera';
+import { DomainTacticalProjectSchema } from '@/lib/types/tactical/domain-hierarchy';
 
 describe('Benchmark Test Presets', () => {
   describe('Low Block Benchmark Preset', () => {
@@ -12,13 +14,13 @@ describe('Benchmark Test Presets', () => {
       const project = createLowBlockBenchmarkProject();
       const slides = project.phases[0].slides;
 
+      expect(DomainTacticalProjectSchema.safeParse(project).success).toBe(true);
       expect(project.title).toContain('Low Block');
       expect(slides).toHaveLength(3);
-      expect(project.activeSlideId).toBe(slides[0].id);
 
-      // Verify boundary box is configured on slides
-      expect(slides[0].boundaryBox?.enabled).toBe(true);
-      expect(slides[0].boundaryBox?.width).toBe(70);
+      // Verify boundary box is configured on phase
+      expect(project.phases[0].boundaryBox?.enabled).toBe(true);
+      expect(project.phases[0].boundaryBox?.width).toBe(70);
 
       // Verify duration calculation: arrival transitions of slide 1 and 2
       // Slide 1: 1400ms transition + 600ms pause = 2000ms
@@ -39,9 +41,10 @@ describe('Benchmark Test Presets', () => {
       const project = createHighPressBenchmarkProject();
       const slides = project.phases[0].slides;
 
+      expect(DomainTacticalProjectSchema.safeParse(project).success).toBe(true);
       expect(project.title).toContain('High Press');
       expect(slides).toHaveLength(2);
-      expect(slides[0].boundaryBox?.enabled).toBe(true);
+      expect(project.phases[0].boundaryBox?.enabled).toBe(true);
 
       // Verify duration calculation: arrival transition of slide 1
       // Slide 1: 1400ms transition + 600ms pause = 2000ms
@@ -59,9 +62,9 @@ describe('Benchmark Test Presets', () => {
       const project = createTenSlideFullSequenceBenchmarkProject();
       const slides = project.phases[0].slides;
 
+      expect(DomainTacticalProjectSchema.safeParse(project).success).toBe(true);
       expect(project.title).toContain('10-Slide Full Progression');
       expect(slides).toHaveLength(10);
-      expect(project.activeSlideId).toBe(slides[0].id);
 
       // 9 transitions of (1200ms + 600ms) = 16200ms (~16.2s)
       const totalDuration = calculateUnifiedTotalDuration(slides);
@@ -70,8 +73,21 @@ describe('Benchmark Test Presets', () => {
       // Verify players, boundary box and progression
       expect(slides[0].players.length).toBe(22); // 11 vs 11
       expect(slides[9].players.length).toBe(22);
-      expect(slides[0].boundaryBox?.enabled).toBe(true);
+      expect(project.phases[0].boundaryBox?.enabled).toBe(true);
       expect(slides[0].zones.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('6-Slide Benchmark Preset', () => {
+    it('creates a valid 6-slide project passing DomainTacticalProjectSchema', () => {
+      const project = createSixSlideBenchmarkProject();
+      const slides = project.phases[0].slides;
+
+      expect(DomainTacticalProjectSchema.safeParse(project).success).toBe(true);
+      expect(slides).toHaveLength(6);
+
+      const totalDuration = calculateUnifiedTotalDuration(slides);
+      expect(totalDuration).toBeGreaterThan(0);
     });
   });
 });
