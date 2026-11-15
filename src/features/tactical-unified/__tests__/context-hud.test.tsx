@@ -21,6 +21,13 @@ import {
   createCanvasNodesRegistry,
 } from '../core/utils/canvas-registry';
 import { PlayerMarkerLabel } from '../objects/player/components/player-marker-label';
+import { createDocumentStore } from '../stores/document-store';
+import { createPlaybackStore } from '../stores/playback-store';
+import { createSessionStore } from '../stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '../stores/tactical-store-provider';
 import {
   createTacticalUnifiedStore,
   TacticalUnifiedStoreContext,
@@ -326,17 +333,23 @@ describe('Context HUD Positioning and Target Resolution', () => {
       expect(HUD_CONTENT_RENDERERS.has('ball')).toBe(true);
     });
 
-    it('BallHud 単体でスライダー操作時に setBallSizeScale が呼ばれる', () => {
-      const store = createTacticalUnifiedStore();
-      const setBallSizeScaleSpy = vi.spyOn(
-        store.getState(),
-        'setBallSizeScale',
-      );
+    it('BallHud 単体でスライダー操作時にボールサイズが更新される', () => {
+      const project = createDefaultTacticalProject();
+      const phaseId = project.phases[0]!.id;
+      const slideId = project.phases[0]!.slides[0]!.id;
+      const documentStore = createDocumentStore(project);
+      const sessionStore = createSessionStore({
+        activePhaseId: phaseId,
+        activeSlideId: slideId,
+      });
+      const playbackStore = createPlaybackStore();
 
       render(
-        <TacticalUnifiedStoreContext.Provider value={store}>
+        <TacticalStoreProvider
+          stores={{ documentStore, sessionStore, playbackStore }}
+        >
           <BallHud />
-        </TacticalUnifiedStoreContext.Provider>,
+        </TacticalStoreProvider>,
       );
 
       const slider = screen.getByLabelText('ボールサイズ') as HTMLInputElement;
@@ -346,8 +359,9 @@ describe('Context HUD Positioning and Target Resolution', () => {
 
       fireEvent.change(slider, { target: { value: '1.5' } });
 
-      const activeSlideId = store.getState().activeSlideId;
-      expect(setBallSizeScaleSpy).toHaveBeenCalledWith(activeSlideId, 1.5);
+      expect(
+        documentStore.getState().project.phases[0]?.slides[0]?.ball.sizeScale,
+      ).toBe(1.5);
     });
 
     it('ContextHud で ball 選択時に BallHud が描画される', () => {
@@ -360,6 +374,13 @@ describe('Context HUD Positioning and Target Resolution', () => {
       });
 
       const tacticalStore = createTacticalUnifiedStore();
+      const project = createDefaultTacticalProject();
+      const documentStore = createDocumentStore(project);
+      const sessionStore = createSessionStore({
+        activePhaseId: project.phases[0]!.id,
+        activeSlideId: project.phases[0]!.slides[0]!.id,
+      });
+      const playbackStore = createPlaybackStore();
       const mockNode = {
         getClientRect: () => ({
           x: 200,
@@ -376,14 +397,18 @@ describe('Context HUD Positioning and Target Resolution', () => {
       };
 
       render(
-        <TacticalUnifiedStoreContext.Provider value={tacticalStore}>
-          <CanvasStoreProvider store={canvasStore}>
-            <ContextHud
-              stageSize={{ width: 800, height: 600 }}
-              nodesRegistryRef={nodesRegistryRef}
-            />
-          </CanvasStoreProvider>
-        </TacticalUnifiedStoreContext.Provider>,
+        <TacticalStoreProvider
+          stores={{ documentStore, sessionStore, playbackStore }}
+        >
+          <TacticalUnifiedStoreContext.Provider value={tacticalStore}>
+            <CanvasStoreProvider store={canvasStore}>
+              <ContextHud
+                stageSize={{ width: 800, height: 600 }}
+                nodesRegistryRef={nodesRegistryRef}
+              />
+            </CanvasStoreProvider>
+          </TacticalUnifiedStoreContext.Provider>
+        </TacticalStoreProvider>,
       );
 
       expect(screen.getByLabelText('ボールサイズ')).toBeDefined();

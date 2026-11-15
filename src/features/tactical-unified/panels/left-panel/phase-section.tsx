@@ -2,15 +2,13 @@
 
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
-import type {
-  PitchAppearanceConfig,
-  TacticalPhase,
-} from '@/lib/types/tactical-unified';
+import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
+import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import { cn } from '@/lib/utils';
 import { SceneCanvasThumbnail } from './scene-canvas-thumbnail';
 
 export interface PhaseSectionProps {
-  phase: TacticalPhase;
+  phase: DomainTacticalPhase;
   isExpanded: boolean;
   isActivePhase: boolean;
   activeSlideId?: string;
@@ -198,6 +196,8 @@ export function PhaseSection({
                     slide={slide}
                     width={96}
                     height={54}
+                    aspectRatio={phase.aspectRatio}
+                    boundaryBox={phase.boundaryBox}
                     pitchAppearance={pitchAppearance}
                     className="w-full h-full object-contain"
                   />

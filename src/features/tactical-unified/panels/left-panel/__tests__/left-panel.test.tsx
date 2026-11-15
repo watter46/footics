@@ -1,50 +1,93 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
-import {
-  createDefaultSlide,
-  type TacticalPhase,
-} from '@/lib/types/tactical-unified';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type {
+  DomainSlide,
+  DomainTacticalPhase,
+} from '@/lib/types/tactical/domain-hierarchy';
+import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/slide';
 import { LeftPanel } from '../left-panel';
 import { SceneCanvasThumbnail } from '../scene-canvas-thumbnail';
 
-vi.mock('@/lib/tactical/export/tactical-frame-renderer', () => ({
-  renderTacticalFrameToCanvas: vi.fn(),
-}));
+function createTestDomainSlide(
+  index: number,
+  id: string,
+  label: string,
+  pauseMs: number,
+): DomainSlide {
+  return {
+    id,
+    index,
+    label,
+    players: [],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: {
+      x: clampToScreenNorm(50),
+      y: clampToScreenNorm(50),
+      visible: true,
+    },
+    transitionDurationMs: 1000,
+    pauseMs,
+    easing: 'ease-in-out',
+  };
+}
+
+function createCanvasContext2DStub(): CanvasRenderingContext2D {
+  return new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (
+          prop === 'createLinearGradient' ||
+          prop === 'createRadialGradient'
+        ) {
+          return () => ({ addColorStop: vi.fn() });
+        }
+        if (prop === 'measureText') {
+          return () => ({ width: 0 });
+        }
+        return vi.fn();
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+}
 
 describe('LeftPanel (Phase Structuring & PowerPoint-style nested panel)', () => {
-  const dummyPhases: TacticalPhase[] = [
+  let getContextSpy: ReturnType<typeof vi.spyOn>;
+
+  const dummyPhases: DomainTacticalPhase[] = [
     {
       id: 'phase-1',
       name: 'Build-up Phase',
+      aspectRatio: '16:9',
+      boundaryBox: getDefaultBoundaryBoxForAspect('16:9'),
+      backgroundType: 'pitch',
       slides: [
-        {
-          ...createDefaultSlide(0, 'slide-1-1'),
-          label: 'Initial Formation',
-          pauseMs: 500,
-        },
-        {
-          ...createDefaultSlide(1, 'slide-1-2'),
-          label: 'Progression',
-          pauseMs: 1000,
-        },
+        createTestDomainSlide(0, 'slide-1-1', 'Initial Formation', 500),
+        createTestDomainSlide(1, 'slide-1-2', 'Progression', 1000),
       ],
     },
     {
       id: 'phase-2',
       name: 'Finishing Phase',
-      slides: [
-        {
-          ...createDefaultSlide(0, 'slide-2-1'),
-          label: 'Final Pass',
-          pauseMs: 800,
-        },
-      ],
+      aspectRatio: '16:9',
+      boundaryBox: getDefaultBoundaryBoxForAspect('16:9'),
+      backgroundType: 'pitch',
+      slides: [createTestDomainSlide(0, 'slide-2-1', 'Final Pass', 800)],
     },
   ];
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(createCanvasContext2DStub());
+  });
+
+  afterEach(() => {
+    getContextSpy.mockRestore();
   });
 
   it('renders all phases with scene counts and active phase expanded', () => {
@@ -289,17 +332,7 @@ describe('LeftPanel (Phase Structuring & PowerPoint-style nested panel)', () => 
   });
 
   describe('SceneCanvasThumbnail', () => {
-    it('renders SceneCanvasThumbnail and calls renderTacticalFrameToCanvas with valid options', () => {
-      // Setup HTMLCanvasElement mock for getContext in JSDOM
-      const mockCtx = {
-        save: vi.fn(),
-        scale: vi.fn(),
-        restore: vi.fn(),
-      };
-      const getContextSpy = vi
-        .spyOn(HTMLCanvasElement.prototype, 'getContext')
-        .mockReturnValue(mockCtx as unknown as CanvasRenderingContext2D);
-
+    it('renders SceneCanvasThumbnail with real renderTacticalPhaseFrameToCanvas pipeline', () => {
       const slide = dummyPhases[0]!.slides[0]!;
       const { container } = render(
         <SceneCanvasThumbnail
@@ -311,70 +344,39 @@ describe('LeftPanel (Phase Structuring & PowerPoint-style nested panel)', () => 
       );
 
       const canvas = container.querySelector('canvas');
-      expect(canvas).toBeDefined();
-      expect(renderTacticalFrameToCanvas).toHaveBeenCalledWith(
-        mockCtx,
-        expect.objectContaining({
-          slides: [slide],
-          timeMs: 0,
-          width: 100,
-          height: 60,
-          aspectRatio: '16:9',
-          applyEffects: false,
-        }),
-      );
-
-      getContextSpy.mockRestore();
+      expect(canvas).not.toBeNull();
+      expect(canvas?.width).toBe(100);
+      expect(canvas?.height).toBe(60);
+      expect(canvas?.style.width).toBe('100px');
+      expect(canvas?.style.height).toBe('60px');
     });
 
     it('calculates aspect ratios correctly for 9:16, 4:5, and 1:1', () => {
-      const mockCtx = {
-        save: vi.fn(),
-        scale: vi.fn(),
-        restore: vi.fn(),
-      };
-      const getContextSpy = vi
-        .spyOn(HTMLCanvasElement.prototype, 'getContext')
-        .mockReturnValue(mockCtx as unknown as CanvasRenderingContext2D);
-
       const slide = dummyPhases[0]!.slides[0]!;
-      const { rerender } = render(
+      const { container, rerender } = render(
         <SceneCanvasThumbnail slide={slide} width={100} aspectRatio="9:16" />,
       );
-      expect(renderTacticalFrameToCanvas).toHaveBeenLastCalledWith(
-        mockCtx,
-        expect.objectContaining({
-          width: 100,
-          height: 178, // round(100 * 16 / 9)
-          aspectRatio: '9:16',
-        }),
-      );
+      const canvas = container.querySelector('canvas');
+      expect(canvas?.width).toBe(100);
+      expect(canvas?.height).toBe(178); // round(100 * 16 / 9)
+      expect(canvas?.style.width).toBe('100px');
+      expect(canvas?.style.height).toBe('178px');
 
       rerender(
         <SceneCanvasThumbnail slide={slide} width={100} aspectRatio="4:5" />,
       );
-      expect(renderTacticalFrameToCanvas).toHaveBeenLastCalledWith(
-        mockCtx,
-        expect.objectContaining({
-          width: 100,
-          height: 125, // round(100 * 5 / 4)
-          aspectRatio: '4:5',
-        }),
-      );
+      expect(canvas?.width).toBe(100);
+      expect(canvas?.height).toBe(125); // round(100 * 5 / 4)
+      expect(canvas?.style.width).toBe('100px');
+      expect(canvas?.style.height).toBe('125px');
 
       rerender(
         <SceneCanvasThumbnail slide={slide} width={100} aspectRatio="1:1" />,
       );
-      expect(renderTacticalFrameToCanvas).toHaveBeenLastCalledWith(
-        mockCtx,
-        expect.objectContaining({
-          width: 100,
-          height: 100,
-          aspectRatio: '1:1',
-        }),
-      );
-
-      getContextSpy.mockRestore();
+      expect(canvas?.width).toBe(100);
+      expect(canvas?.height).toBe(100);
+      expect(canvas?.style.width).toBe('100px');
+      expect(canvas?.style.height).toBe('100px');
     });
   });
 });

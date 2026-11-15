@@ -2,15 +2,19 @@
 
 import type React from 'react';
 import { registerHudContentRenderer } from '@/features/tactical-unified/core';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 
 export function BallHud(): React.ReactElement | null {
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const setBallSizeScale = useTacticalUnifiedStoreContext(
-    (s) => s.setBallSizeScale,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
   const scale = activeSlide?.ball?.sizeScale ?? 1.0;
 
@@ -25,8 +29,11 @@ export function BallHud(): React.ReactElement | null {
         value={scale}
         onChange={(e) => {
           const next = Number.parseFloat(e.target.value);
-          if (!Number.isNaN(next)) {
-            setBallSizeScale(activeSlideId, next);
+          if (!Number.isNaN(next) && activePhaseId && activeSlideId) {
+            dispatchSlide(activePhaseId, activeSlideId, {
+              type: 'UPDATE_BALL',
+              patch: { sizeScale: next },
+            });
           }
         }}
         aria-label="ボールサイズ"

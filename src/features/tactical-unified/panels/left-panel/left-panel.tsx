@@ -2,15 +2,12 @@
 
 import { AlertTriangle, FolderPlus, Layers, Plus } from 'lucide-react';
 import { useState } from 'react';
-import type {
-  PitchAppearanceConfig,
-  Slide,
-  TacticalPhase,
-} from '@/lib/types/tactical-unified';
+import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
+import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import { PhaseSection } from './phase-section';
 
 export interface LeftPanelProps {
-  phases?: TacticalPhase[];
+  phases?: readonly DomainTacticalPhase[];
   activePhaseId?: string;
   activeSlideId?: string;
   pitchAppearance?: PitchAppearanceConfig;
@@ -19,14 +16,10 @@ export interface LeftPanelProps {
   onDeletePhase?: (phaseId: string) => void;
   onRenamePhase?: (phaseId: string, name: string) => void;
   onAddSlideToPhase?: (phaseId: string) => void;
-  // 後方互換性プロパティ (Phase 4 移行用)
-  slides?: Slide[];
-  onSelectSlide?: (slideId: string) => void;
-  onAddSlide?: () => void;
 }
 
 export function LeftPanel({
-  phases: propPhases,
+  phases = [],
   activePhaseId = '',
   activeSlideId = '',
   pitchAppearance,
@@ -35,23 +28,7 @@ export function LeftPanel({
   onDeletePhase,
   onRenamePhase,
   onAddSlideToPhase,
-  slides,
-  onSelectSlide,
-  onAddSlide,
 }: LeftPanelProps) {
-  // フォールバック: phases がなく slides のみ渡された場合は単一フェーズとして扱う
-  const phases: TacticalPhase[] =
-    propPhases ??
-    (slides
-      ? [
-          {
-            id: 'default-phase',
-            name: 'Tactical Phase 1',
-            slides,
-          },
-        ]
-      : []);
-
   // アコーディオン開閉状態（明示的にトグルされたフェーズを記録）
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
 
@@ -68,11 +45,7 @@ export function LeftPanel({
   };
 
   const handleSelectScene = (phaseId: string, slideId: string) => {
-    if (onSelectScene) {
-      onSelectScene(phaseId, slideId);
-    } else if (onSelectSlide) {
-      onSelectSlide(slideId);
-    }
+    onSelectScene?.(phaseId, slideId);
   };
 
   const handleAddPhase = () => {
@@ -88,11 +61,7 @@ export function LeftPanel({
   };
 
   const handleAddSlideToPhase = (phaseId: string) => {
-    if (onAddSlideToPhase) {
-      onAddSlideToPhase(phaseId);
-    } else if (onAddSlide) {
-      onAddSlide();
-    }
+    onAddSlideToPhase?.(phaseId);
   };
 
   const handleDeleteRequest = (phaseId: string) => {

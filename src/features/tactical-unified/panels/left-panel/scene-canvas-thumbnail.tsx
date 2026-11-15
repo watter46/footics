@@ -1,19 +1,27 @@
 'use client';
 
 import { memo, useEffect, useMemo, useRef } from 'react';
-import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
-import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
+import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
+import { toMilliseconds } from '@/lib/types/tactical/branded';
+import type {
+  DomainSlide,
+  DomainTacticalPhase,
+} from '@/lib/types/tactical/domain-hierarchy';
+import {
+  type BoundaryBox,
+  getDefaultBoundaryBoxForAspect,
+} from '@/lib/types/tactical/slide';
 import type {
   AspectRatio,
   PitchAppearanceConfig,
-  Slide,
 } from '@/lib/types/tactical-unified';
 
 export interface SceneCanvasThumbnailProps {
-  slide: Slide;
+  slide: DomainSlide;
   width?: number;
   height?: number;
   aspectRatio?: AspectRatio;
+  boundaryBox?: BoundaryBox;
   pitchAppearance?: PitchAppearanceConfig;
   className?: string;
 }
@@ -42,20 +50,24 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
   width = 120,
   height: propHeight,
   aspectRatio = '16:9',
+  boundaryBox: propBoundaryBox,
   pitchAppearance,
   className,
 }: SceneCanvasThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dims = calculateDimensions(width, propHeight, aspectRatio);
 
-  const phase = useMemo(
-    () =>
-      normalizePhases({
-        slides: [slide],
-        aspectRatio,
-        boundaryBox: slide.boundaryBox,
-      })[0],
-    [slide, aspectRatio],
+  const phase: DomainTacticalPhase = useMemo(
+    () => ({
+      id: 'thumbnail-phase',
+      name: 'Thumbnail',
+      aspectRatio,
+      boundaryBox:
+        propBoundaryBox ?? getDefaultBoundaryBoxForAspect(aspectRatio),
+      backgroundType: 'pitch',
+      slides: [slide],
+    }),
+    [slide, aspectRatio, propBoundaryBox],
   );
 
   useEffect(() => {
@@ -74,19 +86,17 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
 
     ctx.save();
     ctx.scale(dpr, dpr);
-    renderTacticalFrameToCanvas(ctx, {
-      slides: [slide],
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
       phase,
-      timeMs: 0,
+      timeMs: toMilliseconds(0),
       width: dims.width,
       height: dims.height,
-      aspectRatio,
-      boundaryBox: slide.boundaryBox,
       pitchAppearance,
       applyEffects: false,
     });
     ctx.restore();
-  }, [slide, phase, dims.width, dims.height, aspectRatio, pitchAppearance]);
+  }, [phase, dims.width, dims.height, pitchAppearance]);
 
   return (
     <canvas
