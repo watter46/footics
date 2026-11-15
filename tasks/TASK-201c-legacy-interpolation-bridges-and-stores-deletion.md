@@ -1,6 +1,6 @@
 # TASK-201c: 旧ストア (`TacticalUnifiedStore` / `*-slice`)・旧補間・旧ブリッジの完全物理削除 & Wave F 最終検証
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Assign**: `worker`
 - **Commit**: `chore(tactical): delete legacy TacticalUnifiedStore, slices, bridges, interpolation modules, and obsolete store tests`
 - **Execution Waves**:
