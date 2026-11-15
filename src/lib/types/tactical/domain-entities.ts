@@ -1,13 +1,10 @@
 import { z } from 'zod';
 import {
-  ArrowEffectConfigSchema,
-  ZoneEffectConfigSchema,
-} from '@/lib/types/tactical/annotations';
-import {
   ScreenNormCoordSchema,
   ScreenNormPointSchema,
 } from '@/lib/types/tactical/branded';
 import {
+  ArrowEffectConfigSchema,
   ConnectLineSchema,
   MarkerEffectConfigSchema,
   MarkerStyleSchema,
@@ -15,7 +12,8 @@ import {
   PlayerFocusSchema,
   PlayerTrajectoryEffectConfigSchema,
   VisionConeSchema,
-} from '@/lib/types/tactical/player';
+  ZoneEffectConfigSchema,
+} from '@/lib/types/tactical/effect-config';
 
 // (a) Player 直和型: PitchPlayer | BenchPlayer
 const BasePlayerFields = {

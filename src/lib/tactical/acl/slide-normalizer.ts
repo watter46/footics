@@ -2,11 +2,11 @@ import type {
   DomainSlide,
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import {
   type BoundaryBox,
   getDefaultBoundaryBoxForAspect,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import {
   normalizeArrows,
   normalizeBall,

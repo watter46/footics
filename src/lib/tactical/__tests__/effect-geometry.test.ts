@@ -3,9 +3,9 @@ import { computeArrowDimensions } from '@/features/tactical-unified/core/compone
 import { getWavyPoints } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
 import type {
   ArrowEffectConfig,
+  MarkerEffectConfig,
   ZoneEffectConfig,
-} from '@/lib/types/tactical/annotations';
-import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
+} from '@/lib/types/tactical/effect-config';
 import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 import {
   computeArrowEffectState,

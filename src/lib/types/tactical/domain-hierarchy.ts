@@ -2,27 +2,27 @@ import { z } from 'zod';
 import { FORMATION_LIST } from '@/lib/data/formations';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import {
+  CameraTransitionModeSchema,
+  DirectorCameraTrackSchema,
+  EasingSchema,
+  PitchTransformSchema,
+} from '@/lib/types/tactical/camera-config';
+import {
   DomainArrowAnnotationSchema,
   DomainBallStateSchema,
   DomainPlayerSchema,
   DomainTextAnnotationSchema,
   DomainZoneAnnotationSchema,
 } from '@/lib/types/tactical/domain-entities';
-import { AspectRatioSchema } from '@/lib/types/tactical/primitives';
-import {
-  DirectorCameraTrackSchema,
-  TeamColorSchema,
-} from '@/lib/types/tactical/project';
 import {
   BoundaryBoxSchema,
-  CameraTransitionModeSchema,
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
-  EasingSchema,
   PitchAppearanceConfigSchema,
-  PitchTransformSchema,
   ScreenBackgroundConfigSchema,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import { AspectRatioSchema } from '@/lib/types/tactical/primitives';
+import { TeamColorSchema } from '@/lib/types/tactical/project-config';
 
 export const DomainSlideSchema = z
   .object({

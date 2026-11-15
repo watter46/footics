@@ -1,33 +1,25 @@
 import { z } from 'zod';
+import {
+  ArrowEffectConfigSchema,
+  ZoneEffectConfigSchema,
+} from './effect-config';
+
+export {
+  type ArrowEffectConfig,
+  ArrowEffectConfigSchema,
+  type ArrowEffectType,
+  ArrowEffectTypeSchema,
+  type EffectEasing,
+  EffectEasingSchema,
+  type EffectExitAction,
+  EffectExitActionSchema,
+  type ZoneEffectConfig,
+  ZoneEffectConfigSchema,
+} from './effect-config';
 
 // ─────────────────────────────────────────
 // § 6. フリーアノテーション群
 // ─────────────────────────────────────────
-
-export const ArrowEffectTypeSchema = z.enum([
-  'none',
-  'grow',
-  'flow',
-  'grow-and-flow',
-]);
-export type ArrowEffectType = z.infer<typeof ArrowEffectTypeSchema>;
-
-export const EffectEasingSchema = z.enum(['linear', 'ease-out', 'ease-in-out']);
-export type EffectEasing = z.infer<typeof EffectEasingSchema>;
-
-export const EffectExitActionSchema = z.enum(['keep', 'auto-hide']);
-export type EffectExitAction = z.infer<typeof EffectExitActionSchema>;
-
-export const ArrowEffectConfigSchema = z.object({
-  type: ArrowEffectTypeSchema.default('none'),
-  delay: z.number().min(0).max(10).default(0.5),
-  duration: z.number().min(0.1).max(10).default(0.8),
-  holdDuration: z.number().min(0).max(10).default(0.5),
-  exitAction: EffectExitActionSchema.default('keep'),
-  fadeDuration: z.number().min(0).max(10).default(0.3),
-  easing: EffectEasingSchema.default('ease-out'),
-});
-export type ArrowEffectConfig = z.infer<typeof ArrowEffectConfigSchema>;
 
 export const ArrowAnnotationSchema = z.object({
   id: z.string(),
@@ -64,14 +56,6 @@ export const ArrowAnnotationSchema = z.object({
 });
 export type ArrowAnnotation = z.infer<typeof ArrowAnnotationSchema>;
 export type Arrow = ArrowAnnotation;
-
-export const ZoneEffectConfigSchema = z.object({
-  type: z.enum(['none', 'pulse']).default('none'),
-  duration: z.number().min(0.1).max(10).default(1.2),
-  minOpacity: z.number().min(0).max(1).default(0.15),
-  maxOpacity: z.number().min(0).max(1).default(0.45),
-});
-export type ZoneEffectConfig = z.infer<typeof ZoneEffectConfigSchema>;
 
 export const ZoneAnnotationSchema = z.object({
   id: z.string(),

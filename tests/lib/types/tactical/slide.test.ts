@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_BOUNDARY_BOX,
   DEFAULT_BOUNDARY_BOX_16_9,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 
 describe('tactical slide boundary box defaults', () => {
   it('DEFAULT_BOUNDARY_BOX is unified to DEFAULT_BOUNDARY_BOX_16_9', () => {

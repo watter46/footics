@@ -4,7 +4,7 @@ import type {
   DomainPlayer,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
-import type { MarkerStyle } from '@/lib/types/tactical/player';
+import type { MarkerStyle } from '@/lib/types/tactical/effect-config';
 
 function normalizeMarkerStyle(
   rawStyle: unknown,

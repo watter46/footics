@@ -1,9 +1,9 @@
 import type {
   ArrowEffectConfig,
   EffectEasing,
+  MarkerEffectConfig,
   ZoneEffectConfig,
-} from '@/lib/types/tactical/annotations';
-import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
+} from '@/lib/types/tactical/effect-config';
 import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 
 export interface ArrowEffectState {

@@ -4,7 +4,7 @@ import {
   type StagePixelPoint,
   toStagePixel,
 } from '@/lib/types/tactical/branded';
-import type { PitchTransform } from '@/lib/types/tactical/slide';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 export const REFERENCE_STAGE_HEIGHT = 360;

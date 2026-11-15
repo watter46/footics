@@ -9,9 +9,9 @@ import {
   type StagePixelPoint,
   toScreenNormPoint,
 } from '@/lib/types/tactical/branded';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { compileArrows, compileConnectLines } from './compile-arrows';
 import {
   compileBillboardItems,

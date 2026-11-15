@@ -3,7 +3,7 @@ import { DomainTacticalProjectSchema } from '@/lib/types/tactical/domain-hierarc
 import {
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { normalizePhases } from './slide-normalizer';
 
 export interface NormalizedProjectBundle {

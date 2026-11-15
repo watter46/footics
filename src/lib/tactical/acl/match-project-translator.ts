@@ -17,17 +17,17 @@ import {
   type DomainTacticalProject,
   DomainTacticalProjectSchema,
 } from '@/lib/types/tactical/domain-hierarchy';
-import type { MarkerStyle } from '@/lib/types/tactical/player';
+import type { MarkerStyle } from '@/lib/types/tactical/effect-config';
+import {
+  DEFAULT_PITCH_APPEARANCE,
+  DEFAULT_SCREEN_BACKGROUND,
+  getDefaultBoundaryBoxForAspect,
+} from '@/lib/types/tactical/pitch-config';
 import {
   type AspectRatio,
   isVerticalAspectRatio,
   transformCoord,
 } from '@/lib/types/tactical/primitives';
-import {
-  DEFAULT_PITCH_APPEARANCE,
-  DEFAULT_SCREEN_BACKGROUND,
-  getDefaultBoundaryBoxForAspect,
-} from '@/lib/types/tactical/slide';
 import type { Match, Player, Team } from '@/types';
 
 interface MatchSquadItem extends Omit<Partial<Player>, 'position'> {
