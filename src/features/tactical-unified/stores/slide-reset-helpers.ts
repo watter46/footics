@@ -12,7 +12,7 @@ import {
   type TacticalProject,
   transformCoord,
 } from '@/lib/types/tactical-unified';
-import type { SelectedObject } from './tool-slice';
+import type { SelectedObject } from './session-ui-state';
 
 export function fitProjectPlayers(
   project: TacticalProject,

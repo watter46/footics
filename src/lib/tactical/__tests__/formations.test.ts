@@ -4,19 +4,21 @@ import {
   getFormationActualPos,
   getFormationActualPosVertical,
   getHalfCourtPitchPos,
-  PITCH_BOUNDS_9_16,
-  PITCH_BOUNDS_16_9,
 } from '../../data/formations';
 import { FORMATION_POSITIONS } from '../../data/formations-data';
 import {
   DEFAULT_442_POSITIONS,
   parseWhoScoredFormationName,
 } from '../formations';
+import { getScreenPitchBounds } from '../pitch-geometry';
 import {
   getPositionGroup,
   getSideScore,
   normalizePosition,
 } from '../player-formatting';
+
+const BOUNDS_16_9 = getScreenPitchBounds('16:9');
+const BOUNDS_4_5 = getScreenPitchBounds('4:5');
 
 describe('formations', () => {
   describe('parseWhoScoredFormationName', () => {
@@ -71,7 +73,7 @@ describe('formations', () => {
     it('places GK safely inside 6-yard box and pitch bounds (around 11.2%)', () => {
       const gkX = getHalfCourtPitchPos(10, 'home');
       // Left goal line is at 7.8125%, 6-yard box is at 12.23%
-      expect(gkX).toBeGreaterThan(PITCH_BOUNDS_16_9.xMin);
+      expect(gkX).toBeGreaterThan(BOUNDS_16_9.xMin);
       expect(gkX).toBeLessThan(12.5);
       expect(gkX).toBeCloseTo(11.19, 1);
     });
@@ -83,7 +85,7 @@ describe('formations', () => {
 
     it('places deepest FW safely before halfway line (under 50%)', () => {
       const fwX = getHalfCourtPitchPos(90, 'home');
-      expect(fwX).toBeLessThan(PITCH_BOUNDS_16_9.xMid);
+      expect(fwX).toBeLessThan(BOUNDS_16_9.xMid);
       expect(fwX).toBeCloseTo(46.96, 1);
     });
 
@@ -91,7 +93,7 @@ describe('formations', () => {
       const homeGkX = getHalfCourtPitchPos(10, 'home');
       const awayGkX = getHalfCourtPitchPos(10, 'away');
       expect(awayGkX).toBeCloseTo(100 - homeGkX, 4);
-      expect(awayGkX).toBeLessThan(PITCH_BOUNDS_16_9.xMax);
+      expect(awayGkX).toBeLessThan(BOUNDS_16_9.xMax);
     });
   });
 
@@ -119,14 +121,14 @@ describe('formations', () => {
         // Home team
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPos(pos, 'home', 'full');
-          expect(actual.x).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMin);
-          expect(actual.x).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMax);
-          expect(actual.y).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.yMin);
-          expect(actual.y).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.yMax);
+          expect(actual.x).toBeGreaterThanOrEqual(BOUNDS_16_9.xMin);
+          expect(actual.x).toBeLessThanOrEqual(BOUNDS_16_9.xMax);
+          expect(actual.y).toBeGreaterThanOrEqual(BOUNDS_16_9.yMin);
+          expect(actual.y).toBeLessThanOrEqual(BOUNDS_16_9.yMax);
 
           if (idx === 0) {
             // GK should be inside penalty area [7.81%, 21.07%]
-            expect(actual.x).toBeGreaterThan(PITCH_BOUNDS_16_9.xMin);
+            expect(actual.x).toBeGreaterThan(BOUNDS_16_9.xMin);
             expect(actual.x).toBeLessThanOrEqual(22.0);
           }
         });
@@ -134,15 +136,15 @@ describe('formations', () => {
         // Away team
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPos(pos, 'away', 'full');
-          expect(actual.x).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMin);
-          expect(actual.x).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMax);
-          expect(actual.y).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.yMin);
-          expect(actual.y).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.yMax);
+          expect(actual.x).toBeGreaterThanOrEqual(BOUNDS_16_9.xMin);
+          expect(actual.x).toBeLessThanOrEqual(BOUNDS_16_9.xMax);
+          expect(actual.y).toBeGreaterThanOrEqual(BOUNDS_16_9.yMin);
+          expect(actual.y).toBeLessThanOrEqual(BOUNDS_16_9.yMax);
 
           if (idx === 0) {
             // Away GK should be inside away penalty area [78.93%, 92.19%]
             expect(actual.x).toBeGreaterThanOrEqual(78.0);
-            expect(actual.x).toBeLessThan(PITCH_BOUNDS_16_9.xMax);
+            expect(actual.x).toBeLessThan(BOUNDS_16_9.xMax);
           }
         });
       }
@@ -152,30 +154,30 @@ describe('formations', () => {
       for (const formation of FORMATION_LIST) {
         const positions = FORMATION_POSITIONS[formation];
 
-        // Home team: must be inside home half [PITCH_BOUNDS_16_9.xMin, 50.0]
+        // Home team: must be inside home half [BOUNDS_16_9.xMin, 50.0]
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPos(pos, 'home', 'half');
           expect(
             actual.x,
             `${formation} Home player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_16_9.xMin);
           expect(
             actual.x,
             `${formation} Home player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMid);
+          ).toBeLessThanOrEqual(BOUNDS_16_9.xMid);
           expect(
             actual.y,
             `${formation} Home player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.yMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_16_9.yMin);
           expect(
             actual.y,
             `${formation} Home player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.yMax);
+          ).toBeLessThanOrEqual(BOUNDS_16_9.yMax);
 
           if (idx === 0) {
-            // GK in safe 6-yard box zone [PITCH_BOUNDS_16_9.xMin, 12.5%]
+            // GK in safe 6-yard box zone [BOUNDS_16_9.xMin, 12.5%]
             expect(actual.x, `${formation} Home GK x`).toBeGreaterThan(
-              PITCH_BOUNDS_16_9.xMin,
+              BOUNDS_16_9.xMin,
             );
             expect(actual.x, `${formation} Home GK x`).toBeLessThanOrEqual(
               12.5,
@@ -183,33 +185,33 @@ describe('formations', () => {
           }
         });
 
-        // Away team: must be inside away half [50.0, PITCH_BOUNDS_16_9.xMax]
+        // Away team: must be inside away half [50.0, BOUNDS_16_9.xMax]
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPos(pos, 'away', 'half');
           expect(
             actual.x,
             `${formation} Away player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMid);
+          ).toBeGreaterThanOrEqual(BOUNDS_16_9.xMid);
           expect(
             actual.x,
             `${formation} Away player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMax);
+          ).toBeLessThanOrEqual(BOUNDS_16_9.xMax);
           expect(
             actual.y,
             `${formation} Away player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.yMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_16_9.yMin);
           expect(
             actual.y,
             `${formation} Away player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.yMax);
+          ).toBeLessThanOrEqual(BOUNDS_16_9.yMax);
 
           if (idx === 0) {
-            // Away GK in safe 6-yard box zone [87.5%, PITCH_BOUNDS_16_9.xMax]
+            // Away GK in safe 6-yard box zone [87.5%, BOUNDS_16_9.xMax]
             expect(actual.x, `${formation} Away GK x`).toBeGreaterThanOrEqual(
               87.5,
             );
             expect(actual.x, `${formation} Away GK x`).toBeLessThan(
-              PITCH_BOUNDS_16_9.xMax,
+              BOUNDS_16_9.xMax,
             );
           }
         });
@@ -220,25 +222,25 @@ describe('formations', () => {
       for (const formation of FORMATION_LIST) {
         const positions = FORMATION_POSITIONS[formation];
 
-        // Home team: defending bottom y in [50.0, PITCH_BOUNDS_9_16.yMax]
+        // Home team: defending bottom y in [50.0, BOUNDS_4_5.yMax]
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPosVertical(pos, 'home', 'half');
           expect(
             actual.y,
             `${formation} Vertical Home player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMid);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMid);
           expect(
             actual.y,
             `${formation} Vertical Home player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.yMax);
           expect(
             actual.x,
             `${formation} Vertical Home player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.xMin);
           expect(
             actual.x,
             `${formation} Vertical Home player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.xMax);
 
           if (idx === 0) {
             // Home GK near bottom goal
@@ -248,36 +250,36 @@ describe('formations', () => {
             expect(
               actual.y,
               `${formation} Vertical Home GK y`,
-            ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+            ).toBeLessThanOrEqual(BOUNDS_4_5.yMax);
           }
         });
 
-        // Away team: defending top y in [PITCH_BOUNDS_9_16.yMin, 50.0]
+        // Away team: defending top y in [BOUNDS_4_5.yMin, 50.0]
         positions.forEach((pos, idx) => {
           const actual = getFormationActualPosVertical(pos, 'away', 'half');
           expect(
             actual.y,
             `${formation} Vertical Away player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMin);
           expect(
             actual.y,
             `${formation} Vertical Away player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMid);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.yMid);
           expect(
             actual.x,
             `${formation} Vertical Away player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.xMin);
           expect(
             actual.x,
             `${formation} Vertical Away player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.xMax);
 
           if (idx === 0) {
             // Away GK near top goal
             expect(
               actual.y,
               `${formation} Vertical Away GK y`,
-            ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+            ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMin);
             expect(actual.y, `${formation} Vertical Away GK y`).toBeLessThan(
               12.5,
             );
@@ -296,19 +298,19 @@ describe('formations', () => {
           expect(
             actual.y,
             `${formation} Vertical Full Home player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMin);
           expect(
             actual.y,
             `${formation} Vertical Full Home player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.yMax);
           expect(
             actual.x,
             `${formation} Vertical Full Home player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.xMin);
           expect(
             actual.x,
             `${formation} Vertical Full Home player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.xMax);
 
           if (idx === 0) {
             // Home GK near bottom goal line (y > 80)
@@ -319,7 +321,7 @@ describe('formations', () => {
             expect(
               actual.y,
               `${formation} Vertical Full Home GK y`,
-            ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+            ).toBeLessThanOrEqual(BOUNDS_4_5.yMax);
           }
         });
 
@@ -329,26 +331,26 @@ describe('formations', () => {
           expect(
             actual.y,
             `${formation} Vertical Full Away player ${idx} y`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMin);
           expect(
             actual.y,
             `${formation} Vertical Full Away player ${idx} y`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.yMax);
           expect(
             actual.x,
             `${formation} Vertical Full Away player ${idx} x`,
-          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          ).toBeGreaterThanOrEqual(BOUNDS_4_5.xMin);
           expect(
             actual.x,
             `${formation} Vertical Full Away player ${idx} x`,
-          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+          ).toBeLessThanOrEqual(BOUNDS_4_5.xMax);
 
           if (idx === 0) {
             // Away GK near top goal line (y < 20)
             expect(
               actual.y,
               `${formation} Vertical Full Away GK y`,
-            ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+            ).toBeGreaterThanOrEqual(BOUNDS_4_5.yMin);
             expect(
               actual.y,
               `${formation} Vertical Full Away GK y`,
@@ -366,24 +368,24 @@ describe('formations', () => {
       expect(rbPos).toBeDefined();
 
       if (lbPos && rbPos) {
-        // Home LB is on screen left (x < 30) and defending side (y > 50)
+        // Home LB is on screen left (x < 40) and defending side (y > 50)
         const homeLb = getFormationActualPosVertical(lbPos, 'home', 'full');
-        expect(homeLb.x).toBeLessThan(30);
+        expect(homeLb.x).toBeLessThan(40);
         expect(homeLb.y).toBeGreaterThan(50);
 
-        // Home RB is on screen right (x > 70) and defending side (y > 50)
+        // Home RB is on screen right (x > 60) and defending side (y > 50)
         const homeRb = getFormationActualPosVertical(rbPos, 'home', 'full');
-        expect(homeRb.x).toBeGreaterThan(70);
+        expect(homeRb.x).toBeGreaterThan(60);
         expect(homeRb.y).toBeGreaterThan(50);
 
-        // Away LB (from team perspective) is on screen right (x > 70) and defending side (y < 50)
+        // Away LB (from team perspective) is on screen right (x > 60) and defending side (y < 50)
         const awayLb = getFormationActualPosVertical(lbPos, 'away', 'full');
-        expect(awayLb.x).toBeGreaterThan(70);
+        expect(awayLb.x).toBeGreaterThan(60);
         expect(awayLb.y).toBeLessThan(50);
 
-        // Away RB (from team perspective) is on screen left (x < 30) and defending side (y < 50)
+        // Away RB (from team perspective) is on screen left (x < 40) and defending side (y < 50)
         const awayRb = getFormationActualPosVertical(rbPos, 'away', 'full');
-        expect(awayRb.x).toBeLessThan(30);
+        expect(awayRb.x).toBeLessThan(40);
         expect(awayRb.y).toBeLessThan(50);
       }
     });
@@ -393,21 +395,21 @@ describe('formations', () => {
       expect(DEFAULT_442_POSITIONS.away.length).toBe(11);
 
       // Home GK inside 6-yard box
-      expect(DEFAULT_442_POSITIONS.home[0].x).toBeCloseTo(11.19, 1);
+      expect(DEFAULT_442_POSITIONS.home[0].x).toBeCloseTo(7.7, 1);
       expect(DEFAULT_442_POSITIONS.home[0].y).toBeCloseTo(50.0, 1);
 
       // Away GK inside 6-yard box
-      expect(DEFAULT_442_POSITIONS.away[0].x).toBeCloseTo(88.81, 1);
+      expect(DEFAULT_442_POSITIONS.away[0].x).toBeCloseTo(92.3, 1);
       expect(DEFAULT_442_POSITIONS.away[0].y).toBeCloseTo(50.0, 1);
 
       DEFAULT_442_POSITIONS.home.forEach((pos) => {
-        expect(pos.x).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMin);
-        expect(pos.x).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMid);
+        expect(pos.x).toBeGreaterThanOrEqual(BOUNDS_16_9.xMin);
+        expect(pos.x).toBeLessThanOrEqual(BOUNDS_16_9.xMid);
       });
 
       DEFAULT_442_POSITIONS.away.forEach((pos) => {
-        expect(pos.x).toBeGreaterThanOrEqual(PITCH_BOUNDS_16_9.xMid);
-        expect(pos.x).toBeLessThanOrEqual(PITCH_BOUNDS_16_9.xMax);
+        expect(pos.x).toBeGreaterThanOrEqual(BOUNDS_16_9.xMid);
+        expect(pos.x).toBeLessThanOrEqual(BOUNDS_16_9.xMax);
       });
     });
   });

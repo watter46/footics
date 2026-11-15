@@ -12,6 +12,7 @@ import {
   type ScreenNormPoint,
   type StagePixelPoint,
   toScreenNormPoint,
+  toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import {
@@ -74,11 +75,12 @@ export function compileBillboardItems(
     const effNormY = isDragged ? player.y + dragDy : player.y;
     const screenNormPos = toScreenNormPoint(effNormX, effNormY, false);
     const rawPosPx = screenNormToStagePixel(screenNormPos, viewport);
-    const positionPx = projectStagePixelWithPitchTransform(
+    const projectedPos = projectStagePixelWithPitchTransform(
       rawPosPx,
       viewport,
       pitchTransform,
     );
+    const positionPx = toStagePixelPoint(projectedPos.x, projectedPos.y);
 
     const radiusPx = computePlayerRadiusPx(
       viewport,
@@ -176,11 +178,12 @@ export function compileBillboardItems(
     toScreenNormPoint(effBallNormX, effBallNormY, false),
     viewport,
   );
-  const ballPos = projectStagePixelWithPitchTransform(
+  const projectedBall = projectStagePixelWithPitchTransform(
     rawBallPos,
     viewport,
     pitchTransform,
   );
+  const ballPos = toStagePixelPoint(projectedBall.x, projectedBall.y);
   const ballRadiusPx = computeBallRadiusPx(
     viewport,
     frame.slide.ball.sizeScale,
@@ -207,11 +210,12 @@ export function compileBillboardItems(
         toScreenNormPoint(effNormX, effNormY, false),
         viewport,
       );
-      const textPos = projectStagePixelWithPitchTransform(
+      const projectedText = projectStagePixelWithPitchTransform(
         rawTextPos,
         viewport,
         pitchTransform,
       );
+      const textPos = toStagePixelPoint(projectedText.x, projectedText.y);
       const depthSortKey = computeBillboardDepthKey(textPos, 'text', tiltDeg);
       const fontSizePx = Math.max(8, Math.round(text.fontSize * scale));
 

@@ -176,11 +176,16 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   // isPlaying が外部から切り替えられた場合の同期
   useEffect(() => {
     if (isPlaying && rafIdRef.current === null) {
+      const currentTime = playbackStore.getState().timeMs;
+      const total = totalDurationRef.current;
+      if (total > 0 && currentTime >= total) {
+        playbackStore.getState().setTimeMs(toMilliseconds(0));
+      }
       startAnimationLoop();
     } else if (!isPlaying && rafIdRef.current !== null) {
       stopAnimationLoop();
     }
-  }, [isPlaying, startAnimationLoop, stopAnimationLoop]);
+  }, [isPlaying, playbackStore, startAnimationLoop, stopAnimationLoop]);
 
   // RAII: アンマウント時のクリーンアップ
   useEffect(() => {

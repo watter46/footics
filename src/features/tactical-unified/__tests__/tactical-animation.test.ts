@@ -337,6 +337,59 @@ describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
 
       vi.unstubAllGlobals();
     });
+
+    it('終端 (timeMs >= totalDurationMs) 到達後に playbackStore.togglePlayback() で再再生したとき timeMs が 0 にリセットされて再生が継続すること', () => {
+      const callbacks: FrameRequestCallback[] = [];
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        callbacks.push(cb);
+        return callbacks.length;
+      });
+      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+      const project = createTestProject();
+      const docStore = createDocumentStore(project);
+      const sessStore = createSessionStore({
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+      });
+      const playStore = createPlaybackStore();
+      playStore.getState().setTimeMs(toMilliseconds(1500));
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        React.createElement(
+          TacticalStoreProvider,
+          {
+            stores: {
+              documentStore: docStore,
+              sessionStore: sessStore,
+              playbackStore: playStore,
+            },
+          },
+          children,
+        );
+
+      renderHook(() => useTacticalAnimation(), { wrapper });
+
+      act(() => {
+        playStore.getState().togglePlayback();
+      });
+
+      expect(playStore.getState().isPlaying).toBe(true);
+      expect(playStore.getState().timeMs).toBe(0);
+
+      // 1フレーム目・2フレーム目を進めても即座に pause されず再生が継続すること
+      act(() => {
+        callbacks.shift()?.(1000);
+      });
+      act(() => {
+        callbacks.shift()?.(1250);
+      });
+
+      expect(playStore.getState().isPlaying).toBe(true);
+      expect(playStore.getState().timeMs).toBe(250);
+
+      vi.unstubAllGlobals();
+    });
   });
 
   describe('useResolvedSceneGraph hook', () => {

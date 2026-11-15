@@ -27,7 +27,7 @@ import {
   calculateUnifiedTotalDuration,
   type ResolveSyntheticDirectorCameraOptions,
 } from '../engine/director-camera';
-import { matchSlidePlayers } from '../interpolation-player';
+import { matchSlidePlayers } from '../engine/player-matching';
 import {
   preloadMarbleTextureBitmap,
   preloadSlidePlayerPhotos,

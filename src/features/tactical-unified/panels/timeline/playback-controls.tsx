@@ -13,7 +13,7 @@ import {
   usePlaybackStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
+import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/director-camera';
 
 export function PlaybackControls() {
   useTacticalAnimation();

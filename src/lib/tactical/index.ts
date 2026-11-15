@@ -1,6 +1,7 @@
 export * from './coordinates';
 export * from './easing';
 export * from './export/tactical-video-exporter';
+export { matchSlidePlayers } from './export/tactical-video-exporter';
 export * from './formations';
 export * from './image-utils';
 export * from './initial-mapping';

@@ -187,9 +187,9 @@ describe('player-formatting', () => {
       expect(getPositionBadgeClass('ST')).toContain('rose');
     });
 
-    it('returns slate styling for OTHER', () => {
-      expect(getPositionBadgeClass('SUB')).toContain('slate');
-      expect(getBadgeClassHelper('SUB')).toContain('slate');
+    it('returns neutral styling for OTHER', () => {
+      expect(getPositionBadgeClass('SUB')).toContain('bg-[#222226]');
+      expect(getBadgeClassHelper('SUB')).toContain('bg-[#222226]');
       expect(POSITION_GROUPS).toContain('GK');
       expect(POSITION_GROUP_LABELS.GK).toBe('Goalkeepers');
     });
