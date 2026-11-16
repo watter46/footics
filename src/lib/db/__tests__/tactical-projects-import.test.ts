@@ -5,10 +5,7 @@ import {
   importTacticalProjectFromJson,
   sanitizeTacticalProjectForImport,
 } from '@/lib/db/tactical-projects-import';
-import {
-  createDefaultProject,
-  type TacticalProject,
-} from '@/lib/types/tactical-unified';
+import { createDefaultProject } from '@/lib/types/tactical-unified';
 
 describe('tactical-projects-import', () => {
   beforeEach(async () => {
@@ -105,7 +102,7 @@ describe('tactical-projects-import', () => {
     it('successfully imports project with text between 200 and 10000 characters', async () => {
       const baseProject = createDefaultProject('test-project-1');
       const longText = 'Tactical note: '.repeat(50); // ~750 characters (> 200)
-      const project: TacticalProject = {
+      const project = {
         ...baseProject,
         phases: [
           {
@@ -140,8 +137,8 @@ describe('tactical-projects-import', () => {
       expect(imported.id).toBeDefined();
       expect(imported.id).not.toBe(baseProject.id);
       expect(imported.phases[0].slides[0].texts[0].content).toBe(longText);
-      expect(imported.slides).toBeDefined();
-      expect(imported.slides.length).toBeGreaterThan(0);
+      expect(imported.phases[0].slides).toBeDefined();
+      expect(imported.phases[0].slides.length).toBeGreaterThan(0);
     });
 
     it('truncates overlong text (> 10000 characters) and imports successfully', async () => {
@@ -180,7 +177,7 @@ describe('tactical-projects-import', () => {
       const imported = await importTacticalProjectFromJson(file);
 
       expect(imported.phases[0].slides[0].texts[0].content.length).toBe(10000);
-      expect(imported.slides.length).toBeGreaterThan(0);
+      expect(imported.phases[0].slides.length).toBeGreaterThan(0);
     });
 
     it('throws formatted error with detailed issue paths when project schema is invalid', async () => {
@@ -276,7 +273,7 @@ describe('tactical-projects-import', () => {
       expect(
         'connectLines' in (benchPlayer as unknown as Record<string, unknown>),
       ).toBe(false);
-      expect(imported.slides).toBeDefined();
+      expect(imported.phases[0].slides).toBeDefined();
     });
 
     it('successfully imports v3.0.0 format JSON', async () => {
@@ -334,7 +331,7 @@ describe('tactical-projects-import', () => {
 
       expect(imported.phases[0].aspectRatio).toBe('4:5');
       expect(imported.phases[0].slides[0].arrows[0].endMarker).toBe('dot');
-      expect(imported.slides).toBeDefined();
+      expect(imported.phases[0].slides).toBeDefined();
     });
   });
 
@@ -353,7 +350,7 @@ describe('tactical-projects-import', () => {
       const result = await importMultipleTacticalProjects([file1, file2]);
       expect(result.errors).toEqual([]);
       expect(result.imported.length).toBe(2);
-      expect(result.imported[0].slides.length).toBeGreaterThan(0);
+      expect(result.imported[0].phases[0].slides.length).toBeGreaterThan(0);
     });
 
     it('collects detailed error path when JSON file in batch is invalid', async () => {

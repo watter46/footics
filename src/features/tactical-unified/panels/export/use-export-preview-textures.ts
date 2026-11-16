@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { PitchAppearanceConfig, Slide } from '@/lib/types/tactical/slide';
+import type { PitchAppearanceConfig } from '@/lib/types/tactical/pitch-config';
 import { getCachedMarbleImage, loadMarbleTexture } from './load-marble-texture';
 
 export interface UseExportPreviewTexturesParams {
-  slides: readonly (Slide | DomainSlide)[];
+  slides: readonly DomainSlide[];
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;

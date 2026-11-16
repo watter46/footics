@@ -1,9 +1,11 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import type { EffectExitAction } from '@/lib/types/tactical/annotations';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
-import type { PlayerTrajectoryEffectConfig } from '@/lib/types/tactical/player';
+import type {
+  EffectExitAction,
+  PlayerTrajectoryEffectConfig,
+} from '@/lib/types/tactical/effect-config';
 
 export const DEFAULT_PLAYER_TRAJECTORY_EFFECT: PlayerTrajectoryEffectConfig = {
   enabled: false,

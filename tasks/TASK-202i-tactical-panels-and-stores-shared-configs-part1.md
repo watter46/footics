@@ -1,6 +1,6 @@
 # TASK-202i: Stores / Core Hooks / Export Panels / Timeline / Toolbar の共有設定移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate stores, core hooks, export/timeline/toolbar/left panels to neutral configs`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3, Phase 4

@@ -3,7 +3,6 @@ import {
   CHELSEA_PRESETS_BY_SEASON,
   type Season,
 } from '@/lib/tactical/chelsea-preset';
-import { ensureTacticalProject } from '@/lib/types/tactical-unified';
 import { dispatchRefreshEvent } from './extension-db-queries';
 import { getPlayerPhotosBatch } from './player-photos';
 import { db, type PlayerMaster } from './schema';
@@ -82,12 +81,7 @@ export async function updateTacticalProjectsPlayerIds(
         phases: newPhases,
         updatedAt: new Date().toISOString(),
       });
-      const cleanProject = ensureTacticalProject({
-        ...updatedBundle.project,
-        activePhaseId: bundle.activePhaseId,
-        activeSlideId: bundle.activeSlideId,
-      });
-      await db.tactical_projects.put(cleanProject);
+      await db.tactical_projects.put(updatedBundle.project);
     }
   }
 }

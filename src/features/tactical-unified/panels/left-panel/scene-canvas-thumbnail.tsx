@@ -10,7 +10,7 @@ import type {
 import {
   type BoundaryBox,
   getDefaultBoundaryBoxForAspect,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import type {
   AspectRatio,
   PitchAppearanceConfig,

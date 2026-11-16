@@ -1,17 +1,19 @@
 import type {
+  DirectorCameraTrack,
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
+import type {
   DomainSlide,
   DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import {
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_4_5,
   type PitchAppearanceConfig,
-  type PitchTransform,
   type ScreenBackgroundConfig,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type { SelectedObject, TeamVisibility } from './session-ui-state';
 
 export interface DomainRenderSnapshot {

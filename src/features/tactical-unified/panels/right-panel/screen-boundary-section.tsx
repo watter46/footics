@@ -11,7 +11,7 @@ import {
   type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 
 interface BoundaryPreset {
   id: string;

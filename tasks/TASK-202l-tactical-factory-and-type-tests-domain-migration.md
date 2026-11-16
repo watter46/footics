@@ -1,6 +1,6 @@
 # TASK-202l: `factory.ts` の Domain 型刷新と型・基礎テスト移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate tactical factory to Domain types and update core schema/factory tests`
 - **Execution Waves**:
   - Wave 1 (sequential): Phase 1

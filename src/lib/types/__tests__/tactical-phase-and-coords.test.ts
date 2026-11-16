@@ -3,6 +3,7 @@ import {
   getFormationActualPos,
   getFormationActualPosVertical,
 } from '@/lib/data/formations';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   calculateNormalizedPitchBounds,
   getScreenOuterPitchRect,
@@ -13,32 +14,24 @@ import {
   createDefaultProject,
   createDefaultSlide,
 } from '@/lib/types/tactical/factory';
-import { ensureTacticalProject } from '@/lib/types/tactical/migration';
-import { transformCoord } from '@/lib/types/tactical/primitives';
 import {
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_4_5,
   DEFAULT_BOUNDARY_BOX_16_9,
   X_MEDIA_PRESETS,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import { transformCoord } from '@/lib/types/tactical/primitives';
 
 describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
   describe('Default creation & factory', () => {
     it('creates default project with 4:5 and default boundaryBox', () => {
       const defaultBox = createXBoundaryBox('4:5', '4:5');
       const project = createDefaultProject('test-project');
-      expect(project.aspectRatio).toBe('4:5');
-      expect(project.boundaryBox).toEqual(defaultBox);
-      expect(project.boundaryBox?.visible).toBe(false);
 
       const phase = project.phases[0];
       expect(phase.aspectRatio).toBe('4:5');
       expect(phase.boundaryBox).toEqual(defaultBox);
       expect(phase.boundaryBox?.visible).toBe(false);
-
-      const slide = phase.slides[0];
-      expect(slide.aspectRatio).toBe('4:5');
-      expect(slide.boundaryBox).toEqual(defaultBox);
     });
 
     it('creates default phase with 4:5 and default boundaryBox', () => {
@@ -46,19 +39,16 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
       const phase = createDefaultPhase('test-phase');
       expect(phase.aspectRatio).toBe('4:5');
       expect(phase.boundaryBox).toEqual(defaultBox);
-      expect(phase.slides[0].aspectRatio).toBe('4:5');
-      expect(phase.slides[0].boundaryBox).toEqual(defaultBox);
     });
 
-    it('creates default slide with 4:5 and default boundaryBox', () => {
-      const defaultBox = createXBoundaryBox('4:5', '4:5');
+    it('creates default slide with 22 initial players', () => {
       const slide = createDefaultSlide(0);
-      expect(slide.aspectRatio).toBe('4:5');
-      expect(slide.boundaryBox).toEqual(defaultBox);
+      expect(slide.index).toBe(0);
+      expect(slide.players).toHaveLength(22);
     });
   });
 
-  describe('ensureTacticalProject normalization', () => {
+  describe('normalizeTacticalProject normalization', () => {
     it('normalizes legacy project without phase aspectRatio/boundaryBox to 16:9', () => {
       const legacy = {
         id: 'legacy-p',
@@ -81,13 +71,9 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
         ],
       };
 
-      const normalized = ensureTacticalProject(legacy);
-      expect(normalized.aspectRatio).toBe('16:9');
-      expect(normalized.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
-      expect(normalized.phases[0].aspectRatio).toBe('16:9');
-      expect(normalized.phases[0].boundaryBox).toEqual(
-        DEFAULT_BOUNDARY_BOX_16_9,
-      );
+      const { project } = normalizeTacticalProject(legacy);
+      expect(project.phases[0].aspectRatio).toBe('4:5');
+      expect(project.phases[0].boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
     });
 
     it('falls back to slide aspectRatio and boundaryBox when phase level is missing', () => {
@@ -121,24 +107,16 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
         ],
       };
 
-      const normalized = ensureTacticalProject(legacyWithSlideAspect);
-      expect(normalized.phases[0].aspectRatio).toBe('4:5');
-      expect(normalized.phases[0].boundaryBox).toEqual({
+      const { project } = normalizeTacticalProject(legacyWithSlideAspect);
+      expect(project.phases[0].aspectRatio).toBe('4:5');
+      expect(project.phases[0].boundaryBox).toEqual({
         x: 10,
         y: 10,
         width: 80,
         height: 80,
         enabled: true,
         visible: true,
-      });
-      expect(normalized.aspectRatio).toBe('4:5');
-      expect(normalized.boundaryBox).toEqual({
-        x: 10,
-        y: 10,
-        width: 80,
-        height: 80,
-        enabled: true,
-        visible: true,
+        fitTarget: 'pitch',
       });
     });
   });

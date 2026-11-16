@@ -19,8 +19,8 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { Easing } from '@/lib/types/tactical/camera-config';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { Easing } from '@/lib/types/tactical/slide';
 
 export interface SlideTransitionPopoverProps {
   slide: DomainSlide;

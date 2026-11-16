@@ -1,5 +1,8 @@
 import type { DomainTacticalClipboard } from '@/lib/tactical/domain/clipboard';
-import type { DrawingTool, ExportTarget } from '@/lib/types/tactical/project';
+import type {
+  DrawingTool,
+  ExportTarget,
+} from '@/lib/types/tactical/project-config';
 
 export type { DomainTacticalClipboard, DrawingTool, ExportTarget };
 

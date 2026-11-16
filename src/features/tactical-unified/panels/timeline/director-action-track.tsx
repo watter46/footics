@@ -3,7 +3,7 @@
 import { Trash2 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import type { ActionCameraCue } from '@/lib/types/tactical/project';
+import type { ActionCameraCue } from '@/lib/types/tactical/camera-config';
 
 export function layoutActionCuesIntoLanes(
   cues: ActionCameraCue[],

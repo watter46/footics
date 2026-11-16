@@ -1,6 +1,6 @@
 # TASK-202k: RightPanel 全 12 ファイルの共有設定 import 先を中立モジュールへ統一
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): point all right-panel components to neutral shared config modules`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3

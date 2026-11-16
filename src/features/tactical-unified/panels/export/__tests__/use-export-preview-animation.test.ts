@@ -5,6 +5,11 @@ import { createPlaybackStore } from '@/features/tactical-unified/stores/playback
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as frameRendererModule from '@/lib/tactical/export/tactical-phase-frame-renderer';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
+import {
+  type DomainSlide,
+  DomainSlideSchema,
+} from '@/lib/types/tactical/domain-hierarchy';
 import {
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_1_1,
@@ -12,10 +17,7 @@ import {
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
-  type PitchTransform,
-  type Slide,
-  SlideSchema,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import {
   CINEMATIC_MASK_FILL,
   useExportPreviewAnimation,
@@ -25,7 +27,7 @@ vi.mock('@/lib/tactical/export/tactical-phase-frame-renderer', () => ({
   renderTacticalPhaseFrameToCanvas: vi.fn(),
 }));
 
-const mockSlide1: Slide = SlideSchema.parse({
+const mockSlide1: DomainSlide = DomainSlideSchema.parse({
   id: 'slide-1',
   index: 0,
   transitionDurationMs: 1000,
@@ -37,7 +39,7 @@ const mockSlide1: Slide = SlideSchema.parse({
   ball: { x: 50, y: 50, visible: true },
 });
 
-const mockSlide2: Slide = SlideSchema.parse({
+const mockSlide2: DomainSlide = DomainSlideSchema.parse({
   id: 'slide-2',
   index: 1,
   transitionDurationMs: 1000,
@@ -438,7 +440,7 @@ describe('useExportPreviewAnimation', () => {
       });
     const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame');
 
-    const slideWithEffect: Slide = {
+    const slideWithEffect: DomainSlide = DomainSlideSchema.parse({
       ...mockSlide1,
       arrows: [
         {
@@ -453,7 +455,7 @@ describe('useExportPreviewAnimation', () => {
           color: '#ffffff',
           strokeWidth: 3,
           dashArray: [],
-          arrowHead: true,
+          endMarker: 'arrow',
           effect: {
             type: 'grow',
             duration: 0.8,
@@ -465,7 +467,7 @@ describe('useExportPreviewAnimation', () => {
           },
         },
       ],
-    };
+    });
 
     const { unmount } = renderHook(() =>
       useExportPreviewAnimation({

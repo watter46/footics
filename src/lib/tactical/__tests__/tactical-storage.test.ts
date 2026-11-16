@@ -21,8 +21,10 @@ describe('tactical-storage', () => {
   });
 
   it('saveActiveProjectToDb と loadActiveProjectFromDb でプロジェクトが永続化・復元できる', async () => {
-    const project = createDefaultProject('test-project-1');
-    project.title = 'Saved Tactical Scene';
+    const project = {
+      ...createDefaultProject('test-project-1'),
+      title: 'Saved Tactical Scene',
+    };
 
     await saveActiveProjectToDb(project);
     const loaded = await loadActiveProjectFromDb();
@@ -30,7 +32,7 @@ describe('tactical-storage', () => {
     expect(loaded).toBeDefined();
     expect(loaded?.id).toBe('test-project-1');
     expect(loaded?.title).toBe('Saved Tactical Scene');
-    expect(loaded?.slides).toHaveLength(1);
+    expect(loaded?.phases[0].slides).toHaveLength(1);
   });
 
   it('clearActiveProjectFromDb で保存されたプロジェクトが削除され null になる', async () => {
@@ -57,9 +59,11 @@ describe('tactical-storage', () => {
   });
 
   it('project.matchId を持つプロジェクトを第2引数なしで saveActiveProjectToDb に渡した際、試合専用キーに保存され単独キーを汚染しない', async () => {
-    const project = createDefaultProject('test-project-match');
-    project.matchId = '10';
-    project.title = 'Match 10 Project';
+    const project = {
+      ...createDefaultProject('test-project-match'),
+      matchId: '10',
+      title: 'Match 10 Project',
+    };
 
     await saveActiveProjectToDb(project);
 
@@ -74,8 +78,10 @@ describe('tactical-storage', () => {
   });
 
   it('単独キーに matchId を持つデータが入っている場合、loadActiveProjectFromDb() は null を返す（汚染排除）', async () => {
-    const project = createDefaultProject('test-project-polluted');
-    project.matchId = '10';
+    const project = {
+      ...createDefaultProject('test-project-polluted'),
+      matchId: '10',
+    };
 
     // 強制的に単独キーに書き込む
     await db.keyval.put({

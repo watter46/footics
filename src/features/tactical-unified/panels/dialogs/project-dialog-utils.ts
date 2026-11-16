@@ -12,7 +12,7 @@ import {
   type TacticalProjectSummary,
 } from '@/lib/tactical/tactical-projects-service';
 import { saveActiveProjectToDb } from '@/lib/tactical/tactical-storage';
-import type { TacticalProject } from '@/lib/types/tactical/project';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 
 /** Format ISO date string to localized Japanese format. */
 export function formatProjectDate(isoString: string): string {
@@ -33,7 +33,7 @@ export function formatProjectDate(isoString: string): string {
 export async function fallbackActiveProjectAfterDelete(
   deletedIds: string[],
   currentProjectId: string,
-  loadProject: (p: TacticalProject) => void,
+  loadProject: (p: DomainTacticalProject) => void,
 ): Promise<void> {
   if (!deletedIds.includes(currentProjectId)) return;
 
@@ -124,7 +124,7 @@ export async function renameProjectHelper(
 export async function deleteProjectHelper(
   project: TacticalProjectSummary,
   currentProjectId: string,
-  loadProject: (p: TacticalProject) => void,
+  loadProject: (p: DomainTacticalProject) => void,
   onDeselect: (id: string) => void,
   onRefresh: () => Promise<void>,
 ): Promise<void> {
@@ -150,7 +150,7 @@ export async function deleteProjectHelper(
 export async function bulkDeleteProjectsHelper(
   ids: Set<string>,
   currentProjectId: string,
-  loadProject: (p: TacticalProject) => void,
+  loadProject: (p: DomainTacticalProject) => void,
   onClear: () => void,
   onRefresh: () => Promise<void>,
 ): Promise<void> {

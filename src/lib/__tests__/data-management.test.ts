@@ -10,6 +10,7 @@ import {
   savePlayerPhoto,
 } from '../db/queries';
 import { db } from '../db/schema';
+import { normalizeTacticalProject } from '../tactical/acl/legacy-project-translator';
 import { ensureTacticalProject } from '../types/tactical-unified';
 
 describe('src/lib/data-management', () => {
@@ -110,7 +111,7 @@ describe('src/lib/data-management', () => {
         created_at: 1000,
       });
 
-      const mockProject = ensureTacticalProject({
+      const mockProject = normalizeTacticalProject({
         id: 'proj-1',
         title: 'Project 1',
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -118,7 +119,7 @@ describe('src/lib/data-management', () => {
         aspectRatio: '16:9',
         backgroundType: 'pitch',
         phases: [],
-      });
+      }).project;
       await db.tactical_projects.put(mockProject);
       await db.keyval.put({
         key: 'test-key',

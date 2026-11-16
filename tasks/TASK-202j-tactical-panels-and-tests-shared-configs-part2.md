@@ -1,6 +1,6 @@
 # TASK-202j: Export / LeftPanel / Timeline テスト & SplitPreview の共有設定移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate split-preview and export/timeline/left-panel tests to DomainSlide and neutral configs`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3, Phase 4

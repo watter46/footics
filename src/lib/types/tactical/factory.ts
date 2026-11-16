@@ -1,21 +1,21 @@
-import type { Player } from './player';
-import {
-  type AspectRatio,
-  isVerticalAspectRatio,
-  transformCoord,
-} from './primitives';
-import {
-  attachProjectSlidesGetter,
-  type TacticalPhase,
-  type TacticalProject,
-} from './project';
+import { clampToScreenNorm } from './branded';
+import type { BenchPlayer, PitchPlayer } from './domain-entities';
+import type {
+  DomainSlide,
+  DomainTacticalPhase,
+  DomainTacticalProject,
+} from './domain-hierarchy';
 import {
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
-  type Slide,
-} from './slide';
+} from './pitch-config';
+import {
+  type AspectRatio,
+  isVerticalAspectRatio,
+  transformCoord,
+} from './primitives';
 
 export const DEFAULT_INITIAL_PROJECT_ID =
   '00000000-0000-4000-8000-000000000001';
@@ -39,7 +39,9 @@ function getBenchShirtNumberValue(shirtNo?: string): number {
 }
 
 /** ベンチ選手をポジションと背番号順にソートし、3列グリッド座標を付与した新しい配列を返す */
-export function computeBenchGridPositions(players: Player[]): Player[] {
+export function computeBenchGridPositions(
+  players: readonly BenchPlayer[],
+): BenchPlayer[] {
   const sorted = [...players].sort((a, b) => {
     const rankA = getBenchPositionRank(a.position);
     const rankB = getBenchPositionRank(b.position);
@@ -57,8 +59,8 @@ export function computeBenchGridPositions(players: Player[]): Player[] {
     const row = Math.floor(idx / 3);
     return {
       ...player,
-      x: xPositions[col],
-      y: 14 + row * 22,
+      x: clampToScreenNorm(xPositions[col]),
+      y: clampToScreenNorm(14 + row * 22),
     };
   });
 }
@@ -86,30 +88,32 @@ export function createDefaultInitialPlayers(
   awayColor = '#ef4444',
   aspectRatio: AspectRatio = '4:5',
   deterministic?: boolean,
-): Player[] {
+): PitchPlayer[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
-  const homePlayers: Player[] = DEFAULT_4231_HOME.map((p) => {
+  const homePlayers: PitchPlayer[] = DEFAULT_4231_HOME.map((p) => {
     const rawPos = { x: p.x, y: p.y };
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
     const playerId = deterministic ? `player-home-${p.shirtNo}` : undefined;
-    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor, playerId);
-    pl.shirtNo = p.shirtNo;
-    pl.position = p.position;
-    return pl;
+    return {
+      ...createDefaultPlayer('home', pos.x, pos.y, homeColor, playerId),
+      shirtNo: p.shirtNo,
+      position: p.position,
+    };
   });
 
-  const awayPlayers: Player[] = DEFAULT_442_AWAY.map((p) => {
+  const awayPlayers: PitchPlayer[] = DEFAULT_442_AWAY.map((p) => {
     const rawPos = { x: p.x, y: p.y };
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
     const playerId = deterministic ? `player-away-${p.shirtNo}` : undefined;
-    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor, playerId);
-    pl.shirtNo = p.shirtNo;
-    pl.position = p.position;
-    return pl;
+    return {
+      ...createDefaultPlayer('away', pos.x, pos.y, awayColor, playerId),
+      shirtNo: p.shirtNo,
+      position: p.position,
+    };
   });
 
   return [...homePlayers, ...awayPlayers];
@@ -119,28 +123,30 @@ export function createDefault442Players(
   homeColor = '#034694',
   awayColor = '#ef4444',
   aspectRatio: AspectRatio = '16:9',
-): Player[] {
+): PitchPlayer[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
-  const homePlayers: Player[] = DEFAULT_442_HOME.map((p) => {
+  const homePlayers: PitchPlayer[] = DEFAULT_442_HOME.map((p) => {
     const rawPos = { x: p.x, y: p.y };
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
-    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor);
-    pl.shirtNo = p.shirtNo;
-    pl.position = p.position;
-    return pl;
+    return {
+      ...createDefaultPlayer('home', pos.x, pos.y, homeColor),
+      shirtNo: p.shirtNo,
+      position: p.position,
+    };
   });
 
-  const awayPlayers: Player[] = DEFAULT_442_HOME.map((p) => {
+  const awayPlayers: PitchPlayer[] = DEFAULT_442_HOME.map((p) => {
     const rawPos = { x: 100 - p.x, y: p.y };
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
-    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor);
-    pl.shirtNo = p.shirtNo;
-    pl.position = p.position;
-    return pl;
+    return {
+      ...createDefaultPlayer('away', pos.x, pos.y, awayColor),
+      shirtNo: p.shirtNo,
+      position: p.position,
+    };
   });
 
   return [...homePlayers, ...awayPlayers];
@@ -155,7 +161,7 @@ export function createDefaultPhase(
   deterministic?: boolean,
   aspectRatio: AspectRatio = '4:5',
   boundaryBox: BoundaryBox = DEFAULT_INITIAL_BOUNDARY_BOX,
-): TacticalPhase {
+): DomainTacticalPhase {
   const phaseId = id ?? crypto.randomUUID();
   const resolvedSlideId = slideId ?? crypto.randomUUID();
   return {
@@ -163,13 +169,13 @@ export function createDefaultPhase(
     name,
     aspectRatio,
     boundaryBox: { ...boundaryBox },
+    backgroundType: 'pitch',
     slides: [
       createDefaultSlide(
         0,
         resolvedSlideId,
         homeColor,
         awayColor,
-        boundaryBox,
         aspectRatio,
         deterministic,
       ),
@@ -185,7 +191,7 @@ export function createDefaultProject(
     deterministic?: boolean;
     createdAt?: string;
   },
-): TacticalProject {
+): DomainTacticalProject {
   const now = options?.createdAt ?? new Date().toISOString();
   const initialPhase = createDefaultPhase(
     options?.phaseId,
@@ -198,29 +204,22 @@ export function createDefaultProject(
     DEFAULT_INITIAL_BOUNDARY_BOX,
   );
 
-  const project = {
+  return {
     id,
-    version: '2.0.0' as const,
+    version: '3.0.0',
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '4:5' as const,
-    backgroundType: 'pitch' as const,
-    pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
-    screenBackground: { ...DEFAULT_SCREEN_BACKGROUND },
     homeColor: { primary: '#034694' },
     awayColor: { primary: '#ef4444' },
+    pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
+    screenBackground: { ...DEFAULT_SCREEN_BACKGROUND },
     phases: [initialPhase],
-    activePhaseId: initialPhase.id,
-    activeSlideId: initialPhase.slides[0].id,
-    boundaryBox: { ...DEFAULT_INITIAL_BOUNDARY_BOX },
     tags: [],
   };
-
-  return attachProjectSlidesGetter(project);
 }
 
-export function createInitialProject(): TacticalProject {
+export function createInitialProject(): DomainTacticalProject {
   return createDefaultProject(DEFAULT_INITIAL_PROJECT_ID, {
     phaseId: DEFAULT_INITIAL_PHASE_ID,
     slideId: DEFAULT_INITIAL_SLIDE_ID,
@@ -234,15 +233,13 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_INITIAL_BOUNDARY_BOX,
   aspectRatio: AspectRatio = '4:5',
   deterministic?: boolean,
-): Slide {
+): DomainSlide {
   return {
     id: id ?? crypto.randomUUID(),
     index,
     label: `Scene ${index + 1}`,
-    aspectRatio,
     players: createDefaultInitialPlayers(
       homeColor,
       awayColor,
@@ -252,9 +249,7 @@ export function createDefaultSlide(
     arrows: [],
     zones: [],
     texts: [],
-    ball: { x: 50, y: 50, visible: true },
-    boundaryBox: { ...boundaryBox },
-    backgroundType: 'pitch',
+    ball: { x: clampToScreenNorm(50), y: clampToScreenNorm(50), visible: true },
     transitionDurationMs: 1000,
     pauseMs: 500,
     easing: 'ease-in-out',
@@ -279,13 +274,13 @@ export function createDefaultPlayer(
   y: number,
   primaryColor: string,
   id?: string,
-): Player {
+): PitchPlayer {
   return {
     id: id ?? crypto.randomUUID(),
     team,
     area: 'pitch',
-    x,
-    y,
+    x: clampToScreenNorm(x),
+    y: clampToScreenNorm(y),
     style: { ...DEFAULT_PLAYER_STYLE, color: primaryColor },
     connectLines: [],
     badges: [],

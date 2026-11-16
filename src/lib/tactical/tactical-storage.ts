@@ -4,11 +4,8 @@
  */
 
 import { db } from '@/lib/db/schema';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
-import {
-  ensureTacticalProject,
-  type TacticalProject,
-} from '@/lib/types/tactical-unified';
 
 export { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
 export const TACTICAL_PROJECT_STORAGE_KEY = 'tactical_active_project';
@@ -26,7 +23,7 @@ export function getTacticalProjectStorageKey(matchId?: string | null): string {
  * Save active tactical project to Dexie IndexedDB keyval store and tactical_projects table.
  */
 export async function saveActiveProjectToDb(
-  project: TacticalProject | DomainTacticalProject,
+  project: DomainTacticalProject,
   matchId?: string | null,
 ): Promise<void> {
   try {
@@ -38,7 +35,7 @@ export async function saveActiveProjectToDb(
     });
     // Multi-project synchronization
     if (db.tactical_projects) {
-      await db.tactical_projects.put(project as TacticalProject);
+      await db.tactical_projects.put(project);
     }
   } catch (error) {
     console.error('Failed to save tactical project to Dexie:', error);
@@ -51,7 +48,7 @@ export async function saveActiveProjectToDb(
  */
 export async function loadActiveProjectFromDb(
   matchId?: string | null,
-): Promise<TacticalProject | null> {
+): Promise<DomainTacticalProject | null> {
   try {
     const entry = await db.keyval.get(getTacticalProjectStorageKey(matchId));
     if (entry?.value && typeof entry.value === 'object') {
@@ -66,7 +63,7 @@ export async function loadActiveProjectFromDb(
       const hasPhases = Array.isArray(val.phases) && val.phases.length > 0;
       const hasSlides = Array.isArray(val.slides) && val.slides.length > 0;
       if (hasPhases || hasSlides) {
-        return ensureTacticalProject(val);
+        return normalizeTacticalProject(val).project;
       }
     }
     return null;

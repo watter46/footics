@@ -5,7 +5,7 @@ import { useDocumentStore } from '@/features/tactical-unified/stores/tactical-st
 import {
   DEFAULT_SCREEN_BACKGROUND,
   type ScreenBackgroundConfig,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { ScreenBoundarySection } from './screen-boundary-section';
 
 export function ScreenBackgroundPanel() {

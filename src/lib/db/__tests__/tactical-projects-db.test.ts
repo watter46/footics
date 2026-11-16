@@ -10,7 +10,7 @@ import {
   clearActiveProjectFromDb,
   loadActiveProjectFromDb,
 } from '@/lib/tactical/tactical-storage';
-import { createDefaultProject } from '@/lib/types/tactical-unified';
+import { createDefaultProject } from '@/lib/types/tactical/factory';
 import {
   createNewTacticalProject,
   deleteTacticalProject,
@@ -68,7 +68,9 @@ describe('tactical-projects-db', () => {
 
     expect(duplicated.id).not.toBe(original.id);
     expect(duplicated.title).toBe('Pressing Analysis (Copy)');
-    expect(duplicated.slides).toHaveLength(original.slides.length);
+    expect(duplicated.phases[0].slides).toHaveLength(
+      original.phases[0].slides.length,
+    );
 
     const list = await listTacticalProjects();
     expect(list).toHaveLength(2);
@@ -90,13 +92,17 @@ describe('tactical-projects-db', () => {
   });
 
   it('複数プロジェクトが更新日時の降順でリストされる', async () => {
-    const p1 = createDefaultProject('proj-1');
-    p1.title = 'Project 1';
-    p1.updatedAt = new Date('2026-09-01T10:00:00Z').toISOString();
+    const p1 = {
+      ...createDefaultProject('proj-1'),
+      title: 'Project 1',
+      updatedAt: new Date('2026-09-01T10:00:00Z').toISOString(),
+    };
 
-    const p2 = createDefaultProject('proj-2');
-    p2.title = 'Project 2';
-    p2.updatedAt = new Date('2026-09-03T10:00:00Z').toISOString();
+    const p2 = {
+      ...createDefaultProject('proj-2'),
+      title: 'Project 2',
+      updatedAt: new Date('2026-09-03T10:00:00Z').toISOString(),
+    };
 
     await saveTacticalProject(p1, false);
     await saveTacticalProject(p2, false);
@@ -128,10 +134,14 @@ describe('tactical-projects-db', () => {
   });
 
   it('複数JSONファイルを一括インポート（importMultipleTacticalProjects）できる', async () => {
-    const p1 = createDefaultProject('bulk-1');
-    p1.title = 'Bulk Proj 1';
-    const p2 = createDefaultProject('bulk-2');
-    p2.title = 'Bulk Proj 2';
+    const p1 = {
+      ...createDefaultProject('bulk-1'),
+      title: 'Bulk Proj 1',
+    };
+    const p2 = {
+      ...createDefaultProject('bulk-2'),
+      title: 'Bulk Proj 2',
+    };
 
     const file1 = new File([JSON.stringify(p1)], 'p1.json', {
       type: 'application/json',

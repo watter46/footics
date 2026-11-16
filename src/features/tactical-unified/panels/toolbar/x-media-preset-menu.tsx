@@ -35,11 +35,14 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  type BoundaryBox,
+  X_MEDIA_PRESETS,
+} from '@/lib/types/tactical/pitch-config';
 import type {
   AspectRatio,
   XMediaPresetKey,
 } from '@/lib/types/tactical/primitives';
-import { type BoundaryBox, X_MEDIA_PRESETS } from '@/lib/types/tactical/slide';
 
 interface PresetItem {
   id: XMediaPresetKey | 'pitch_fit';

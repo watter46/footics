@@ -2,8 +2,9 @@ import { useDocumentStore } from '@/features/tactical-unified/stores/tactical-st
 import type {
   ActionCameraCue,
   GlobalCameraKeyframe,
-} from '@/lib/types/tactical/project';
-import type { BoundaryBox, PitchTransform } from '@/lib/types/tactical/slide';
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
+import type { BoundaryBox } from '@/lib/types/tactical/pitch-config';
 
 interface UseSplitPreviewCommandsParams {
   targetPhaseId: string;

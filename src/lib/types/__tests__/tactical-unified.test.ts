@@ -4,9 +4,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
+import { DomainPlayerSchema } from '../tactical/domain-entities';
+import {
+  DomainSlideSchema,
+  DomainTacticalPhaseSchema,
+  DomainTacticalProjectSchema,
+} from '../tactical/domain-hierarchy';
 import {
   AspectRatioSchema,
-  attachProjectSlidesGetter,
   BoundaryBoxSchema,
   ConnectLineSchema,
   createDefaultPhase,
@@ -21,15 +27,10 @@ import {
   DEFAULT_INITIAL_PROJECT_ID,
   DEFAULT_INITIAL_SLIDE_ID,
   DrawingToolSchema,
-  ensureTacticalProject,
   getAspectRatioOrientation,
   isHorizontalAspectRatio,
   isVerticalAspectRatio,
   MarkerStyleSchema,
-  PlayerSchema,
-  SlideSchema,
-  TacticalPhaseSchema,
-  TacticalProjectSchema,
   transformCoord,
   transformPoints,
   X_MEDIA_PRESETS,
@@ -128,54 +129,50 @@ describe('transformPoints', () => {
   });
 });
 
-describe('TacticalPhaseSchema', () => {
+describe('DomainTacticalPhaseSchema', () => {
   it('createDefaultPhase が有効なフェーズを生成する', () => {
     const phase = createDefaultPhase('test-phase-id', 'Phase 1');
-    const result = TacticalPhaseSchema.safeParse(phase);
+    const result = DomainTacticalPhaseSchema.safeParse(phase);
     expect(result.success).toBe(true);
     expect(phase.id).toBe('test-phase-id');
     expect(phase.name).toBe('Phase 1');
     expect(phase.slides).toHaveLength(1);
+    expect(phase.aspectRatio).toBe('4:5');
   });
 
   it('slides が空の場合はエラー', () => {
-    const phase = { id: 'p1', name: 'Phase 1', slides: [] };
-    const result = TacticalPhaseSchema.safeParse(phase);
+    const phase = { ...createDefaultPhase('p1', 'Phase 1'), slides: [] };
+    const result = DomainTacticalPhaseSchema.safeParse(phase);
     expect(result.success).toBe(false);
   });
 
   it('name が空文字の場合はエラー', () => {
-    const phase = {
-      id: 'p1',
-      name: '',
-      slides: [createDefaultSlide(0)],
-    };
-    const result = TacticalPhaseSchema.safeParse(phase);
+    const phase = { ...createDefaultPhase('p1', 'Phase 1'), name: '' };
+    const result = DomainTacticalPhaseSchema.safeParse(phase);
     expect(result.success).toBe(false);
   });
 });
 
-describe('TacticalProjectSchema', () => {
+describe('DomainTacticalProjectSchema', () => {
   it('createDefaultProject が有効なプロジェクトを生成する', () => {
     const project = createDefaultProject('test-id');
-    const result = TacticalProjectSchema.safeParse(project);
+    const result = DomainTacticalProjectSchema.safeParse(project);
     expect(result.success).toBe(true);
     expect(project.phases).toHaveLength(1);
-    expect(project.activePhaseId).toBe(project.phases[0].id);
-    expect(project.activeSlideId).toBe(project.phases[0].slides[0].id);
+    expect(project.phases[0].slides).toHaveLength(1);
   });
 
   it('phases が空の場合はエラー', () => {
     const project = { ...createDefaultProject('test-id'), phases: [] };
-    const result = TacticalProjectSchema.safeParse(project);
+    const result = DomainTacticalProjectSchema.safeParse(project);
     expect(result.success).toBe(false);
   });
 });
 
-describe('PlayerSchema', () => {
+describe('DomainPlayerSchema', () => {
   it('createDefaultPlayer が有効な選手を生成する', () => {
     const player = createDefaultPlayer('home', 50, 50, '#034694');
-    const result = PlayerSchema.safeParse(player);
+    const result = DomainPlayerSchema.safeParse(player);
     expect(result.success).toBe(true);
   });
 
@@ -184,18 +181,17 @@ describe('PlayerSchema', () => {
       ...createDefaultPlayer('home', 50, 50, '#034694'),
       x: 110,
     };
-    const result = PlayerSchema.safeParse(player);
+    const result = DomainPlayerSchema.safeParse(player);
     expect(result.success).toBe(true);
   });
 });
 
-describe('SlideSchema', () => {
+describe('DomainSlideSchema', () => {
   it('createDefaultSlide が有効なスライドを生成する', () => {
     const slide = createDefaultSlide(0);
-    const result = SlideSchema.safeParse(slide);
+    const result = DomainSlideSchema.safeParse(slide);
     expect(result.success).toBe(true);
-    expect(slide.aspectRatio).toBe('16:9');
-    expect(slide.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+    expect(slide.players.length).toBeGreaterThan(0);
   });
 });
 
@@ -372,8 +368,8 @@ describe('MarkerStyleSchema & ConnectLineSchema & DrawingToolSchema', () => {
   });
 });
 
-describe('ensureTacticalProject & attachProjectSlidesGetter', () => {
-  it('旧形式データ (slides配列のみ・phasesなし) を安全に新形式 (phases配列) にマイグレーションする', () => {
+describe('normalizeTacticalProject', () => {
+  it('旧形式データ (slides配列のみ・phasesなし) を安全に Domain 形式 (phases配列) にマイグレーションする', () => {
     const slide1 = createDefaultSlide(0, 'slide-legacy-1');
     const legacyProject = {
       id: 'legacy-project-1',
@@ -388,39 +384,26 @@ describe('ensureTacticalProject & attachProjectSlidesGetter', () => {
       activeSlideId: 'slide-legacy-1',
     };
 
-    const normalized = ensureTacticalProject(legacyProject);
-    expect(normalized.phases).toHaveLength(1);
-    expect(normalized.phases[0].name).toBe('Phase 1');
-    expect(normalized.phases[0].slides).toHaveLength(1);
-    expect(normalized.phases[0].slides[0].id).toBe('slide-legacy-1');
-    expect(normalized.activePhaseId).toBe(normalized.phases[0].id);
+    const normalized = normalizeTacticalProject(legacyProject);
+    expect(normalized.project.phases).toHaveLength(1);
+    expect(normalized.project.phases[0].name).toBe('Phase 1');
+    expect(normalized.project.phases[0].slides).toHaveLength(1);
+    expect(normalized.project.phases[0].slides[0].id).toBe('slide-legacy-1');
+    expect(normalized.activePhaseId).toBe(normalized.project.phases[0].id);
     expect(normalized.activeSlideId).toBe('slide-legacy-1');
-    expect(normalized.slides).toHaveLength(1);
-    expect(normalized.slides[0].id).toBe('slide-legacy-1');
-  });
-
-  it('スプレッド構文や structuredClone で消失した slides getter を再バインドする', () => {
-    const project = createDefaultProject('test-p-1');
-    expect(project.slides).toHaveLength(1);
-
-    // スプレッド構文による浅いコピー（非列挙プロパティ slides が消失）
-    const shallowCopy = { ...project };
-    expect((shallowCopy as any).slides).toBeUndefined();
-
-    // ensureTacticalProject で getter を復元
-    const restored = ensureTacticalProject(shallowCopy);
-    expect(restored.slides).toHaveLength(1);
-    expect(restored.slides[0].id).toBe(project.phases[0].slides[0].id);
+    expect(
+      DomainTacticalProjectSchema.safeParse(normalized.project).success,
+    ).toBe(true);
   });
 
   it('空データまたは不正データが渡された場合はデフォルトプロジェクトにフォールバックする', () => {
-    const fallbackNull = ensureTacticalProject(null);
-    expect(fallbackNull.id).toBeDefined();
-    expect(fallbackNull.phases).toHaveLength(1);
+    const fallbackNull = normalizeTacticalProject(null);
+    expect(fallbackNull.project.id).toBeDefined();
+    expect(fallbackNull.project.phases).toHaveLength(1);
 
-    const fallbackEmpty = ensureTacticalProject({});
-    expect(fallbackEmpty.phases).toHaveLength(1);
-    expect(fallbackEmpty.slides).toHaveLength(1);
+    const fallbackEmpty = normalizeTacticalProject({});
+    expect(fallbackEmpty.project.phases).toHaveLength(1);
+    expect(fallbackEmpty.project.phases[0].slides).toHaveLength(1);
   });
 });
 
@@ -432,15 +415,11 @@ describe('createInitialProject (Deterministic Project Factory)', () => {
     expect(p1.id).toBe(DEFAULT_INITIAL_PROJECT_ID);
     expect(p1.phases[0].id).toBe(DEFAULT_INITIAL_PHASE_ID);
     expect(p1.phases[0].slides[0].id).toBe(DEFAULT_INITIAL_SLIDE_ID);
-    expect(p1.activePhaseId).toBe(DEFAULT_INITIAL_PHASE_ID);
-    expect(p1.activeSlideId).toBe(DEFAULT_INITIAL_SLIDE_ID);
     expect(p1.createdAt).toBe(DEFAULT_INITIAL_CREATED_AT);
     expect(p1.updatedAt).toBe(DEFAULT_INITIAL_CREATED_AT);
 
     // 2回呼んでも完全に同一のオブジェクト構造・ID群を持つ
     expect(p1.id).toBe(p2.id);
-    expect(p1.activePhaseId).toBe(p2.activePhaseId);
-    expect(p1.activeSlideId).toBe(p2.activeSlideId);
     expect(p1.createdAt).toBe(p2.createdAt);
 
     // 選手の ID も決定論的（player-home-*, player-away-*）で一致する

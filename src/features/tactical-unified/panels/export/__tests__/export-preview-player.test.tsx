@@ -2,14 +2,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as tacticalPhaseFrameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
+import { DomainSlideSchema } from '@/lib/types/tactical/domain-hierarchy';
 import {
   createXBoundaryBox,
   type ScreenBackgroundConfig,
-  SlideSchema,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { ExportPreviewPlayer } from '../export-preview-player';
 
-const mockSlide = SlideSchema.parse({
+const mockSlide = DomainSlideSchema.parse({
   id: 'slide-1',
   index: 0,
   transitionDurationMs: 1000,

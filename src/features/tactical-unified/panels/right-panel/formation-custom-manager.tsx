@@ -22,7 +22,7 @@ import {
   type DomainSquadPlayerItem,
 } from '@/lib/tactical/domain/squad-placement';
 import { SUPPORTED_TEAMS } from '@/lib/tactical/teams-config';
-import type { SeasonFormationPreset } from '@/lib/types/tactical/project';
+import type { SeasonFormationPreset } from '@/lib/types/tactical/project-config';
 import { SAMPLE_SEASON_PRESETS } from './formation-presets-data';
 
 interface FormationCustomManagerProps {

@@ -6,7 +6,7 @@ import {
   DEFAULT_BOUNDARY_BOX_4_5,
   DEFAULT_PITCH_APPEARANCE,
   type ScreenBackgroundConfig,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { ExportModalBody } from '../export-modal-body';
 import { ExportPreviewPlayer } from '../export-preview-player';
 import type { ExportModalState } from '../use-export-modal-state';

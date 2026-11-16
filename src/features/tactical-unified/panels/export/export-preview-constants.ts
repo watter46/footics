@@ -1,18 +1,19 @@
 import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/engine/director-camera';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
+import type {
+  DirectorCameraTrack,
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type {
   BoundaryBox,
   PitchAppearanceConfig,
-  PitchTransform,
   ScreenBackgroundConfig,
-  Slide,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 export interface UseExportPreviewAnimationParams {
-  slides: readonly (Slide | DomainSlide)[];
+  slides: readonly DomainSlide[];
   aspectRatio: AspectRatio;
   /** キャンバス自体の出力アスペクト比（省略時は aspectRatio、レイアウト画面では '16:9' 固定） */
   canvasAspectRatio?: AspectRatio;

@@ -6,7 +6,7 @@ import type {
   MarkerEffectConfig,
   MarkerEffectType,
   MarkerStyle,
-} from '@/lib/types/tactical/player';
+} from '@/lib/types/tactical/effect-config';
 import { ColorInput } from './color-input';
 import { NumberSliderField } from './effect-number-slider';
 

@@ -5,7 +5,7 @@ import type {
   DomainSlide,
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
-import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/slide';
+import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/pitch-config';
 import { LeftPanel } from '../left-panel';
 import { SceneCanvasThumbnail } from '../scene-canvas-thumbnail';
 

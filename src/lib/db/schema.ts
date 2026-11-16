@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import type { EventRow, Match } from '@/types';
 import type {
   CustomEvent,
@@ -28,7 +28,7 @@ export class FooticsDatabase extends Dexie {
   match_memos!: Table<MatchMemo, string>;
   players!: Table<PlayerMaster, string>;
   player_photos!: Table<PlayerPhoto, number>;
-  tactical_projects!: Table<TacticalProject, string>;
+  tactical_projects!: Table<DomainTacticalProject, string>;
   keyval!: Table<KeyValEntry, string>;
 
   constructor() {

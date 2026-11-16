@@ -13,11 +13,7 @@ import {
   saveActiveProjectToDb,
 } from '@/lib/tactical/tactical-storage';
 import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
-import {
-  createDefaultProject,
-  ensureTacticalProject,
-  type TacticalProject,
-} from '@/lib/types/tactical-unified';
+import { createDefaultProject } from '@/lib/types/tactical/factory';
 import type { Match } from '@/types';
 import {
   getTimestampForFilename,
@@ -71,16 +67,12 @@ export async function listTacticalProjects(): Promise<
 /** Get a full tactical project by ID. */
 export async function getTacticalProjectById(
   id: string,
-): Promise<TacticalProject | null> {
+): Promise<DomainTacticalProject | null> {
   try {
     const raw = await db.tactical_projects.get(id);
     if (!raw) return null;
     const bundle = normalizeTacticalProject(raw);
-    return ensureTacticalProject({
-      ...bundle.project,
-      activePhaseId: bundle.activePhaseId,
-      activeSlideId: bundle.activeSlideId,
-    });
+    return bundle.project;
   } catch (error) {
     console.error(`Failed to get tactical project ${id}:`, error);
     return null;
@@ -92,18 +84,16 @@ export async function getTacticalProjectById(
  * If syncActive is true, also updates the active project keyval store.
  */
 export async function saveTacticalProject(
-  project: TacticalProject | DomainTacticalProject,
+  project: DomainTacticalProject,
   syncActive = true,
 ): Promise<void> {
   try {
     const bundle = normalizeTacticalProject(project);
-    const cleanProject: TacticalProject = ensureTacticalProject({
+    const cleanProject: DomainTacticalProject = {
       ...bundle.project,
-      activePhaseId: bundle.activePhaseId,
-      activeSlideId: bundle.activeSlideId,
       updatedAt: new Date().toISOString(),
       title: bundle.project.title?.trim() || 'Untitled Project',
-    });
+    };
 
     await db.tactical_projects.put(cleanProject);
 
@@ -120,10 +110,12 @@ export async function saveTacticalProject(
 export async function createNewTacticalProject(
   title = 'Untitled Project',
   activate = true,
-): Promise<TacticalProject> {
+): Promise<DomainTacticalProject> {
   const newId = crypto.randomUUID();
-  const project = createDefaultProject(newId);
-  project.title = title;
+  const project: DomainTacticalProject = {
+    ...createDefaultProject(newId),
+    title,
+  };
 
   await saveTacticalProject(project, activate);
   return project;
@@ -146,9 +138,11 @@ export async function renameTacticalProject(
     // Check if it is currently active in keyval
     const active = await loadActiveProjectFromDb();
     if (active && active.id === id) {
-      active.title = trimmedTitle;
-      active.updatedAt = now;
-      await saveActiveProjectToDb(active);
+      await saveActiveProjectToDb({
+        ...active,
+        title: trimmedTitle,
+        updatedAt: now,
+      });
     }
   } catch (error) {
     console.error(`Failed to rename project ${id}:`, error);
@@ -159,7 +153,7 @@ export async function renameTacticalProject(
 /** Duplicate a tactical project with a new ID and title suffix. */
 export async function duplicateTacticalProject(
   id: string,
-): Promise<TacticalProject> {
+): Promise<DomainTacticalProject> {
   const original = await getTacticalProjectById(id);
   if (!original) {
     throw new Error(`Project ${id} not found to duplicate`);
@@ -167,13 +161,13 @@ export async function duplicateTacticalProject(
 
   const newId = crypto.randomUUID();
   const now = new Date().toISOString();
-  const cloned: TacticalProject = ensureTacticalProject({
+  const cloned: DomainTacticalProject = {
     ...structuredClone(original),
     id: newId,
     title: `${original.title || 'Untitled Project'} (Copy)`,
     createdAt: now,
     updatedAt: now,
-  });
+  };
 
   await saveTacticalProject(cloned, false);
   return cloned;
@@ -214,7 +208,7 @@ export async function deleteTacticalProjects(ids: string[]): Promise<void> {
  * Naming convention: footics_tactical_{title}_{YYYYMMDD_HHmm}.json
  */
 export function exportTacticalProjectToJson(
-  project: TacticalProject | DomainTacticalProject,
+  project: DomainTacticalProject,
 ): void {
   const safeTitle = sanitizeFilenameTitle(project.title);
   const timestamp = getTimestampForFilename();

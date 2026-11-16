@@ -14,8 +14,8 @@ import {
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { saveTacticalProject } from '@/lib/tactical/tactical-projects-service';
 import { createDefaultProject } from '@/lib/types/tactical/factory';
+import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/pitch-config';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/slide';
 import { cn } from '@/lib/utils';
 
 export interface ProjectCreateFormProps {
@@ -65,20 +65,24 @@ export function ProjectCreateForm({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const proj = createDefaultProject(crypto.randomUUID());
-      proj.title = title.trim() || '新規戦術プロジェクト';
-      proj.aspectRatio = aspectRatio;
+      const base = createDefaultProject(crypto.randomUUID());
       const boundaryBox = getDefaultBoundaryBoxForAspect(aspectRatio);
-      proj.boundaryBox = boundaryBox;
-      proj.backgroundType = backgroundType;
-      proj.homeColor = { primary: homeColor };
-      proj.awayColor = { primary: awayColor };
-      const firstSlide = proj.phases[0]?.slides[0];
-      if (firstSlide) {
-        firstSlide.aspectRatio = aspectRatio;
-        firstSlide.boundaryBox = { ...boundaryBox };
-        firstSlide.backgroundType = backgroundType;
-      }
+      const proj = {
+        ...base,
+        title: title.trim() || '新規戦術プロジェクト',
+        homeColor: { primary: homeColor },
+        awayColor: { primary: awayColor },
+        phases: base.phases.map((phase, idx) =>
+          idx === 0
+            ? {
+                ...phase,
+                aspectRatio,
+                boundaryBox: { ...boundaryBox },
+                backgroundType,
+              }
+            : phase,
+        ),
+      };
       await saveTacticalProject(proj, true);
       const bundle = normalizeTacticalProject(proj);
       loadProject(bundle.project);

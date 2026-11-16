@@ -8,7 +8,7 @@ import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactic
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import * as sharePayload from '@/lib/tactical/export/share-payload';
 import * as frameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
-import type { PitchTransform } from '@/lib/types/tactical/slide';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import { TacticalSplitPreviewPanel } from '../tactical-split-preview-panel';
 
 function createSplitPreviewHarness(options?: {

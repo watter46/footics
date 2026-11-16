@@ -1,5 +1,5 @@
 import type { FormationType } from '@/lib/data/formations';
-import type { SeasonFormationPreset } from '@/lib/types/tactical/project';
+import type { SeasonFormationPreset } from '@/lib/types/tactical/project-config';
 
 // ── Common Quick Formations ────────────────────────────────────
 export const QUICK_FORMATIONS: FormationType[] = [

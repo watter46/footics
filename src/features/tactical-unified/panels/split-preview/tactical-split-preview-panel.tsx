@@ -20,7 +20,7 @@ import {
   resolveSyntheticDirectorCamera,
 } from '@/lib/tactical/engine/director-camera';
 import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
-import type { PitchTransform } from '@/lib/types/tactical/slide';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import { PreviewBoundaryOverlay } from './preview-boundary-overlay';
 import { buildPlayerPhotoRecord } from './preview-player-photos';
 import { usePreviewWheelZoom } from './use-preview-wheel-zoom';

@@ -4,7 +4,7 @@ import { RotateCcw, SlidersHorizontal } from 'lucide-react';
 import {
   DEFAULT_PITCH_APPEARANCE,
   type PitchAppearanceConfig,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 
 const OVERLAY_COLOR_PRESETS = [
   '#0B303E',

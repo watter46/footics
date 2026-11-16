@@ -29,7 +29,7 @@ import {
 import {
   DEFAULT_PITCH_APPEARANCE,
   type PitchAppearanceConfig,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { CameraControlPanel } from './camera-control-panel';
 import { EffectInspectorPanel } from './effect-inspector-panel';
 import { FormationPanel } from './formation-panel';

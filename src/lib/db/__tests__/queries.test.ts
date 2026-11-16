@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import type { EventRow, Match } from '@/types';
 import type { CustomEvent as CustomEventType, MatchMemo } from '../../schema';
 import { SHORTCUT_ACTIONS } from '../../shortcuts';
@@ -690,7 +690,7 @@ describe('src/lib/db/queries', () => {
         });
 
         // 戦術プロジェクト内にこの仮ID選手を配置
-        const mockProject: TacticalProject = {
+        const mockProject = normalizeTacticalProject({
           id: 'proj-1',
           version: '2.0.0',
           title: 'Tactical Test',
@@ -749,7 +749,7 @@ describe('src/lib/db/queries', () => {
               ],
             },
           ],
-        };
+        }).project;
         await db.tactical_projects.put(mockProject);
 
         // 公式ID（同名だがアクセントなし、未設定背番号99、Sub）で保存
@@ -792,7 +792,7 @@ describe('src/lib/db/queries', () => {
           position: 'CF',
         });
 
-        const mockProject: TacticalProject = {
+        const mockProject = normalizeTacticalProject({
           id: 'proj-2',
           version: '2.0.0',
           title: 'Tactical Test 2',
@@ -848,7 +848,7 @@ describe('src/lib/db/queries', () => {
               ],
             },
           ],
-        };
+        }).project;
         await db.tactical_projects.put(mockProject);
 
         await mergePlayerId(-202, 9999, '26-27', 'Chelsea');
@@ -986,7 +986,7 @@ describe('src/lib/db/queries', () => {
             photoBlob,
           });
 
-          const mockProject: TacticalProject = {
+          const mockProject = normalizeTacticalProject({
             id: 'proj-legacy-merge',
             version: '2.0.0',
             title: 'Legacy Merge Test',
@@ -1045,7 +1045,7 @@ describe('src/lib/db/queries', () => {
                 ],
               },
             ],
-          };
+          }).project;
           await db.tactical_projects.put(mockProject);
 
           // 公式ID（395692）で同名選手を保存
@@ -1203,7 +1203,7 @@ describe('src/lib/db/queries', () => {
             photoBlob: gustoBlob,
           });
 
-          const mockProject: TacticalProject = {
+          const mockProject = normalizeTacticalProject({
             id: 'proj-batch-merge',
             version: '2.0.0',
             title: 'Batch Merge Test',
@@ -1280,7 +1280,7 @@ describe('src/lib/db/queries', () => {
                 ],
               },
             ],
-          };
+          }).project;
           await db.tactical_projects.put(mockProject);
 
           // 一括名寄せ＆移行実行

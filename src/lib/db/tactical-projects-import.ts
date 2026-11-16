@@ -6,10 +6,7 @@
 
 import { strFromU8, unzipSync } from 'fflate';
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
-import {
-  ensureTacticalProject,
-  type TacticalProject,
-} from '@/lib/types/tactical-unified';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import { saveTacticalProject } from './tactical-projects-db';
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -115,7 +112,7 @@ export function sanitizeTacticalProjectForImport(raw: unknown): unknown {
 export async function importTacticalProjectFromJson(
   file: File,
   assignNewId = true,
-): Promise<TacticalProject> {
+): Promise<DomainTacticalProject> {
   const text = await file.text();
   let rawJson: unknown;
   try {
@@ -136,15 +133,13 @@ export async function importTacticalProjectFromJson(
   const project = bundle.project;
   const now = new Date().toISOString();
 
-  const importedProject: TacticalProject = ensureTacticalProject({
+  const importedProject: DomainTacticalProject = {
     ...project,
     id: assignNewId ? crypto.randomUUID() : project.id,
     title: project.title?.trim() || 'Untitled Project',
     createdAt: assignNewId ? now : project.createdAt,
     updatedAt: now,
-    activePhaseId: bundle.activePhaseId,
-    activeSlideId: bundle.activeSlideId,
-  });
+  };
 
   await saveTacticalProject(importedProject, false);
   return importedProject;
@@ -156,9 +151,9 @@ export async function importTacticalProjectFromJson(
  */
 export async function importMultipleTacticalProjects(
   files: FileList | File[],
-): Promise<{ imported: TacticalProject[]; errors: string[] }> {
+): Promise<{ imported: DomainTacticalProject[]; errors: string[] }> {
   const fileArray = Array.from(files);
-  const imported: TacticalProject[] = [];
+  const imported: DomainTacticalProject[] = [];
   const errors: string[] = [];
 
   for (const file of fileArray) {
@@ -189,15 +184,13 @@ export async function importMultipleTacticalProjects(
 
             const bundle = normalizeTacticalProject(sanitized);
             const now = new Date().toISOString();
-            const proj: TacticalProject = ensureTacticalProject({
+            const proj: DomainTacticalProject = {
               ...bundle.project,
               id: crypto.randomUUID(),
               title: bundle.project.title?.trim() || 'Untitled Project',
               createdAt: now,
               updatedAt: now,
-              activePhaseId: bundle.activePhaseId,
-              activeSlideId: bundle.activeSlideId,
-            });
+            };
             await saveTacticalProject(proj, false);
             imported.push(proj);
           } catch (err) {

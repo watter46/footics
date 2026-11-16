@@ -1,8 +1,8 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import type { ZoneEffectConfig } from '@/lib/types/tactical/annotations';
 import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
+import type { ZoneEffectConfig } from '@/lib/types/tactical/effect-config';
 import { NumberSliderField } from './effect-number-slider';
 
 export const DEFAULT_ZONE_EFFECT: ZoneEffectConfig = {

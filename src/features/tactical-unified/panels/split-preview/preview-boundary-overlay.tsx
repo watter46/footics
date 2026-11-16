@@ -6,7 +6,7 @@ import {
   useCallback,
   useState,
 } from 'react';
-import type { BoundaryBox } from '@/lib/types/tactical/slide';
+import type { BoundaryBox } from '@/lib/types/tactical/pitch-config';
 
 type CornerId = 'tl' | 'tr' | 'bl' | 'br';
 

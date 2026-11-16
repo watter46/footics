@@ -1,13 +1,13 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import type {
   ArrowEffectConfig,
   ArrowEffectType,
   EffectEasing,
   EffectExitAction,
-} from '@/lib/types/tactical/annotations';
-import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
+} from '@/lib/types/tactical/effect-config';
 import { NumberSliderField } from './effect-number-slider';
 
 export const DEFAULT_ARROW_EFFECT: ArrowEffectConfig = {

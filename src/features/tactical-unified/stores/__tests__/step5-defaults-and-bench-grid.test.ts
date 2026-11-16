@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { buildMatchToDomainProject } from '@/lib/tactical/acl/match-project-translator';
 import { translateSquadToDomainPlayers } from '@/lib/tactical/acl/match-squad-translator';
 import { resetSlideKeepSquadPositions } from '@/lib/tactical/domain/slide-reset';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
+import {
+  type BenchPlayer,
+  DomainPlayerSchema,
+} from '@/lib/types/tactical/domain-entities';
 import {
   computeBenchGridPositions,
   createDefaultInitialPlayers,
@@ -9,18 +14,17 @@ import {
   createDefaultSlide,
   DEFAULT_442_AWAY,
   DEFAULT_4231_HOME,
-  PlayerSchema,
 } from '@/lib/types/tactical-unified';
 import type { Match } from '@/types';
 
 describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
-  describe('PlayerSchema', () => {
+  describe('DomainPlayerSchema', () => {
     it('accepts isCustom optional boolean', () => {
       const player = createDefaultPlayer('home', 10, 20, '#000000');
-      const parsedWithout = PlayerSchema.parse(player);
+      const parsedWithout = DomainPlayerSchema.parse(player);
       expect(parsedWithout.isCustom).toBeUndefined();
 
-      const parsedWith = PlayerSchema.parse({
+      const parsedWith = DomainPlayerSchema.parse({
         ...player,
         isCustom: true,
       });
@@ -30,48 +34,26 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
 
   describe('computeBenchGridPositions', () => {
     it('sorts players by FW -> MID -> DF -> GK -> OTHER, then by shirtNo ascending', () => {
-      const pGk = {
+      const baseBench = (
+        id: string,
+        position: string,
+        shirtNo: string,
+      ): BenchPlayer => ({
         ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'gk',
-        position: 'GK',
-        shirtNo: '1',
-      };
-      const pDf2 = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'df2',
-        position: 'CB',
-        shirtNo: '5',
-      };
-      const pDf1 = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'df1',
-        position: 'LB',
-        shirtNo: '3',
-      };
-      const pMf = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'mf',
-        position: 'CM',
-        shirtNo: '8',
-      };
-      const pFw2 = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'fw2',
-        position: 'ST',
-        shirtNo: '11',
-      };
-      const pFw1 = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'fw1',
-        position: 'CF',
-        shirtNo: '9',
-      };
-      const pOther = {
-        ...createDefaultPlayer('home', 0, 0, '#000'),
-        id: 'other',
-        position: 'UTIL',
-        shirtNo: '99',
-      };
+        area: 'bench',
+        x: toScreenNormCoord(0),
+        y: toScreenNormCoord(0),
+        id,
+        position,
+        shirtNo,
+      });
+      const pGk = baseBench('gk', 'GK', '1');
+      const pDf2 = baseBench('df2', 'CB', '5');
+      const pDf1 = baseBench('df1', 'LB', '3');
+      const pMf = baseBench('mf', 'CM', '8');
+      const pFw2 = baseBench('fw2', 'ST', '11');
+      const pFw1 = baseBench('fw1', 'CF', '9');
+      const pOther = baseBench('other', 'UTIL', '99');
 
       const result = computeBenchGridPositions([
         pGk,
@@ -96,8 +78,11 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
     });
 
     it('assigns 3-column grid coordinates (col = idx % 3, row = Math.floor(idx / 3))', () => {
-      const players = Array.from({ length: 5 }, (_, i) => ({
+      const players: BenchPlayer[] = Array.from({ length: 5 }, (_, i) => ({
         ...createDefaultPlayer('home', 0, 0, '#000'),
+        area: 'bench' as const,
+        x: toScreenNormCoord(0),
+        y: toScreenNormCoord(0),
         id: `p-${i}`,
         position: 'FW',
         shirtNo: String(i + 1),
@@ -258,18 +243,11 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
     });
 
     it('resetSlideKeepSquadPositions applies full pitch coordinates without matchFormations', () => {
-      const slide = createDefaultSlide(
-        0,
-        's1',
-        '#034694',
-        '#ef4444',
-        undefined,
-        '16:9',
-      );
+      const slide = createDefaultSlide(0, 's1', '#034694', '#ef4444', '16:9');
       // Modify positions
       slide.players.forEach((p) => {
-        p.x = 0;
-        p.y = 0;
+        p.x = toScreenNormCoord(0);
+        p.y = toScreenNormCoord(0);
       });
 
       const resetSlide = resetSlideKeepSquadPositions(

@@ -20,7 +20,7 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { Easing } from '@/lib/types/tactical/slide';
+import type { Easing } from '@/lib/types/tactical/camera-config';
 
 export interface BatchTransitionPopoverProps {
   isOpen: boolean;

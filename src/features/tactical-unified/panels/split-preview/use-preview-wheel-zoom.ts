@@ -1,13 +1,15 @@
 import { type RefObject, useEffect } from 'react';
+import type {
+  ActionCameraCue,
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { ActionCameraCue } from '@/lib/types/tactical/project';
-import type { PitchTransform, Slide } from '@/lib/types/tactical/slide';
 
 interface UsePreviewWheelZoomParams {
   containerRef: RefObject<HTMLDivElement | null>;
   activeCue?: ActionCameraCue;
   resolvedCamera: PitchTransform | null;
-  activeSlide?: Slide | DomainSlide | null;
+  activeSlide?: DomainSlide | null;
   currentTimeMs: number;
   upsertActionCameraCue: (
     timeMs: number,

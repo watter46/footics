@@ -1,6 +1,6 @@
 # TASK-202m: DB / Storage / Import / PlayerMerge / Dialogs の Domain 型統一
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): unify DB, storage, import, player-merge, and project dialogs on DomainTacticalProject`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3, Phase 4
