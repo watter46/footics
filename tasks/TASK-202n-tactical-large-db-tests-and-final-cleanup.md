@@ -1,13 +1,13 @@
 # TASK-202n: 大型 DB テスト移行、`index.ts` 正規切替、レガシー型定義の完全物理削除
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): switch tactical types barrel to Domain types and physically delete legacy schemas and migration.ts`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2
   - Wave 2 (sequential): Phase 3
 - **Negative Contracts**:
   - `rg: attachProjectSlidesGetter|attachSlidesGetter|ensureTacticalProject|LegacyTacticalProjectLike`
-  - `rg(src/lib/types/tactical): SlideSchema|TacticalProjectSchema|TacticalPhaseSchema|PlayerSchema|ZoneAnnotationSchema|ArrowAnnotationSchema|TextAnnotationSchema|PlayerTrajectorySchema|BallStateSchema`
+  - `rg(src/lib/types/tactical): \b(SlideSchema|TacticalProjectSchema|TacticalPhaseSchema|PlayerSchema|ZoneAnnotationSchema|ArrowAnnotationSchema|TextAnnotationSchema|PlayerTrajectorySchema|BallStateSchema)\b`
   - `rg(src/,extension/): from '@/lib/types/tactical/(annotations|ball|migration|player|project|slide)'`
   - `absent: src/lib/types/tactical/migration.ts`
   - `absent: src/lib/types/tactical/project.ts`

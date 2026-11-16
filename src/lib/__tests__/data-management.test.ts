@@ -11,7 +11,6 @@ import {
 } from '../db/queries';
 import { db } from '../db/schema';
 import { normalizeTacticalProject } from '../tactical/acl/legacy-project-translator';
-import { ensureTacticalProject } from '../types/tactical-unified';
 
 describe('src/lib/data-management', () => {
   beforeEach(async () => {
@@ -265,7 +264,7 @@ describe('src/lib/data-management', () => {
     });
 
     it('restores tactical_projects and keyval and standalone photos', async () => {
-      const mockProject = ensureTacticalProject({
+      const mockProject = normalizeTacticalProject({
         id: 'proj-imported',
         title: 'Imported Tactical Plan',
         createdAt: '2026-02-01T00:00:00.000Z',
@@ -273,7 +272,7 @@ describe('src/lib/data-management', () => {
         aspectRatio: '16:9',
         backgroundType: 'pitch',
         phases: [],
-      });
+      }).project;
 
       const files: Record<string, Uint8Array> = {
         'manifest.json': strToU8(

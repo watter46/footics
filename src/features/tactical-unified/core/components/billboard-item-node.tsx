@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { ResolvedBillboardItem } from '@/lib/tactical/compiler/scene-graph-dto';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import type {
   DomainTextAnnotation,
   PitchPlayer,
@@ -97,7 +98,11 @@ export function BillboardItemNode({
     return (
       <BallObject
         key="ball-object"
-        ball={{ x: 50, y: 50, visible: item.visible }}
+        ball={{
+          x: toScreenNormCoord(50),
+          y: toScreenNormCoord(50),
+          visible: item.visible,
+        }}
         resolvedBall={item}
         stageSize={{
           width: pitchRect.width,

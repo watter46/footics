@@ -272,8 +272,8 @@ describe('Clean Render Propagation', () => {
     const stageRef = createRef<Konva.Stage>();
     const registryRef = { current: createCanvasNodesRegistry() };
     const ball: BallObjectProps['ball'] = {
-      x: 50,
-      y: 50,
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(50),
       visible: true,
       locked: false,
     };
@@ -314,8 +314,8 @@ describe('Clean Render Propagation', () => {
     const stageRef = createRef<Konva.Stage>();
     const registryRef = { current: createCanvasNodesRegistry() };
     const ball: BallObjectProps['ball'] = {
-      x: 50,
-      y: 50,
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(50),
       visible: true,
       locked: false,
     };

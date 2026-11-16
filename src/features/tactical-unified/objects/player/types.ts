@@ -3,15 +3,13 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
+  DomainArrowAnnotation,
   DomainPlayer,
+  DomainTextAnnotation,
+  DomainZoneAnnotation,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
-import type {
-  ArrowAnnotation,
-  Slide,
-  TextAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
 export function normX(v: number, w: number): number {
   return (v / 100) * w;
@@ -22,7 +20,7 @@ export function normY(v: number, h: number): number {
 }
 
 export interface AttachedArrowEntry {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   sourcePlayer?: DomainPlayer;
   targetPlayer?: DomainPlayer;
   isSourceMoved: boolean;
@@ -57,13 +55,13 @@ export interface PlayerDragContext {
   attachedArrows: AttachedArrowEntry[];
   attachedConnectLines: AttachedConnectLineEntry[];
   attachedZones: Array<{
-    zone: ZoneAnnotation;
+    zone: DomainZoneAnnotation;
     initialPts?: Array<{ x: number; y: number }>;
     initialX?: number;
     initialY?: number;
   }>;
   attachedTexts: Array<{
-    text: TextAnnotation;
+    text: DomainTextAnnotation;
     initialX: number;
     initialY: number;
   }>;
@@ -80,7 +78,7 @@ export interface OnionSkinRefs {
 
 export interface PlayerMarkerProps {
   player: DomainPlayer;
-  slide: Slide;
+  slide: DomainSlide;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isVisionConeSelected?: boolean;
@@ -99,7 +97,7 @@ export interface PlayerMarkerProps {
 }
 
 export interface BasePlayerLayerProps {
-  slide: Slide;
+  slide: DomainSlide;
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
