@@ -2,10 +2,12 @@
 
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
+import { memo, useCallback } from 'react';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { ResolvedBillboardItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import type {
+  DomainPlayer,
   DomainTextAnnotation,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
@@ -30,7 +32,7 @@ export interface BillboardItemNodeProps {
   onStartEditText?: (textId: string) => void;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: PitchPlayer) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => void;
   onClickMarker: (markerId: string, isShift: boolean) => void;
   onUpdateVisionCone: (
     marker: PitchPlayer,
@@ -43,7 +45,7 @@ export interface BillboardItemNodeProps {
   updateText: (id: string, patch: Partial<DomainTextAnnotation>) => void;
 }
 
-export function BillboardItemNode({
+export const BillboardItemNode = memo(function BillboardItemNode({
   item,
   pitchRect,
   baseDim,
@@ -64,6 +66,37 @@ export function BillboardItemNode({
   onSelectText,
   updateText,
 }: BillboardItemNodeProps) {
+  const playerMarker = item.kind === 'player' ? item.player : null;
+  const textId = item.kind === 'text' ? item.id : null;
+
+  const handleUpdateVisionCone = useCallback(
+    (patch: Partial<NonNullable<PitchPlayer['visionCone']>>) => {
+      if (playerMarker) {
+        onUpdateVisionCone(playerMarker, patch);
+      }
+    },
+    [onUpdateVisionCone, playerMarker],
+  );
+
+  const handleSelectText = useCallback(
+    (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+      if (textId) {
+        onSelectText(e, textId);
+      }
+    },
+    [onSelectText, textId],
+  );
+
+  const handleDblClickText = useCallback(
+    (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+      e.cancelBubble = true;
+      if (textId) {
+        onStartEditText?.(textId);
+      }
+    },
+    [onStartEditText, textId],
+  );
+
   if (!item.visible) {
     return null;
   }
@@ -86,9 +119,9 @@ export function BillboardItemNode({
         nodesRegistryRef={nodesRegistryRef}
         onDragStart={onDragStart}
         onDragMove={onDragMove}
-        onDragEnd={(e) => onDragEnd(e, marker)}
+        onDragEnd={onDragEnd}
         onClick={onClickMarker}
-        onUpdateVisionCone={(patch) => onUpdateVisionCone(marker, patch)}
+        onUpdateVisionCone={handleUpdateVisionCone}
         resolvedPlayer={item}
       />
     );
@@ -126,11 +159,8 @@ export function BillboardItemNode({
         isSelected={!cleanRender && selectedIds.includes(item.id)}
         isEditing={editingTextId === item.id}
         isInteractive={!cleanRender && isInteractive}
-        onSelect={(e) => onSelectText(e, item.id)}
-        onDblClick={(e) => {
-          e.cancelBubble = true;
-          onStartEditText?.(item.id);
-        }}
+        onSelect={handleSelectText}
+        onDblClick={handleDblClickText}
         updateText={updateText}
         nodesRegistryRef={nodesRegistryRef}
         resolvedText={item}
@@ -139,4 +169,4 @@ export function BillboardItemNode({
   }
 
   return null;
-}
+});

@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Line, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import {
@@ -49,12 +49,10 @@ function sortBySelectedIds<T extends { id: string }>(
   selectedIds: readonly string[],
 ): readonly T[] {
   if (selectedIds.length === 0) return items;
-  return [...items].sort((a, b) => {
-    const aSelected = selectedIds.includes(a.id);
-    const bSelected = selectedIds.includes(b.id);
-    if (aSelected === bSelected) return 0;
-    return aSelected ? 1 : -1;
-  });
+  return [...items].sort(
+    (a, b) =>
+      Number(selectedIds.includes(a.id)) - Number(selectedIds.includes(b.id)),
+  );
 }
 
 export const PitchGroundLayer = memo(function PitchGroundLayer({
@@ -114,28 +112,37 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const isInteractive = activeTool === 'select';
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
-  const updateZone = (id: string, patch: Partial<DomainZoneAnnotation>) =>
-    dispatchSlide(activePhaseId, activeSlideId, {
-      type: 'UPDATE_ZONE',
-      id,
-      patch,
-    });
-  const updateArrow = (id: string, patch: Partial<DomainArrowAnnotation>) =>
-    dispatchSlide(activePhaseId, activeSlideId, {
-      type: 'UPDATE_ARROW',
-      id,
-      patch,
-    });
-  const updatePlayerTrajectory = (
-    slideId: string,
-    playerId: string,
-    trajectory: DomainPlayerTrajectory | undefined,
-  ) =>
-    dispatchSlide(activePhaseId, slideId, {
-      type: 'SET_PLAYER_TRAJECTORY',
-      playerId,
-      trajectory,
-    });
+  const updateZone = useCallback(
+    (id: string, patch: Partial<DomainZoneAnnotation>) =>
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_ZONE',
+        id,
+        patch,
+      }),
+    [dispatchSlide, activePhaseId, activeSlideId],
+  );
+  const updateArrow = useCallback(
+    (id: string, patch: Partial<DomainArrowAnnotation>) =>
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_ARROW',
+        id,
+        patch,
+      }),
+    [dispatchSlide, activePhaseId, activeSlideId],
+  );
+  const updatePlayerTrajectory = useCallback(
+    (
+      slideId: string,
+      playerId: string,
+      trajectory: DomainPlayerTrajectory | undefined,
+    ) =>
+      dispatchSlide(activePhaseId, slideId, {
+        type: 'SET_PLAYER_TRAJECTORY',
+        playerId,
+        trajectory,
+      }),
+    [dispatchSlide, activePhaseId],
+  );
 
   useEffect(() => {
     if (nodesRegistryRef?.current) {
@@ -143,16 +150,17 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
     }
   }, [nodesRegistryRef]);
 
-  const makeSelectHandler =
+  const makeSelectHandler = useCallback(
     (id: string, kind: 'arrow' | 'zone') => (e: KonvaClickEvent) => {
       e.cancelBubble = true;
       selectObject({ id, kind }, (e.evt as MouseEvent)?.shiftKey ?? false);
       setIsHudOpen(true);
-    };
+    },
+    [selectObject, setIsHudOpen],
+  );
 
   return (
     <Layer id="pitch-ground-layer" listening={listening}>
-      {/* Stage 全面の背景 Rect */}
       <Rect
         x={0}
         y={0}
@@ -167,7 +175,6 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         scaleX={groupTransform.scaleX}
         scaleY={groupTransform.scaleY}
       >
-        {/* ピッチ背景画像 */}
         <PitchBackgroundImage
           width={pitchRect.width}
           height={pitchRect.height}

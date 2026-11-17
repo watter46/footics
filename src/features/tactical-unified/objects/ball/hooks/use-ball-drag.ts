@@ -2,13 +2,14 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { pxToNorm } from '@/features/tactical-unified/core';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { EphemeralDragDelta } from '@/lib/tactical/compiler/scene-graph-dto';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 
 interface UseBallDragProps {
@@ -31,6 +32,39 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
 
   const [isDragging, setIsDragging] = useState(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const pendingDeltaRef = useRef<EphemeralDragDelta | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
+  const cancelPendingDragDelta = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+    rafIdRef.current = null;
+    pendingDeltaRef.current = null;
+  }, []);
+
+  const scheduleDragDelta = useCallback(
+    (delta: EphemeralDragDelta) => {
+      pendingDeltaRef.current = delta;
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          const pending = pendingDeltaRef.current;
+          pendingDeltaRef.current = null;
+          if (pending) {
+            setActiveDragDelta(pending);
+          }
+        });
+      }
+    },
+    [setActiveDragDelta],
+  );
+
+  useEffect(() => {
+    return () => {
+      cancelPendingDragDelta();
+    };
+  }, [cancelPendingDragDelta]);
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
@@ -58,13 +92,13 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
       const currX = pxToNorm(node.x(), stageSize.width);
       const currY = pxToNorm(node.y(), stageSize.height);
 
-      setActiveDragDelta({
+      scheduleDragDelta({
         entityIds: ['ball'],
         deltaScreenNormX: currX - startPos.x,
         deltaScreenNormY: currY - startPos.y,
       });
     },
-    [stageSize.width, stageSize.height, setActiveDragDelta],
+    [stageSize.width, stageSize.height, scheduleDragDelta],
   );
 
   const dragBoundFunc = useCallback(
@@ -89,6 +123,7 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
 
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
+      cancelPendingDragDelta();
       setIsDragging(false);
       setActiveDragDelta(null);
       startPosRef.current = null;
@@ -111,6 +146,7 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
       activeSlideId,
       dispatchSlide,
       setActiveDragDelta,
+      cancelPendingDragDelta,
       stageSize.width,
       stageSize.height,
     ],

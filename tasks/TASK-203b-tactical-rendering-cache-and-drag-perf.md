@@ -1,6 +1,6 @@
 # TASK-203b: 戦術ボード描画キャッシュと60fpsドラッグ・サムネイル最適化
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): cache konva glow markers and throttle drag updates to rAF`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3, Phase 4 (parallel; Phase 2 must run after TASK-203a Phase 4)

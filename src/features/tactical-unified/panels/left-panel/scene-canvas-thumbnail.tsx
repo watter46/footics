@@ -74,9 +74,6 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
     const dpr =
       typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
     canvas.width = Math.round(dims.width * dpr);
@@ -84,18 +81,27 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
     canvas.style.width = `${dims.width}px`;
     canvas.style.height = `${dims.height}px`;
 
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    renderTacticalPhaseFrameToCanvas({
-      ctx,
-      phase,
-      timeMs: toMilliseconds(0),
-      width: dims.width,
-      height: dims.height,
-      pitchAppearance,
-      applyEffects: false,
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rafId = requestAnimationFrame(() => {
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      renderTacticalPhaseFrameToCanvas({
+        ctx,
+        phase,
+        timeMs: toMilliseconds(0),
+        width: dims.width,
+        height: dims.height,
+        pitchAppearance,
+        applyEffects: false,
+      });
+      ctx.restore();
     });
-    ctx.restore();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
   }, [phase, dims.width, dims.height, pitchAppearance]);
 
   return (

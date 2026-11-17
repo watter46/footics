@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import type Konva from 'konva';
 import { createRef } from 'react';
-import { Layer, Stage } from 'react-konva';
+import { Group, Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';

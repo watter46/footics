@@ -2,6 +2,7 @@
 
 import type Konva from 'konva';
 import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { Ellipse, Group, Path } from 'react-konva';
 import {
   MARKER_PATHS,
@@ -24,6 +25,38 @@ export function PlayerMarkerRing({
   isSelected,
   shapeRef,
 }: PlayerMarkerRingProps) {
+  const visualGroupRef = useRef<Konva.Group>(null);
+
+  useEffect(() => {
+    const node = visualGroupRef.current;
+    if (!node || typeof node.cache !== 'function') return;
+
+    const pad = 24;
+    const maxR = radius * 1.15 + pad;
+    const pixelRatio =
+      typeof window !== 'undefined'
+        ? Math.min(window.devicePixelRatio || 1, 2)
+        : 1;
+
+    try {
+      node.cache({
+        x: -maxR,
+        y: -maxR,
+        width: maxR * 2,
+        height: maxR * 2,
+        pixelRatio,
+      });
+    } catch {
+      // Canvas 未実装のテスト環境でのクラッシュ防止
+    }
+
+    return () => {
+      if (typeof node.clearCache === 'function') {
+        node.clearCache();
+      }
+    };
+  }, [player.style.color, radius, isSelected]);
+
   return (
     <Group ref={shapeRef}>
       {/* 透明ヒットエリア (クリック・ドラッグ・Transformer変形のバウンディングボックス用) */}
@@ -36,92 +69,94 @@ export function PlayerMarkerRing({
         listening={true}
       />
 
-      {/* 選択時ハイライトリング */}
-      {isSelected && (
+      <Group ref={visualGroupRef} listening={false}>
+        {/* 選択時ハイライトリング */}
+        {isSelected && (
+          <Ellipse
+            radiusX={radius * 1.15}
+            radiusY={radius * 0.55}
+            stroke="#60a5fa"
+            strokeWidth={3}
+            shadowColor="#3b82f6"
+            shadowBlur={8}
+            shadowOpacity={0.8}
+            listening={false}
+          />
+        )}
+
+        {/* 立体5パーツSVGパス (各パーツの形状に沿った外側グロー層) */}
+        <Group
+          x={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
+          y={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
+          scale={{
+            x: (radius * 2) / MARKER_VIEWBOX_SIZE,
+            y: (radius * 2) / MARKER_VIEWBOX_SIZE,
+          }}
+          listening={false}
+        >
+          {/* 外側拡散ネオングロー層 (程よい広がりと上品な淡い光) */}
+          {MARKER_PATHS.map((d) => (
+            <Path
+              key={`wide-glow-${d.slice(0, 20)}`}
+              data={d}
+              stroke={player.style.color}
+              strokeWidth={4}
+              shadowColor={player.style.color}
+              shadowBlur={10}
+              shadowOpacity={0.6}
+              opacity={0.4}
+              perfectDrawEnabled={false}
+            />
+          ))}
+
+          {/* 各パーツ本体 (高輝度ネオンチューブ本体) */}
+          {MARKER_PATHS.map((d) => (
+            <Path
+              key={d.slice(0, 20)}
+              data={d}
+              fill={player.style.color}
+              stroke={isSelected ? '#60a5fa' : undefined}
+              strokeWidth={isSelected ? 1 : 0}
+              shadowColor={player.style.color}
+              shadowBlur={5}
+              shadowOpacity={0.7}
+              perfectDrawEnabled={false}
+            />
+          ))}
+
+          {/* ネオン管の中心白熱ハイライト (ネオン特有の高輝度ホワイトコア) */}
+          {MARKER_PATHS.map((d) => (
+            <Path
+              key={`core-${d.slice(0, 20)}`}
+              data={d}
+              stroke="#ffffff"
+              strokeWidth={0.5}
+              opacity={0.45}
+              perfectDrawEnabled={false}
+            />
+          ))}
+        </Group>
+
+        {/* リング中央の半透明ネオン発光楕円 (床に投影された淡いネオンライトプール) */}
         <Ellipse
-          radiusX={radius * 1.15}
-          radiusY={radius * 0.55}
-          stroke="#60a5fa"
-          strokeWidth={3}
-          shadowColor="#3b82f6"
+          radiusX={radius * 0.72}
+          radiusY={radius * 0.24}
+          stroke={player.style.color}
+          strokeWidth={1.5}
+          shadowColor={player.style.color}
           shadowBlur={8}
-          shadowOpacity={0.8}
+          shadowOpacity={0.6}
+          opacity={0.45}
           listening={false}
         />
-      )}
-
-      {/* 立体5パーツSVGパス (各パーツの形状に沿った外側グロー層) */}
-      <Group
-        x={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
-        y={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
-        scale={{
-          x: (radius * 2) / MARKER_VIEWBOX_SIZE,
-          y: (radius * 2) / MARKER_VIEWBOX_SIZE,
-        }}
-        listening={false}
-      >
-        {/* 外側拡散ネオングロー層 (程よい広がりと上品な淡い光) */}
-        {MARKER_PATHS.map((d) => (
-          <Path
-            key={`wide-glow-${d.slice(0, 20)}`}
-            data={d}
-            stroke={player.style.color}
-            strokeWidth={4}
-            shadowColor={player.style.color}
-            shadowBlur={10}
-            shadowOpacity={0.6}
-            opacity={0.4}
-            perfectDrawEnabled={false}
-          />
-        ))}
-
-        {/* 各パーツ本体 (高輝度ネオンチューブ本体) */}
-        {MARKER_PATHS.map((d) => (
-          <Path
-            key={d.slice(0, 20)}
-            data={d}
-            fill={player.style.color}
-            stroke={isSelected ? '#60a5fa' : undefined}
-            strokeWidth={isSelected ? 1 : 0}
-            shadowColor={player.style.color}
-            shadowBlur={5}
-            shadowOpacity={0.7}
-            perfectDrawEnabled={false}
-          />
-        ))}
-
-        {/* ネオン管の中心白熱ハイライト (ネオン特有の高輝度ホワイトコア) */}
-        {MARKER_PATHS.map((d) => (
-          <Path
-            key={`core-${d.slice(0, 20)}`}
-            data={d}
-            stroke="#ffffff"
-            strokeWidth={0.5}
-            opacity={0.45}
-            perfectDrawEnabled={false}
-          />
-        ))}
+        <Ellipse
+          radiusX={radius * 0.68}
+          radiusY={radius * 0.22}
+          fill={player.style.color}
+          opacity={0.2}
+          listening={false}
+        />
       </Group>
-
-      {/* リング中央の半透明ネオン発光楕円 (床に投影された淡いネオンライトプール) */}
-      <Ellipse
-        radiusX={radius * 0.72}
-        radiusY={radius * 0.24}
-        stroke={player.style.color}
-        strokeWidth={1.5}
-        shadowColor={player.style.color}
-        shadowBlur={8}
-        shadowOpacity={0.6}
-        opacity={0.45}
-        listening={false}
-      />
-      <Ellipse
-        radiusX={radius * 0.68}
-        radiusY={radius * 0.22}
-        fill={player.style.color}
-        opacity={0.2}
-        listening={false}
-      />
     </Group>
   );
 }
