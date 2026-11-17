@@ -33,6 +33,7 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
           const cmd = String(tc.args?.CommandLine ?? '');
           if (
             cmd.includes('ai:peek') ||
+            cmd.includes('ai:read') ||
             cmd.includes('ai:impact') ||
             cmd.includes('ast-grep') ||
             /\b(?:rg|rtk\s+grep)\b/.test(cmd)
@@ -98,6 +99,7 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
       if (
         /(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) ||
         cmd.includes('ai:peek') ||
+        cmd.includes('ai:read') ||
         cmd.includes('ai:impact') ||
         cmd.includes('ast-grep') ||
         /\brg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd)

@@ -139,4 +139,46 @@ describe('peek.ts (ai:peek)', () => {
     expect(out).toContain('=== mod-9.ts (90 lines) | symbols:');
     expect(out.split('\n').length).toBeLessThan(40);
   });
+
+  it('expands 1st-level inner handlers, useEffect, and return for >=25-line components/hooks', () => {
+    const bigComponent = [
+      "import { memo, useCallback, useEffect } from 'react';",
+      '',
+      'export const BigBoard = memo(({ id }: { id: string }) => {',
+      '  const handleDragStart = useCallback(() => {',
+      '    console.log("start", id);',
+      '    return true;',
+      '  }, [id]);',
+      '',
+      '  const handleDragEnd = useCallback(() => {',
+      '    console.log("end", id);',
+      '    return false;',
+      '  }, [id]);',
+      '',
+      '  useEffect(() => {',
+      '    console.log("mounted", id);',
+      '  }, [id]);',
+      '',
+      '  // filler lines to exceed 25 lines',
+      '  const a1 = 1;',
+      '  const a2 = 2;',
+      '  const a3 = 3;',
+      '  const a4 = 4;',
+      '  const a5 = 5;',
+      '',
+      '  return (',
+      '    <div>',
+      '      <span>{id}</span>',
+      '      <button onClick={handleDragStart}>Start</button>',
+      '    </div>',
+      '  );',
+      '});',
+    ].join('\n');
+
+    const out = extractPeekFromSource('src/BigBoard.tsx', bigComponent);
+    expect(out).toContain('[L4-L7] handleDragStart (useCallback)');
+    expect(out).toContain('[L9-L12] handleDragEnd (useCallback)');
+    expect(out).toContain('[L14-L16] useEffect()');
+    expect(out).toContain('[L25-L30] return');
+  });
 });

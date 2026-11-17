@@ -1,6 +1,6 @@
 ---
 name: large-codebase-research
-description: "大規模リファクタリングや未知ドメイン調査の前に、ai:impact / ai:peek で構造・影響範囲を蒸留して Artifact（research-<topic>.md）に保存し、新セッションの /plan 等へコピペ用プロンプト付きで引き継ぐトークン最適化ワークフロー"
+description: "大規模リファクタリングや未知ドメイン調査の前に、ai:impact / ai:peek / ai:read で構造・影響範囲・必要ASTノードを最小トークンで蒸留して Artifact（research-<topic>.md）に保存し、新セッションの /plan 等へコピペ用プロンプト付きで引き継ぐトークン最適化ワークフロー"
 ---
 
 # Large Codebase Research (調査カプセル分離ワークフロー)
@@ -16,7 +16,7 @@ description: "大規模リファクタリングや未知ドメイン調査の前
 `.agents/rules/efficient-exploration.md` に従い、最小ターンで事実を収集する：
 1. **影響・呼び出し元特定**: `bun run ai:impact <symbol|file>` および `rg -l '<symbol>' src/ extension/` で定義元・Consumers 全件・関連テストを特定する。
 2. **構造・行範囲抽出**: `bun run ai:peek <file|dir> [Symbol]` で公開型・シグネチャ・`[L開始-L終了]` を把握する（250行超時は対象ファイルを絞って再実行）。
-3. **ピンポイント読込（推測並列・連続スライス禁止）**: `ls` / `fd` / `rg` 結果確認前に推測パスへ `read_file` を並列発行しない。150行超ファイルへの連続スライス読込（ページ送り）は行わず、設計判断に必須な行範囲のみ `StartLine`/`EndLine` 指定 `read_file` で1回確認する。
+3. **ASTピンポイント一括抽出（`ai:read` 第一選択・大型 `read_file` 禁止）**: 設計判断に必須な関数・型本体を読む際は、**`read_file` ではなく `bun run ai:read <file1:Symbol1,Symbol2 file2:start-end file3:line...>`** を1ターンで並列一括実行する。`ls`/`fd`/`rg` 結果確認前の推測パス並列読込・100行超 `read_file` スライス・連続スライス（ページ送り）は厳禁とする。
 
 ### Step 2. 調査カプセルへの蒸留出力 (Artifact: `research-<topic>.md`)
 調査結果を Artifact ディレクトリ（`<appDataDir>/brain/<conversation-id>/research-<topic>.md`）に書き出す。**コマンド生ログ・長大なソースコード・推測事項の貼り付けは禁止**し、以下の6項目に蒸留する：

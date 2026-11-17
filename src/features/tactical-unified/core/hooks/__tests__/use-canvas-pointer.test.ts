@@ -93,7 +93,7 @@ describe('useCanvasPointerInteraction', () => {
         children,
       );
 
-  it('ホイールズーム時に pitchTransform.zoom がカーソル基準で拡大縮小すること', () => {
+  it('ホイール操作を実行しても pitchTransform.zoom が変化しないこと（無効化）', () => {
     const { result } = renderHook(
       () =>
         useCanvasPointerInteraction({
@@ -102,7 +102,8 @@ describe('useCanvasPointerInteraction', () => {
       { wrapper: createWrapper() },
     );
 
-    expect(getActiveSlide()?.pitchTransform?.zoom ?? 1).toBe(1);
+    const initialZoom = getActiveSlide()?.pitchTransform?.zoom ?? 1;
+    expect(initialZoom).toBe(1);
 
     // ズームイン (deltaY < 0)
     act(() => {
@@ -110,9 +111,7 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaWheelEvent(-100, { x: 500, y: 500 }),
       );
     });
-
-    const zoomAfterIn = getActiveSlide()?.pitchTransform?.zoom ?? 1;
-    expect(zoomAfterIn).toBeGreaterThan(1);
+    expect(getActiveSlide()?.pitchTransform?.zoom ?? 1).toBe(initialZoom);
 
     // ズームアウト (deltaY > 0)
     act(() => {
@@ -120,12 +119,10 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaWheelEvent(100, { x: 500, y: 500 }),
       );
     });
-
-    const zoomAfterOut = getActiveSlide()?.pitchTransform?.zoom ?? 1;
-    expect(zoomAfterOut).toBeLessThan(zoomAfterIn);
+    expect(getActiveSlide()?.pitchTransform?.zoom ?? 1).toBe(initialZoom);
   });
 
-  it('Space押下ドラッグで pitchTransform.panX / panY が平行移動すること', () => {
+  it('Space押下中のポインタダウン＋ムーブでも pitchTransform.panX / panY が変化しないこと（無効化）', () => {
     const { result } = renderHook(
       () =>
         useCanvasPointerInteraction({
@@ -134,11 +131,13 @@ describe('useCanvasPointerInteraction', () => {
       { wrapper: createWrapper() },
     );
 
+    const initialPanX = getActiveSlide()?.pitchTransform?.panX ?? 0;
+    const initialPanY = getActiveSlide()?.pitchTransform?.panY ?? 0;
+
     // Spaceキー押下
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
     });
-    expect(result.current.isSpacePressed).toBe(true);
 
     // ドラッグ開始
     act(() => {
@@ -146,7 +145,7 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 100, y: 100 }),
       );
     });
-    expect(result.current.isPanning).toBe(true);
+    expect(result.current.isPanning).toBe(false);
 
     // ドラッグ移動 (dx = +50, dy = +30)
     act(() => {
@@ -154,8 +153,8 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 150, y: 130 }),
       );
     });
-    expect(getActiveSlide()?.pitchTransform?.panX).toBe(50);
-    expect(getActiveSlide()?.pitchTransform?.panY).toBe(30);
+    expect(getActiveSlide()?.pitchTransform?.panX ?? 0).toBe(initialPanX);
+    expect(getActiveSlide()?.pitchTransform?.panY ?? 0).toBe(initialPanY);
 
     // ドラッグ終了
     act(() => {
@@ -163,7 +162,6 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 150, y: 130 }),
       );
     });
-    expect(result.current.isPanning).toBe(false);
 
     // Spaceキー離す
     act(() => {

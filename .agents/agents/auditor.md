@@ -70,7 +70,7 @@ bun run ai:audit --steps <session_id> --range <start>:<end>
 
 ### 4. 原因層の論理特定 (Root Cause Analysis)
 問題行動（Finding / Denial / Bypass / ターン肥大化）の発生源を、以下の 8 層から特定します：
-- **Planner**: タスク分解が粗い、`ai:peek`/`ai:impact`/`rg` を使わず自前探索、`task:validate`/`ai:preflight`/`ai:commit` 漏れ、完了済 Worker の `kill` 漏れや直列起動
+- **Planner**: タスク分解が粗い、`ai:peek`/`ai:impact`/`ai:read`/`rg` を使わず自前探索、`task:validate`/`ai:preflight`/`ai:commit` 漏れ、完了済 Worker の `kill` 漏れや直列起動
 - **Worker**: TDD 違反、ガード遮断後に同一コマンド反復、生コマンドやスコープ外コマンド実行、スライス読込、モック/Lint逃避
 - **Architect**: `.agents/**`・`docs/**` 範囲外の編集試行、非許可テスト/ビルドコマンド試行
 - **Task設計 (`tasks/TASK-*.md`)**: 契約不備、サイズ上限超過（>400行 / >4ファイル / >40行ブロック）、二重持ち/フォールバック設計、モックテスト指示

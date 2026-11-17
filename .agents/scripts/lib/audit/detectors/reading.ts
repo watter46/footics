@@ -68,8 +68,12 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
   return findings;
 };
 
-function isFileProbed(file: string, probedTokens: Set<string>): boolean {
-  if (probedTokens.has(file)) return true;
+function isFileProbed(
+  file: string,
+  probedTokens: Set<string>,
+  exactSearchTokens: Set<string>,
+): boolean {
+  if (probedTokens.has(file) || exactSearchTokens.has(file)) return true;
   const resolved = path.resolve(file);
   for (const p of probedTokens) {
     if (path.resolve(p) === resolved) return true;
@@ -87,6 +91,12 @@ function isFileProbed(file: string, probedTokens: Set<string>): boolean {
       return true;
     }
   }
+  for (const p of exactSearchTokens) {
+    if (path.resolve(p) === resolved) return true;
+    if (/\.[jt]sx?$/i.test(p) && (file.endsWith(p) || p.endsWith(file))) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -99,6 +109,7 @@ export const detectLargeFullBlind: Detector = (
 ): Finding[] => {
   const findings: Finding[] = [];
   const probedTokens = new Set<string>();
+  const exactSearchTokens = new Set<string>();
 
   for (let i = 0; i < ctx.records.length; i++) {
     const r = ctx.records[i];
@@ -106,14 +117,21 @@ export const detectLargeFullBlind: Detector = (
       for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
         const tc = r.tool_calls[tcIdx];
         const cmd = String(tc.args?.CommandLine ?? '');
-        if (
+        const isStructureProbeCmd =
           cmd.includes('peek') ||
-          cmd.includes('impact') ||
+          cmd.includes('ai:read') ||
+          cmd.includes('read.ts') ||
+          cmd.includes('impact');
+        const isSearchCmd =
           cmd.includes('ast-grep') ||
           cmd.includes('grep') ||
           cmd.includes('find') ||
-          /\brg\b/.test(cmd)
-        ) {
+          /\brg\b/.test(cmd);
+
+        if (isStructureProbeCmd || isSearchCmd) {
+          const targetSet = isStructureProbeCmd
+            ? probedTokens
+            : exactSearchTokens;
           for (const token of cmd.split(/\s+/)) {
             const clean = token.replace(/^["']|["']$/g, '');
             if (
@@ -124,6 +142,7 @@ export const detectLargeFullBlind: Detector = (
                 'run',
                 'rtk',
                 'ai:peek',
+                'ai:read',
                 'ai:impact',
                 'ast-grep',
                 'rg',
@@ -133,10 +152,10 @@ export const detectLargeFullBlind: Detector = (
             ) {
               continue;
             }
-            probedTokens.add(clean);
+            targetSet.add(clean);
             const colonIdx = clean.lastIndexOf(':');
             if (colonIdx > 0 && clean.slice(0, colonIdx).includes('.')) {
-              probedTokens.add(clean.slice(0, colonIdx));
+              targetSet.add(clean.slice(0, colonIdx));
             }
           }
         }
@@ -151,7 +170,10 @@ export const detectLargeFullBlind: Detector = (
               const m = LINES_REGEX.exec(next.content);
               if (m) {
                 const totalLines = Number.parseInt(m[3], 10);
-                if (totalLines > 150 && !isFileProbed(file, probedTokens)) {
+                if (
+                  totalLines > 150 &&
+                  !isFileProbed(file, probedTokens, exactSearchTokens)
+                ) {
                   findings.push({
                     id: 'READ-03',
                     name: 'LARGE_FULL_BLIND',
@@ -234,6 +256,31 @@ export const detectEditWithoutRawRead: Detector = (
         if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
           if (file) recentRawReads.add(path.resolve(file));
+        } else if (tc.name === 'run_command') {
+          const cmd = String(tc.args?.CommandLine ?? '');
+          if (cmd.includes('ai:read') || cmd.includes('read.ts')) {
+            const tokens = cmd.split(/\s+/);
+            for (let tIdx = 0; tIdx < tokens.length; tIdx++) {
+              const clean = tokens[tIdx].replace(/^["']|["']$/g, '');
+              if (clean === '--symbol' || clean === '-s') {
+                tIdx++;
+                continue;
+              }
+              if (
+                !clean ||
+                clean.startsWith('-') ||
+                ['bun', 'run', 'ai:read', '&&', ';', '|'].includes(clean) ||
+                clean.endsWith('read.ts')
+              ) {
+                continue;
+              }
+              const colonIdx = clean.indexOf(':');
+              const filePart = colonIdx > 0 ? clean.slice(0, colonIdx) : clean;
+              if (filePart && filePart.includes('.')) {
+                recentRawReads.add(path.resolve(filePart));
+              }
+            }
+          }
         }
 
         const isTargetEdit =
@@ -595,6 +642,76 @@ export const detectCompactLoopAlert: Detector = (
   ];
 };
 
+/**
+ * READ-12: AI_READ_BYPASS
+ * Planner / Architect が ai:read を使わずに 3 件以上の TS/JS ソースを read_file 読込、または 100 行超の大型スライス read_file を実行
+ */
+export const detectAiReadBypass: Detector = (ctx: AuditContext): Finding[] => {
+  if (ctx.role !== 'planner' && ctx.role !== 'architect') return [];
+
+  let usedAiRead = false;
+  const codeReadFiles = new Set<string>();
+  const codeReadSteps: number[] = [];
+  const largeSliceSteps: number[] = [];
+  const largeSliceFiles = new Set<string>();
+
+  for (const r of ctx.records) {
+    if (r.type !== 'PLANNER_RESPONSE' || !r.tool_calls) continue;
+    for (const tc of r.tool_calls) {
+      if (tc.name === 'run_command') {
+        const cmd = String(tc.args?.CommandLine ?? '');
+        if (cmd.includes('ai:read') || cmd.includes('read.ts')) {
+          usedAiRead = true;
+        }
+      }
+
+      if (isReadToolName(tc.name)) {
+        const file = extractTargetFile(tc);
+        const isTsJsCode =
+          /(?:^|\/)(?:src|extension|tests|scripts)\/.*\.(?:ts|tsx|js|jsx)$/i.test(
+            file,
+          );
+        if (!isTsJsCode) continue;
+
+        codeReadFiles.add(file);
+        codeReadSteps.push(r.step_index);
+
+        const start = Number(tc.args?.StartLine);
+        const end = Number(tc.args?.EndLine);
+        if (Number.isFinite(start) && Number.isFinite(end)) {
+          if (end - start + 1 > 100) {
+            largeSliceSteps.push(r.step_index);
+            largeSliceFiles.add(file);
+          }
+        }
+      }
+    }
+  }
+
+  if (largeSliceSteps.length > 0 || (!usedAiRead && codeReadFiles.size >= 3)) {
+    const steps = Array.from(
+      new Set(largeSliceSteps.length > 0 ? largeSliceSteps : codeReadSteps),
+    );
+    const reason =
+      largeSliceSteps.length > 0
+        ? `Executed ${largeSliceSteps.length} large (>100 lines) read_file slice(s) on TS/JS code (${Array.from(largeSliceFiles).slice(0, 3).join(', ')})`
+        : `Read ${codeReadFiles.size} TS/JS code files via read_file without ever using ai:read`;
+    return [
+      {
+        id: 'READ-12',
+        name: 'AI_READ_BYPASS',
+        severity: 'MED',
+        sessionId: ctx.sessionId,
+        steps,
+        evidence: `${reason} (ai:read used=${usedAiRead})`,
+        layers: [ctx.role, 'rule'],
+      },
+    ];
+  }
+
+  return [];
+};
+
 export const READING_DETECTORS: Detector[] = [
   detectSeqSlicing,
   detectLargeFullBlind,
@@ -606,4 +723,5 @@ export const READING_DETECTORS: Detector[] = [
   detectReadUnused,
   detectWorkerExplores,
   detectCompactLoopAlert,
+  detectAiReadBypass,
 ];

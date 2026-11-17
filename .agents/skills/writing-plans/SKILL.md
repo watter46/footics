@@ -23,7 +23,7 @@ description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）�
 
 `.agents/rules/efficient-exploration.md` を唯一正本とし、Planner はサブエージェントへ探索を丸投げせず決定論的ツールで最小探索します：
 1. **公開型・境界・Consumers のみ抽出**: `bun run ai:impact <symbol|file>`・`rg -l '<symbol>' src/ extension/`・`bun run ai:peek <file|dir> [Symbol]` で公開型・シグネチャ・`[L開始-L終了]`・参照関係のみを把握する。
-2. **連続スライス・全文通読・重複読込の禁止**: `/plan` 探索時は 150行超ファイルの連続スライス読込（ページ送り）や実装/テスト全文の通読を行わず、契約記述に必須な行範囲のみ `StartLine`/`EndLine` 指定 `read_file` で1回確認する（編集なしでの同一ファイル再読込も禁止）。
+2. **AST一括抽出（`ai:read` 第一選択・大型/連続/重複 `read_file` 禁止）**: `/plan` 探索時に契約記述へ必要な関数・型本体を確認する場合は、**`read_file` ではなく `bun run ai:read <file1:Symbol1 file2:start-end file3:line...>`** で1ターン抽出する。150行超 TS/JS ファイルへの全文 `read_file`、100行超スライス、連続スライス（ページ送り）、編集なし再読込は禁止。
 3. **推測パス並列読込の厳禁**: `ls` / `fd` / `rg` の結果確認前に、実在未確認の推測パスへの `read_file` を同一ターンで並列発行しない（必ずパス確定後の次ターンで読込）。
 4. **中間蒸留ゲート（15〜20ターン上限）**: 探索が **15〜20 ターン** を超える規模、または多モジュール横断の大規模リファクタリング時は、その場でタスク生成を続行せず `large-codebase-research` スキルで Artifact（`research-<topic>.md`）へ中間蒸留し、新規セッションで `/plan <Artifactパス>` を実行する。
 

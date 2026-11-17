@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { extractInnerMemberSummary, findSymbolBounds } from './read';
 
 export const MAX_PEEK_OUTPUT_LINES = 250;
+export const MAX_INTERFACE_PEEK_LINES = 12;
 
 export interface PeekOptions {
   symbol?: string;
@@ -36,10 +38,14 @@ function summarizeFunctionLike(
     ? 'async '
     : '';
   const typeParams = fn.typeParameters
-    ? `<${fn.typeParameters.map((tp) => tp.getText(sourceFile)).join(', ')}>`
+    ? `<${fn.typeParameters.map((tp) => tp.getText(sourceFile).replace(/\s+/g, ' ').trim()).join(', ')}>`
     : '';
-  const params = fn.parameters.map((p) => p.getText(sourceFile)).join(', ');
-  const ret = fn.type ? `: ${fn.type.getText(sourceFile)}` : '';
+  const params = fn.parameters
+    .map((p) => p.getText(sourceFile).replace(/\s+/g, ' ').trim())
+    .join(', ');
+  const ret = fn.type
+    ? `: ${fn.type.getText(sourceFile).replace(/\s+/g, ' ').trim()}`
+    : '';
   return `${asyncMod}${typeParams}(${params})${ret} => { ... }`;
 }
 
@@ -213,6 +219,9 @@ function findDeclarationBounds(
   if (!matched && isTest) {
     matched = findMatchingTestCall(sourceFile, sourceFile, symbol);
   }
+  if (!matched) {
+    matched = findSymbolBounds(sourceFile, symbol, isTest);
+  }
   return matched;
 }
 
@@ -309,14 +318,30 @@ export function extractPeekFromSource(
       ts.isExportDeclaration(node) ||
       ts.isExportAssignment(node);
 
-    const { label: range } = getLineBounds(sourceFile, node);
+    const {
+      start: nodeStart,
+      end: nodeEnd,
+      label: range,
+    } = getLineBounds(sourceFile, node);
 
     if (
       ts.isInterfaceDeclaration(node) ||
       ts.isTypeAliasDeclaration(node) ||
       ts.isEnumDeclaration(node)
     ) {
-      items.push(`${range} ${node.getText(sourceFile)}`);
+      const rawText = node.getText(sourceFile);
+      const rawLines = rawText.split('\n');
+      if (rawLines.length > MAX_INTERFACE_PEEK_LINES) {
+        const head = rawLines.slice(0, 8).join('\n');
+        const omitted = rawLines.length - 8;
+        items.push(
+          `${range} ${head}\n  // ... (${omitted} more lines — use 'bun run ai:read ${relPath}:${node.name.text}')\n}`,
+        );
+      } else {
+        items.push(`${range} ${rawText}`);
+      }
+      void nodeStart;
+      void nodeEnd;
       return;
     }
 
@@ -328,15 +353,21 @@ export function extractPeekFromSource(
         ? 'async '
         : '';
       const typeParams = node.typeParameters
-        ? `<${node.typeParameters.map((tp) => tp.getText(sourceFile)).join(', ')}>`
+        ? `<${node.typeParameters.map((tp) => tp.getText(sourceFile).replace(/\s+/g, ' ').trim()).join(', ')}>`
         : '';
       const params = node.parameters
-        .map((p) => p.getText(sourceFile))
+        .map((p) => p.getText(sourceFile).replace(/\s+/g, ' ').trim())
         .join(', ');
-      const ret = node.type ? `: ${node.type.getText(sourceFile)}` : '';
+      const ret = node.type
+        ? `: ${node.type.getText(sourceFile).replace(/\s+/g, ' ').trim()}`
+        : '';
       items.push(
         `${range} ${exportPrefix}${asyncPrefix}function ${node.name.getText(sourceFile)}${typeParams}(${params})${ret};`,
       );
+      const inner = extractInnerMemberSummary(sourceFile, node, 25);
+      if (inner.length > 0) {
+        items.push(...inner);
+      }
       return;
     }
 
@@ -361,8 +392,10 @@ export function extractPeekFromSource(
             : 'var';
 
       const declSummaries = node.declarationList.declarations.map((decl) => {
-        const dName = decl.name.getText(sourceFile);
-        const dType = decl.type ? `: ${decl.type.getText(sourceFile)}` : '';
+        const dName = decl.name.getText(sourceFile).replace(/\s+/g, ' ').trim();
+        const dType = decl.type
+          ? `: ${decl.type.getText(sourceFile).replace(/\s+/g, ' ').trim()}`
+          : '';
         if (!decl.initializer) return `${dName}${dType}`;
         return `${dName}${dType} = ${summarizeInitializer(sourceFile, decl.initializer)}`;
       });
@@ -370,6 +403,10 @@ export function extractPeekFromSource(
       items.push(
         `${range} ${exportPrefix}${flags} ${declSummaries.join(', ')};`,
       );
+      const inner = extractInnerMemberSummary(sourceFile, node, 25);
+      if (inner.length > 0) {
+        items.push(...inner);
+      }
       return;
     }
 
@@ -471,7 +508,7 @@ export function formatPeekOutput(
     summarizeFileOneLine(e.filePath, e.content, cwd),
   );
   summaries.push(
-    `\n[Degraded: output ${lineCount} lines > ${MAX_PEEK_OUTPUT_LINES}. Run 'bun run ai:peek <file>' or 'bun run ai:peek <file>:<Symbol>' for full signatures.]`,
+    `\n[Degraded: output ${lineCount} lines > ${MAX_PEEK_OUTPUT_LINES}. Run 'bun run ai:peek <file>' for signatures or 'bun run ai:read <file>:<Symbol>' for raw implementation.]`,
   );
   return summaries.join('\n');
 }

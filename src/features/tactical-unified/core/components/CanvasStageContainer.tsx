@@ -20,7 +20,6 @@ import {
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { useCanvasExport } from '../hooks/use-canvas-export';
 import { useCanvasPointerInteraction } from '../hooks/use-canvas-pointer-interaction';
-import { useCanvasShortcuts } from '../hooks/use-canvas-shortcuts';
 import { useCanvasViewport } from '../hooks/use-canvas-viewport';
 import type { CanvasCoreHandle, CanvasStageProps } from '../types';
 import {
@@ -72,8 +71,6 @@ export function CanvasStageContainer({
   const redo = useDocumentStore((s) => s.redo);
   const canUndoState = useDocumentStore((s) => s.past.length > 0);
   const canRedoState = useDocumentStore((s) => s.future.length > 0);
-
-  useCanvasShortcuts();
 
   const {
     selectionBox,

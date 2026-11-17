@@ -241,7 +241,7 @@ function checkTokenGuard(
     return {
       decision: 'deny',
       reason:
-        "[GUARD] 'tail' is prohibited for code exploration. Use 'bun run ai:peek <file>' to locate structure/signatures, or 'read_file' with specific StartLine/EndLine.",
+        "[GUARD] 'tail' is prohibited for code exploration. Use 'bun run ai:peek <file>' to locate structure/signatures, or 'bun run ai:read <file>:<Symbol|start-end>'.",
     };
   }
   if (
@@ -249,7 +249,21 @@ function checkTokenGuard(
   ) {
     return {
       decision: 'deny',
-      reason: `[GUARD] '${executable}' is prohibited to prevent file read / line count guard bypass. Use 'bun run ai:peek <file>' or 'read_file' instead.`,
+      reason: `[GUARD] '${executable}' is prohibited to prevent file read / line count guard bypass. Use 'bun run ai:peek <file>' or 'bun run ai:read <file>:<Symbol|start-end>' instead.`,
+    };
+  }
+
+  // 6e-1b. rtk read (全文・-m なし) による TS/JS 丸読みバイパスの遮断
+  if (
+    executable === 'rtk' &&
+    args[0] === 'read' &&
+    !args.some((a) => a === '-m' || a.startsWith('-m')) &&
+    args.some((a) => /\.(ts|tsx|js|jsx)$/i.test(a))
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Full TS/JS reading via 'rtk read' is prohibited. Use 'bun run ai:peek <file>' or 'bun run ai:read <file>:<Symbol|start-end>'.",
     };
   }
 
@@ -288,8 +302,14 @@ function checkTokenGuard(
     };
   }
 
-  // 6e-3. cat / less / more -> rtk read
+  // 6e-3. cat / less / more -> TS/JS 全文は遮断し ai:read へ誘導、その他は rtk read
   if (['cat', 'less', 'more'].includes(executable)) {
+    if (args.some((a) => !a.startsWith('-') && /\.(ts|tsx|js|jsx)$/i.test(a))) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Full TS/JS reading via '${executable}' is prohibited. Use 'bun run ai:peek <file>' or 'bun run ai:read <file>:<Symbol|start-end>'.`,
+      };
+    }
     return {
       decision: 'allow',
       overwrite: {

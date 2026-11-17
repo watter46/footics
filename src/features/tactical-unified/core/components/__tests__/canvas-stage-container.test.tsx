@@ -204,64 +204,18 @@ describe('CanvasCoreHandle Imperative API', () => {
   });
 });
 
-describe('CanvasStageContainer Tool Shortcuts', () => {
-  it('初期登録されたツール切り替えキー（V -> select）が正しく動作すること', () => {
-    const { sessionStore } = renderWithStore(<CanvasStageContainer />);
+describe('CanvasStageContainer Shortcuts & Toolbar', () => {
+  it('CanvasStageContainer マウント状態で Ctrl+Z 押下しても自前で undo() が発火しないこと', () => {
+    const { documentStore } = renderWithStore(<CanvasStageContainer />);
+
+    const phaseId = documentStore.getState().project.phases[0]?.id ?? '';
+    const slideId =
+      documentStore.getState().project.phases[0]?.slides[0]?.id ?? '';
 
     act(() => {
-      sessionStore.getState().setActiveTool('eraser');
-    });
-    expect(sessionStore.getState().activeTool).toBe('eraser');
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'v', code: 'KeyV' });
-    });
-    expect(sessionStore.getState().activeTool).toBe('select');
-  });
-});
-
-describe('CanvasStageContainer Action & History Shortcuts', () => {
-  it('編集・履歴ショートカット（Delete, Backspace, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Ctrl+A, Escape）が動作すること', () => {
-    const { documentStore, sessionStore } = renderWithStore(
-      <CanvasStageContainer />,
-    );
-
-    const spaceEvt = new KeyboardEvent('keydown', {
-      code: 'Space',
-      key: ' ',
-      cancelable: true,
-    });
-    act(() => {
-      document.dispatchEvent(spaceEvt);
-    });
-    expect(spaceEvt.defaultPrevented).toBe(true);
-
-    act(() => {
-      sessionStore
-        .getState()
-        .selectObject({ id: 'arrow-del-1', kind: 'arrow' });
-    });
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'Delete', code: 'Delete' });
-    });
-    expect(
-      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
-    ).toHaveLength(0);
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
-    });
-    expect(
-      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
-    ).toHaveLength(1);
-
-    act(() => {
-      fireEvent.keyDown(document, {
-        key: 'z',
-        code: 'KeyZ',
-        ctrlKey: true,
-        shiftKey: true,
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'DELETE_ENTITIES',
+        ids: ['arrow-del-1'],
       });
     });
     expect(
@@ -269,57 +223,11 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
     ).toHaveLength(0);
 
     act(() => {
-      fireEvent.keyDown(document, { key: 'y', code: 'KeyY', ctrlKey: true });
-    });
-    expect(
-      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
-    ).toHaveLength(0);
-
-    act(() => {
       fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
     });
     expect(
       documentStore.getState().project.phases[0]?.slides[0]?.arrows,
-    ).toHaveLength(1);
-
-    act(() => {
-      sessionStore
-        .getState()
-        .selectObject({ id: 'arrow-del-1', kind: 'arrow' });
-      fireEvent.keyDown(document, { key: 'Backspace', code: 'Backspace' });
-    });
-    expect(
-      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
     ).toHaveLength(0);
-
-    act(() => {
-      documentStore.getState().undo();
-      sessionStore.getState().clearSelection();
-      fireEvent.keyDown(document, { key: 'a', code: 'KeyA', ctrlKey: true });
-    });
-    expect(sessionStore.getState().selectedObjects.length).toBeGreaterThan(0);
-
-    act(() => {
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
-    });
-    expect(sessionStore.getState().selectedObjects).toHaveLength(0);
-    expect(sessionStore.getState().activeTool).toBe('select');
-  });
-
-  it('テキスト編集中（input/textarea）はショートカットが無視されること', () => {
-    const { container, sessionStore } = renderWithStore(
-      <CanvasStageContainer />,
-    );
-    sessionStore.getState().setActiveTool('select');
-
-    const textarea = document.createElement('textarea');
-    container.appendChild(textarea);
-    textarea.focus();
-
-    act(() => {
-      fireEvent.keyDown(textarea, { key: 'a' });
-    });
-    expect(sessionStore.getState().activeTool).toBe('select');
   });
 
   it('toolbar prop が渡されない場合はツールバーを描画せず、渡された場合にのみスロット描画すること', () => {

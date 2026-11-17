@@ -100,10 +100,18 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.overwrite?.CommandLine).toBe('rtk ls -la src');
     });
 
-    test('rewrites raw cat to rtk read', () => {
+    test('rewrites raw cat on non-code to rtk read, but denies full cat/rtk read on TS/JS files', () => {
       const res = evaluateCommand('cat README.md');
       expect(res.decision).toBe('allow');
       expect(res.overwrite?.CommandLine).toBe('rtk read README.md');
+
+      const resTsCat = evaluateCommand('cat src/file.ts');
+      expect(resTsCat.decision).toBe('deny');
+      expect(resTsCat.reason).toContain('ai:read');
+
+      const resTsRtk = evaluateCommand('rtk read src/file.tsx');
+      expect(resTsRtk.decision).toBe('deny');
+      expect(resTsRtk.reason).toContain('ai:read');
     });
 
     test('rewrites raw head with line limit to rtk read -m 1:N', () => {

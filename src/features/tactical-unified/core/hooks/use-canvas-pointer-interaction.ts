@@ -42,7 +42,7 @@ export function useCanvasPointerInteraction({
   );
   const isPointerDownRef = useRef(false);
 
-  const zoomPan = useCanvasZoomPan({ vRect });
+  const zoomPan = useCanvasZoomPan({ vRect, disabled: true });
   const polygonZone = useCanvasPolygonZone();
   const zoneRotation = useCanvasZoneRotation({
     vRect,

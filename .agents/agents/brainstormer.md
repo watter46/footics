@@ -11,6 +11,7 @@ tools:
   - ask_question
 skills:
   - brainstorming
+  - large-codebase-research
   - caveman
   - cross-platform-component-design
   - dexie
@@ -26,8 +27,8 @@ skills:
 1. **迎合禁止と裏取り必須 (Anti-Sycophancy & Evidence-Based Validation)**:
    - ユーザーの提案を未検証のまま肯定することを禁止します。
    - 提案を受けたら必ず既存実装を効率的探索で裏取りし、設計破綻・ボトルネック・他画面（Consumers）への悪影響・新旧二重持ちの懸念がある場合は **`⚠️ 設計破綻・ボトルネックの指摘`** として反論・代替案を提示してください。
-2. **効率的探索による裏取り**:
-   - `.agents/rules/efficient-exploration.md` に従い `ai:impact` / `ai:peek` / `rg -l` と範囲指定 `read_file` で最小限の裏取りを行う。
+2. **効率的探索による裏取り (`ai:read` 第一選択)**:
+   - `.agents/rules/efficient-exploration.md` に従い `ai:impact` / `rg -l` / `ai:peek` で対象とシンボルを特定した後、**`read_file` ではなく `bun run ai:read <file1:Symbol1 file2:start-end file3:line...>`** で複数箇所の該当シンボル・行範囲を1ターン一括抽出し最小限の裏取りを行う（150行超 TS/JS の全文・100行超スライス `read_file` は禁止。15〜20ターン超の長大調査は `large-codebase-research` で中間蒸留する）。
 3. **Footics ユビキタス言語による平易な対話 (`caveman`)**:
    - 前置き・挨拶・要約は全廃し、結論から述べます。
    - チャットに実コードの長文ブロックを貼ることを禁止し、`.agents/rules/plan-artifact.md` に定義された **Footics ユビキタス言語（ボード画面、クイック編集、スライド、選手マーカー、境界線、ドラッグ移動中、操作確定時など）** を使って説明します。

@@ -506,9 +506,9 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
     expect(res?.overwrite).toBeUndefined();
   });
 
-  it('denies planner full read of >150-line investigation file without prior structure probe', () => {
+  it('denies planner full read of >100-line investigation file without prior structure probe', () => {
     const target = path.join(testDir, 'src/foo.ts');
-    makeLines(target, 180);
+    makeLines(target, 120);
     const t = makeTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Inspect foo.ts' },
     ]);
@@ -523,9 +523,11 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
     expect(res?.reason).toContain('ai:peek');
   });
 
-  it('allows planner >150-line read after ai:peek (file or parent dir) or with StartLine/EndLine slice', () => {
+  it('steers planner >100-line TS/JS full reads and >100-line slices to ai:read while allowing non-TS/JS files after ai:peek', () => {
     const target = path.join(testDir, 'src/foo.ts');
-    makeLines(target, 220);
+    makeLines(target, 160);
+    const cssTarget = path.join(testDir, 'src/styles.css');
+    makeLines(cssTarget, 220);
 
     const tFilePeek = makeTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Inspect foo.ts' },
@@ -540,13 +542,24 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
         ],
       },
     ]);
-    expect(
-      checkViewGuard({
-        transcriptPath: tFilePeek,
-        workspacePaths: [testDir],
-        toolCall: { name: 'read_file', args: { Path: target } },
-      })?.decision,
-    ).toBe('allow');
+    const resAfterPeek = checkViewGuard({
+      transcriptPath: tFilePeek,
+      workspacePaths: [testDir],
+      toolCall: { name: 'read_file', args: { Path: target } },
+    });
+    expect(resAfterPeek?.decision).toBe('deny');
+    expect(resAfterPeek?.reason).toContain('ai:read');
+
+    const resLargeSliceAfterPeek = checkViewGuard({
+      transcriptPath: tFilePeek,
+      workspacePaths: [testDir],
+      toolCall: {
+        name: 'read_file',
+        args: { Path: target, StartLine: 1, EndLine: 120 },
+      },
+    });
+    expect(resLargeSliceAfterPeek?.decision).toBe('deny');
+    expect(resLargeSliceAfterPeek?.reason).toContain('ai:read');
 
     const tDirPeek = makeTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Inspect src' },
@@ -565,26 +578,37 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
       checkViewGuard({
         transcriptPath: tDirPeek,
         workspacePaths: [testDir],
-        toolCall: { name: 'read_file', args: { Path: target } },
+        toolCall: { name: 'read_file', args: { Path: cssTarget } },
       })?.decision,
     ).toBe('allow');
 
     const tUnprobed = makeTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Read slice' },
     ]);
+    const resUnprobedLargeSlice = checkViewGuard({
+      transcriptPath: tUnprobed,
+      workspacePaths: [testDir],
+      toolCall: {
+        name: 'read_file',
+        args: { Path: target, StartLine: 1, EndLine: 120 },
+      },
+    });
+    expect(resUnprobedLargeSlice?.decision).toBe('deny');
+    expect(resUnprobedLargeSlice?.reason).toContain('ai:read');
+
     expect(
       checkViewGuard({
         transcriptPath: tUnprobed,
         workspacePaths: [testDir],
         toolCall: {
           name: 'read_file',
-          args: { Path: target, StartLine: 10, EndLine: 50 },
+          args: { Path: cssTarget, StartLine: 10, EndLine: 50 },
         },
       })?.decision,
     ).toBe('allow');
   });
 
-  it('allows worker full read of >150-line file without prior probe', () => {
+  it('allows worker full read of >100-line file without prior probe', () => {
     const target = path.join(testDir, 'src/foo.ts');
     makeLines(target, 250);
     const t = makeTranscript([
@@ -603,13 +627,13 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
     expect(res?.decision).toBe('allow');
   });
 
-  it('allows planner full read of non-code dirs and <=150-line source files without prior probe', () => {
+  it('allows planner full read of non-code dirs and <=100-line source files without prior probe', () => {
     const t = makeTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Read docs and small src' },
     ]);
 
     const smallSrc = path.join(testDir, 'src/small.ts');
-    makeLines(smallSrc, 150);
+    makeLines(smallSrc, 100);
     expect(
       checkViewGuard({
         transcriptPath: t,

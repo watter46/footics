@@ -15,8 +15,8 @@ description: 新機能の設計や大きな振る舞い変更の着手前に、�
    - ユーザーの提案を未検証のまま肯定してすぐメモ作成に進むことを禁止します。
    - 必ず既存実装との整合性・ボトルネック（描画/計算負荷、状態競合、非同期タイミング、他画面 Consumers への悪影響、対症療法パッチ）を裏取りし、問題があれば **`⚠️ 設計破綻・ボトルネックの指摘`** として反論・代替アーキテクチャを提示してください。
    - 裏取りの結果、**本当にボトルネックや副作用がない場合は無理に捏造せず**、「確認した箇所（`path:line`）と整合しボトルネックなし」と1行で簡潔に結論づけてください。
-2. **最効率の探索・読込とチャット出力規律**:
-   - `.agents/rules/efficient-exploration.md` に従い、`ai:impact` ➔ `ai:peek` ➔ `rg -l` / `rtk grep` / `ast-grep` ➔ 範囲指定 `read_file` の順でボトルネック検証に必要な行範囲のみ最小トークンで確認します。
+2. **最効率の探索・読込とチャット出力規律 (`ai:read` 第一選択)**:
+   - `.agents/rules/efficient-exploration.md` に従い、`ai:impact` / `rg -l` / `rtk grep` / `ast-grep` ➔ `ai:peek`（構造未知時）➔ **`bun run ai:read <file1:Symbol1 file2:start-end file3:line...>`（第一選択：複数ファイル・シンボルを1ターン一括抽出）** の順でボトルネック検証に必要な関数・型本体のみ最小トークンで確認します。`ai:peek` 後に `read_file` の大型スライス（100行超）や全文読込を行わないでください。
    - チャット応答に実コード（コードブロック）を長々と出力することを禁止します。根拠は `ファイル名:行番号` と1〜2行の平易な説明のみで示してください。
 3. **不変条件 (Architectural Invariants) と Consumers 同期の特定**:
    - ちゃぶ台返しを防ぐための破壊禁止の前提条件（Invariants & Why）と、変更に伴い同期更新が必要な別画面・呼び出し元（Consumers）を壁打ち段階で特定します。
@@ -33,7 +33,7 @@ description: 新機能の設計や大きな振る舞い変更の着手前に、�
 ### 1. 意図の把握と既存コードの裏取り (Discover & Verify)
 - 実現したい体験と制約（Local-first、パフォーマンス、単一座標系、Store Provider、ホスト境界）を把握する。
 - **戦術ボード領域（`src/features/tactical-unified/**`, `src/lib/tactical/**`, `src/lib/types/tactical/**`）を扱う場合は、必ず `.agents/rules/tactical-domain-architecture.md` を読み込み**、6コンテキスト分離・単一所有権階層・直和型エンティティ・Branded Coordinates・3周波数状態分離（Cold/Hot/Stream）・Pure Command Reducer（`applySlideCommand` + `enforceSlideInvariants`）・`compileSceneGraph`（Dumb Rasterizer）・`CanvasStore` アダプター廃止の7大不変条件に照らしてボトルネックを裏取りする。
-- `ai:impact` / `ai:peek` / `rg -l` / `rtk grep` / 範囲指定 `read_file` で関連コードの該当行を裏取りし、ボトルネックがあれば `⚠️ 設計破綻・ボトルネックの指摘`（実コード貼付なし・`path:line`明記）、なければ `✅ ボトルネックなし` と端的に判定する。
+- `ai:impact` / `rg -l` / `rtk grep` / `ai:peek` ➔ `bun run ai:read <file:Symbol|start-end|line...>` で関連コードの該当シンボル・行範囲を裏取りし、ボトルネックがあれば `⚠️ 設計破綻・ボトルネックの指摘`（実コード貼付なし・`path:line`明記）、なければ `✅ ボトルネックなし` と端的に判定する。
 
 ### 2. 要件とアプローチの提示 (Present Options & Design)
 - 複数のアプローチがある場合は、メリット・デメリットと推奨案を提示し、`ask_question` または選択肢リストでユーザーの判断を仰ぎます。

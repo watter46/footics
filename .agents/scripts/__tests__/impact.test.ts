@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { analyzeImpact, formatImpactReport } from '../impact';
+import {
+  analyzeImpact,
+  formatImpactReport,
+  formatMultipleImpactReports,
+  parseImpactCliArgs,
+} from '../impact';
 
 describe('impact.ts (ai:impact)', () => {
   const tmpDirs: string[] = [];
@@ -89,6 +94,9 @@ describe('impact.ts (ai:impact)', () => {
     const formatted = formatImpactReport(report);
     expect(formatted).toContain('=== IMPACT (symbol): computeTargetPos ===');
     expect(formatted).toContain('src/core/calcPos.ts [L3-L5]');
+    expect(formatted).toContain(
+      'L4 [in Board L3-L8]: const v = computeTargetPos({ x: 1, y: 2 });',
+    );
     expect(formatted).toContain('tests/calcPos.test.ts');
   });
 
@@ -120,5 +128,30 @@ describe('impact.ts (ai:impact)', () => {
     expect(boardRef).toBeDefined();
     expect(boardRef?.lines.length).toBe(2);
     expect(boardRef?.totalMatches).toBe(4);
+    expect(boardRef?.lines[0]).not.toContain('import {');
+  });
+
+  it('supports multiple targets in parseImpactCliArgs and formatMultipleImpactReports', () => {
+    const root = setupFixture();
+    const parsedMulti = parseImpactCliArgs(
+      ['computeTargetPos', 'TacticalPoint'],
+      root,
+    );
+    expect(parsedMulti.targets).toEqual(['computeTargetPos', 'TacticalPoint']);
+    expect(parsedMulti.scopeDir).toBeUndefined();
+
+    const parsedCompatScope = parseImpactCliArgs(
+      ['computeTargetPos', 'src/ui'],
+      root,
+    );
+    expect(parsedCompatScope.targets).toEqual(['computeTargetPos']);
+    expect(parsedCompatScope.scopeDir).toBe('src/ui');
+
+    const reports = parsedMulti.targets.map((t) =>
+      analyzeImpact(t, { cwd: root }),
+    );
+    const formatted = formatMultipleImpactReports(reports);
+    expect(formatted).toContain('=== IMPACT (symbol): computeTargetPos ===');
+    expect(formatted).toContain('=== IMPACT (symbol): TacticalPoint ===');
   });
 });

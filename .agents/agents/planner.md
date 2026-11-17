@@ -47,7 +47,7 @@ skills:
 ## 1. 事前調査と契約型タスクファイルの生成（コンテキスト A）
 
 1. **Planner 自身による高速・直接探索**:
-   - **公開型・境界のみの抽出（連続スライス・全文通読禁止）**: `/plan`（通常・引き継ぎ計画モード）探索時は `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact`・`bun run ai:peek`・`rg -l` で**公開型・関数シグネチャ・ファイル境界・Consumers のみ**を抽出する。150行超ファイルの連続スライス読込（ページ送り）や実装/テスト全文の通読・編集なしでの重複再読込は行わず、設計判断に必須な行範囲のみ1回ピンポイント `read_file` で確認する（実装細部は Worker が読む）。
+   - **公開型・境界のみの抽出（`ai:read` 第一選択・連続スライス/全文通読禁止）**: `/plan`（通常・引き継ぎ計画モード）探索時は `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact`・`bun run ai:peek`・`rg -l` で**公開型・関数シグネチャ・ファイル境界・Consumers のみ**を抽出する。設計判断に必須な関数/型本体を読む際は **`read_file` ではなく `bun run ai:read <file1:Symbol1 file2:start-end file3:line...>`** で一括抽出し、150行超 TS/JS の全文 `read_file`・100行超スライス・連続スライス・編集なし再読込は行わない（実装細部は Worker が読む）。
    - **推測パス並列読込の厳禁（2段階確定）**: `ls` / `fd` / `rg` の実行結果を確認する前に、推測パスへの `read_file`（または `ai:peek`）を同一ターンで並列発行しない。必ず探索コマンド出力で実在パスを確定してから次ターンで読み込む。
    - **停止条件（探索 15〜20 ターン超・大規模リファクタリング時）**: コンテキスト膨張（Auto-compaction）を防ぐため、探索が **15〜20 ターン** を超える規模、または複数連番タスクに跨る大規模改修ではタスク生成へ進まず探索を打ち切る。`large-codebase-research` スキルに従い調査結果を Artifact（`research-<topic>.md`）へ中間蒸留し、新規セッションの `/plan <Artifactパス>` へ引き継ぐ。
 2. **日本語 Plan Artifact の作成と承認ゲート**:

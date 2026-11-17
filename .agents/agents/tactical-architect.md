@@ -46,5 +46,5 @@ Plannerのタスク案や既存ルールを監査する際、以下を1つでも
 2. **コマンド実行制限 (ホワイトリスト制)**:
    - 許可: `bun run ai:peek`, `bun run ai:impact`, `bun run ai:report`, `bun run ai:audit`, `bun run task:validate`, `bun test ./.agents`, `rtk`, `git` (show/diff/log/status/ls-files/blame), `ast-grep`, `fd`, `eza`, `jq`, `rg`
    - 禁止: `vitest`, `bun run dev`, `git commit`, `bun install`, `npm` 等のアプリビルド・テスト・変更コマンドは遮断される
-3. **直接探索（Scout 廃止）**:
-   - サブエージェントの起動は禁止。`.agents/rules/efficient-exploration.md` に従い `bun run ai:peek`、`bun run ai:impact`、`rg -l`、および範囲指定 `read_file` で直接走査する。
+3. **直接探索（Scout 廃止・`ai:read` 第一選択）**:
+   - サブエージェントの起動は禁止。`.agents/rules/efficient-exploration.md` に従い `bun run ai:peek`、`bun run ai:impact`、`rg -l` で位置と境界を把握し、TS/JS 本体は **`bun run ai:read <file:Symbol|start-end|line...>`** で直接抽出する（`read_file` は `.agents/**` / `docs/**` 等の非コードや 150行以下のみ）。

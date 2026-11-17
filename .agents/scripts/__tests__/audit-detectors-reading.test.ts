@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
+  detectAiReadBypass,
   detectCompactLoopAlert,
   detectDuplicateRead,
   detectEditWithoutRawRead,
@@ -81,6 +82,41 @@ describe('audit-session Phase 1-3: reading detectors (READ-02〜READ-11)', () =>
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('READ-03');
       expect(findings[0].severity).toBe('MED');
+    });
+
+    test('does not treat rg directory argument as probing every file under that directory', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-rg-dir-not-probed',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: "rg -l 'Foo' src/" },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/large.ts' } }],
+          },
+          {
+            step_index: 3,
+            type: 'GENERIC',
+            status: 'DONE',
+            content: 'Showing lines 1-300 of 300\n1: // large file',
+          },
+        ],
+      };
+
+      const findings = detectLargeFullBlind(ctx);
+      expect(findings.length).toBe(1);
+      expect(findings[0].id).toBe('READ-03');
     });
 
     test('returns empty if multi-arg ai:peek or :Symbol probe already inspected the file', () => {
@@ -207,6 +243,40 @@ describe('audit-session Phase 1-3: reading detectors (READ-02〜READ-11)', () =>
       const findings = detectEditWithoutRawRead(ctx);
       expect(findings.length).toBe(1);
       expect(findings[0].evidence).toContain('src/overwritten.ts');
+    });
+
+    test('treats bun run ai:read as a valid raw read prior to edit_file', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-ai-read-before-edit',
+        role: 'worker',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: {
+                  CommandLine:
+                    'bun run ai:read src/board.ts:renderBoard src/utils.ts:10-30',
+                },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'edit_file', args: { Path: 'src/board.ts' } },
+              { name: 'edit_file', args: { Path: 'src/utils.ts' } },
+            ],
+          },
+        ],
+      };
+
+      const findings = detectEditWithoutRawRead(ctx);
+      expect(findings.length).toBe(0);
     });
   });
 
@@ -513,7 +583,108 @@ describe('audit-session Phase 1-3: reading detectors (READ-02〜READ-11)', () =>
     });
   });
 
-  test('READING_DETECTORS exports all 10 detectors', () => {
-    expect(READING_DETECTORS.length).toBe(10);
+  describe('READ-12: AI_READ_BYPASS', () => {
+    test('detects planner reading 3+ TS/JS files or >100-line slice without ai:read', () => {
+      const ctxMultiRead: AuditContext = {
+        sessionId: 'test-ai-read-bypass-multi',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'src/a.ts' } },
+              { name: 'read_file', args: { Path: 'src/b.ts' } },
+              { name: 'read_file', args: { Path: 'src/c.tsx' } },
+            ],
+          },
+        ],
+      };
+      const f1 = detectAiReadBypass(ctxMultiRead);
+      expect(f1.length).toBe(1);
+      expect(f1[0].id).toBe('READ-12');
+      expect(f1[0].severity).toBe('MED');
+
+      const ctxLargeSlice: AuditContext = {
+        sessionId: 'test-ai-read-bypass-slice',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun run ai:read src/other.ts:foo' },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'read_file',
+                args: { Path: 'src/a.ts', StartLine: 10, EndLine: 210 },
+              },
+            ],
+          },
+        ],
+      };
+      const f2 = detectAiReadBypass(ctxLargeSlice);
+      expect(f2.length).toBe(1);
+      expect(f2[0].id).toBe('READ-12');
+    });
+
+    test('allows planner using ai:read or <=100-line slices, and ignores workers', () => {
+      const ctxOk: AuditContext = {
+        sessionId: 'test-ai-read-ok',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: {
+                  CommandLine: 'bun run ai:read src/a.ts:foo src/b.ts:1-20',
+                },
+              },
+              {
+                name: 'read_file',
+                args: { Path: 'src/c.ts', StartLine: 1, EndLine: 30 },
+              },
+            ],
+          },
+        ],
+      };
+      expect(detectAiReadBypass(ctxOk)).toEqual([]);
+
+      const ctxWorker: AuditContext = {
+        sessionId: 'test-worker-ok',
+        role: 'worker',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'src/a.ts' } },
+              { name: 'read_file', args: { Path: 'src/b.ts' } },
+              { name: 'read_file', args: { Path: 'src/c.ts' } },
+            ],
+          },
+        ],
+      };
+      expect(detectAiReadBypass(ctxWorker)).toEqual([]);
+    });
+  });
+
+  test('READING_DETECTORS exports all 11 detectors', () => {
+    expect(READING_DETECTORS.length).toBe(11);
   });
 });

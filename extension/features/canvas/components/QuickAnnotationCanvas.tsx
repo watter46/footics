@@ -29,6 +29,7 @@ import {
   DEFAULT_BOUNDARY_BOX_FULL,
 } from '@/lib/types/tactical-unified';
 import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
+import { useQuickAnnotationShortcuts } from '../hooks/use-quick-annotation-shortcuts';
 
 export interface QuickAnnotationCanvasProps {
   screenshot: CapturedScreenshot;
@@ -55,6 +56,7 @@ function QuickAnnotationCanvasInner(
 ) {
   const stageRef = useRef<CanvasCoreHandle | null>(null);
   const { documentStore, sessionStore } = useTacticalStoresContext();
+  useQuickAnnotationShortcuts();
 
   useEffect(() => {
     let prevProject = documentStore.getState().project;

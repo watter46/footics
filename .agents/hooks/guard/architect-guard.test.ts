@@ -130,6 +130,7 @@ describe('architect-guard', () => {
     it('allows permitted analysis tools and scripts', () => {
       const permitted = [
         'bun run ai:peek src/components/Stage.tsx',
+        'bun run ai:read src/components/Stage.tsx:Stage',
         'bun run ai:impact Stage',
         'bun run ai:report latest',
         'bun test ./.agents',

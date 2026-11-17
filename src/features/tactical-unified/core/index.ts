@@ -81,10 +81,6 @@ export {
   useCanvasExport,
 } from './hooks/use-canvas-export';
 export {
-  type UseCanvasShortcutsOptions,
-  useCanvasShortcuts,
-} from './hooks/use-canvas-shortcuts';
-export {
   type UseCanvasZoomPanOptions,
   useCanvasZoomPan,
 } from './hooks/use-canvas-zoom-pan';

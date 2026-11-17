@@ -18,6 +18,7 @@
     "extension:dev:sync": "bun scripts/extension/sync-windows.ts --watch",
     "ai:check": "bun .agents/scripts/check-worker.ts",
     "ai:peek": "bun .agents/scripts/peek.ts",
+    "ai:read": "bun .agents/scripts/read.ts",
     "ai:impact": "bun .agents/scripts/impact.ts",
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",

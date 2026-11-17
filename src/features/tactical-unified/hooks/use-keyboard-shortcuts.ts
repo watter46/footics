@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { getToolShortcutMap } from '@/features/tactical-unified/core/components/toolbar';
+import type { SelectedObject } from '@/features/tactical-unified/core/types';
 import {
   handleCopyObjects,
   handleDeleteOrBackspace,
@@ -16,6 +17,7 @@ import {
   handlePasteObjects,
   handleRestartPlayback,
 } from '@/features/tactical-unified/hooks/keyboard-shortcut-handlers';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import { useTacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { isInputFocused } from '@/lib/shortcuts';
 
@@ -85,6 +87,37 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       e.preventDefault();
       handleDuplicateScene(stores);
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Select All: Mod+A (Ctrl+A / Cmd+A)
+  useHotkeys(
+    ['mod+a', 'meta+a'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const { project } = documentStore.getState();
+      const { activePhaseId, activeSlideId } = sessionStore.getState();
+      const activeSlide = selectDomainActiveSlide(
+        project,
+        activePhaseId,
+        activeSlideId,
+      );
+      if (!activeSlide) return;
+      const all: SelectedObject[] = [
+        ...activeSlide.arrows.map((a) => ({
+          id: a.id,
+          kind: 'arrow' as const,
+        })),
+        ...activeSlide.zones.map((z) => ({ id: z.id, kind: 'zone' as const })),
+        ...activeSlide.texts.map((t) => ({ id: t.id, kind: 'text' as const })),
+        ...activeSlide.players.map((p) => ({
+          id: p.id,
+          kind: 'player' as const,
+        })),
+      ];
+      sessionStore.getState().selectObjects(all);
     },
     { enableOnFormTags: false },
   );

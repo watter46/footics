@@ -21,11 +21,13 @@ export const ARCHITECT_ALLOWED_EXECUTABLES: readonly string[] = [
 
 const ALLOWED_BUN_SCRIPTS = new Set([
   'ai:peek',
+  'ai:read',
   'ai:impact',
   'ai:report',
   'ai:audit',
   'task:validate',
   '.agents/scripts/peek.ts',
+  '.agents/scripts/read.ts',
   '.agents/scripts/impact.ts',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',

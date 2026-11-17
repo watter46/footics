@@ -10,7 +10,10 @@ import {
   type RecordedToolCall,
 } from './transcript-calls';
 
-const STRUCTURE_GATE_LINE_LIMIT = 150;
+const STRUCTURE_GATE_LINE_LIMIT = 100;
+const PAGING_GATE_LINE_LIMIT = 150;
+const MAX_PLANNER_SLICE_LINES = 100;
+const TS_JS_FILE_RE = /\.(ts|tsx|js|jsx)$/i;
 const MAX_SEQUENTIAL_SLICES = 3;
 const PAGING_TOLERANCE_LINES = 10;
 const DEFAULT_VIEW_WINDOW_LINES = 800;
@@ -137,6 +140,24 @@ export function extractReadTargetsFromCommand(cmdLine: string): string[] {
     if (parsed.executable === 'rtk' && parsed.args[0] === 'read') {
       const files = parsed.args.slice(1).filter((a) => !a.startsWith('-'));
       targets.push(...files);
+    } else if (
+      parsed.executable === 'bun' &&
+      parsed.args.some((a) => a === 'ai:read' || a.endsWith('read.ts'))
+    ) {
+      for (let i = 0; i < parsed.args.length; i++) {
+        const arg = parsed.args[i];
+        if (arg === 'run' || arg === 'ai:read' || arg.endsWith('read.ts')) {
+          continue;
+        }
+        if (arg === '--symbol' || arg === '-s') {
+          i++;
+          continue;
+        }
+        if (arg.startsWith('-')) continue;
+        const colonIdx = arg.indexOf(':');
+        const filePart = colonIdx > 0 ? arg.slice(0, colonIdx) : arg;
+        if (filePart) targets.push(filePart);
+      }
     } else if (['cat', 'head', 'less', 'more'].includes(parsed.executable)) {
       const files = parsed.args.filter((a) => !a.startsWith('-'));
       targets.push(...files);
@@ -237,7 +258,14 @@ function matchesSubcommandProbeTarget(
       if (token.startsWith('-') || token === 'bun' || token === 'run') {
         continue;
       }
-      if (token === 'ai:peek' || token.endsWith('peek.ts')) continue;
+      if (
+        token === 'ai:peek' ||
+        token.endsWith('peek.ts') ||
+        token === 'ai:read' ||
+        token.endsWith('read.ts')
+      ) {
+        continue;
+      }
       const cleanTok = token.replace(/\\/g, '/').replace(/\/+$/, '');
       if (
         cleanTok === parentDir ||
@@ -295,7 +323,13 @@ function hasPriorStructureProbe(
 
             const isPeek =
               parsed.executable === 'bun' &&
-              parsed.args.some((a) => a === 'ai:peek' || a.endsWith('peek.ts'));
+              parsed.args.some(
+                (a) =>
+                  a === 'ai:peek' ||
+                  a.endsWith('peek.ts') ||
+                  a === 'ai:read' ||
+                  a.endsWith('read.ts'),
+              );
             const isImpact =
               parsed.executable === 'bun' &&
               parsed.args.some(
@@ -386,8 +420,16 @@ function checkViewGuard(payload: any): GuardDecision | null {
   const endLine = parseLineNum(toolCall.args.EndLine);
   const hasSlice = startLine !== undefined || endLine !== undefined;
 
+  const role = detectAgentRole(payload.transcriptPath);
+  const workspacePath = payload.workspacePaths?.[0];
+  const relPath = normalizeRelativePath(resolvedPath, workspacePath).replace(
+    /\\/g,
+    '/',
+  );
+  const isTsJs = TS_JS_FILE_RE.test(resolvedPath);
+
   // 3a. 連続ページ送りスライス読込の遮断 (150行超・全ロール共通)
-  if (totalLines > STRUCTURE_GATE_LINE_LIMIT && hasSlice) {
+  if (totalLines > PAGING_GATE_LINE_LIMIT && hasSlice) {
     const current = toSliceRange({
       name: toolCall.name,
       args: toolCall.args,
@@ -400,27 +442,50 @@ function checkViewGuard(payload: any): GuardDecision | null {
       if (chain >= MAX_SEQUENTIAL_SLICES) {
         return {
           decision: 'deny',
-          reason: `[GUARD] Sequential slice paging blocked: '${baseName}' (${totalLines} lines) has been read in ${chain} consecutive contiguous slices.\nAction: Run 'bun run ai:peek ${rawPath}' or 'bun run ai:impact <symbol>' first to get signatures with line numbers, then locate the target with 'rg' and read only that range (with 5-10 lines of margin).`,
+          reason: `[GUARD] Sequential slice paging blocked: '${baseName}' (${totalLines} lines) has been read in ${chain} consecutive contiguous slices.\nAction: Run 'bun run ai:peek ${relPath}' or 'bun run ai:impact <symbol>' to identify target symbols/lines, then extract them in one shot with 'bun run ai:read ${relPath}:<Symbol1,Symbol2|start-end|line>' instead of paging with 'read_file'.`,
         };
       }
     }
   }
 
-  // 3b. Planner / Architect の 150行超コード無探索丸読み遮断 (Structure-First Gate)
-  const role = detectAgentRole(payload.transcriptPath);
-  const workspacePath = payload.workspacePaths?.[0];
-  const relPath = normalizeRelativePath(resolvedPath, workspacePath);
+  // 3b. Planner / Architect の 100行超コードに対する全文読込・大型スライス遮断 (ai:read へ誘導)
   if (
     (role === 'planner' || role === 'architect') &&
     isInvestigationTarget(relPath) &&
-    totalLines > STRUCTURE_GATE_LINE_LIMIT &&
-    !hasSlice &&
-    !hasPriorStructureProbe(payload.transcriptPath, resolvedPath, workspacePath)
+    totalLines > STRUCTURE_GATE_LINE_LIMIT
   ) {
-    return {
-      decision: 'deny',
-      reason: `[GUARD] Structure-first read gate: '${baseName}' is ${totalLines} lines (> ${STRUCTURE_GATE_LINE_LIMIT}) and has not been inspected with ai:peek / ai:impact yet.\nAction: Run 'bun run ai:peek ${rawPath}' (or 'bun run ai:impact <symbol>') first, or specify StartLine/EndLine for a targeted slice.`,
-    };
+    const probed = hasPriorStructureProbe(
+      payload.transcriptPath,
+      resolvedPath,
+      workspacePath,
+    );
+
+    if (hasSlice) {
+      const effectiveStart = startLine ?? 1;
+      const effectiveEnd = endLine ?? totalLines;
+      const sliceSpan = Math.max(0, effectiveEnd - effectiveStart + 1);
+      if (sliceSpan > MAX_PLANNER_SLICE_LINES) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Large slice read blocked: reading ${sliceSpan} lines (> ${MAX_PLANNER_SLICE_LINES}) of '${baseName}' (${totalLines} lines) via 'read_file' causes context bloat.\nAction: Run 'bun run ai:read ${relPath}:<Symbol1,Symbol2|start-end|line>' to extract only the needed AST nodes/ranges in a single batched command.`,
+        };
+      }
+    } else {
+      if (isTsJs) {
+        return {
+          decision: 'deny',
+          reason: probed
+            ? `[GUARD] Full-file read blocked on >${STRUCTURE_GATE_LINE_LIMIT}-line TS/JS code: '${baseName}' (${totalLines} lines).\nAction: Extract needed symbols/ranges in one batched call via 'bun run ai:read ${relPath}:<Symbol1,Symbol2|start-end|line>'.`
+            : `[GUARD] Structure-first read gate: '${baseName}' is ${totalLines} lines (> ${STRUCTURE_GATE_LINE_LIMIT}) and has not been inspected with ai:peek / ai:impact yet.\nAction: Run 'bun run ai:peek ${relPath}' (or 'bun run ai:impact <symbol>') first to see internal symbols/ranges, then extract them via 'bun run ai:read ${relPath}:<Symbol|start-end|line>'.`,
+        };
+      }
+      if (!probed) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Structure-first read gate: '${baseName}' is ${totalLines} lines (> ${STRUCTURE_GATE_LINE_LIMIT}) and has not been inspected with ai:peek / ai:impact yet.\nAction: Run 'bun run ai:peek ${relPath}' first, or specify StartLine/EndLine <= ${MAX_PLANNER_SLICE_LINES} lines for a targeted slice.`,
+        };
+      }
+    }
   }
 
   return { decision: 'allow' };
@@ -443,5 +508,6 @@ export {
   getRecentInvestigatedFiles,
   hasPriorStructureProbe,
   isInvestigationTarget,
+  MAX_PLANNER_SLICE_LINES,
   STRUCTURE_GATE_LINE_LIMIT,
 };

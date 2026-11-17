@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { findEnclosingContext } from './read';
 
 export interface ImpactDefinition {
   file: string;
@@ -24,6 +25,8 @@ export interface ImpactReport {
   relatedTests: string[];
 }
 
+export const MAX_IMPACT_OUTPUT_LINES = 200;
+
 const TEST_FILE_RE = /\.(test|spec)\.[jt]sx?$/i;
 
 function getRangeLabel(sourceFile: ts.SourceFile, node: ts.Node): string {
@@ -39,8 +42,12 @@ function summarizeNodeSignature(
   node: ts.Node,
 ): string {
   if (ts.isFunctionDeclaration(node) && node.name) {
-    const params = node.parameters.map((p) => p.getText(sourceFile)).join(', ');
-    const ret = node.type ? `: ${node.type.getText(sourceFile)}` : '';
+    const params = node.parameters
+      .map((p) => p.getText(sourceFile).replace(/\s+/g, ' ').trim())
+      .join(', ');
+    const ret = node.type
+      ? `: ${node.type.getText(sourceFile).replace(/\s+/g, ' ').trim()}`
+      : '';
     return `function ${node.name.text}(${params})${ret}`;
   }
   if (
@@ -232,11 +239,33 @@ function groupReferences(
   matches: Array<{ file: string; lineNum: number; text: string }>,
   excludedFiles: Set<string>,
   maxRefsPerFile: number,
+  cwd: string,
   defLineMap?: Map<string, Set<number>>,
+  sfCache?: Map<string, ts.SourceFile>,
 ): { consumers: ImpactConsumerRef[]; relatedTests: string[] } {
   const consumerMap = new Map<string, string[]>();
   const consumerCounts = new Map<string, number>();
   const testSet = new Set<string>();
+  const localSfCache = sfCache ?? new Map<string, ts.SourceFile>();
+
+  function getSourceFile(relFile: string): ts.SourceFile | null {
+    const cached = localSfCache.get(relFile);
+    if (cached) return cached;
+    const abs = path.join(cwd, relFile);
+    if (!fs.existsSync(abs)) return null;
+    try {
+      const sf = parseSource(abs, fs.readFileSync(abs, 'utf8'));
+      localSfCache.set(relFile, sf);
+      return sf;
+    } catch {
+      return null;
+    }
+  }
+
+  const rawByFile = new Map<
+    string,
+    Array<{ lineNum: number; text: string; isImport: boolean }>
+  >();
 
   for (const m of matches) {
     if (excludedFiles.has(m.file)) continue;
@@ -249,11 +278,38 @@ function groupReferences(
 
     const total = (consumerCounts.get(m.file) ?? 0) + 1;
     consumerCounts.set(m.file, total);
-    const list = consumerMap.get(m.file) ?? [];
-    if (list.length < maxRefsPerFile) {
-      list.push(`L${m.lineNum}: ${m.text.slice(0, 100)}`);
-      consumerMap.set(m.file, list);
+    const arr = rawByFile.get(m.file) ?? [];
+    arr.push({
+      lineNum: m.lineNum,
+      text: m.text,
+      isImport: /^import\s/.test(m.text),
+    });
+    rawByFile.set(m.file, arr);
+  }
+
+  for (const [file, items] of rawByFile.entries()) {
+    const nonImports = items.filter((item) => !item.isImport);
+    const prioritized = nonImports.length > 0 ? nonImports : items.slice(0, 1);
+    const list: string[] = [];
+
+    for (const item of prioritized.slice(0, maxRefsPerFile)) {
+      let contextTag = '';
+      if (!item.isImport) {
+        const sf = getSourceFile(file);
+        if (sf) {
+          const ctx = findEnclosingContext(sf, item.lineNum);
+          if (ctx && !/^L\d+$/.test(ctx.name)) {
+            const rangeStr =
+              ctx.start === ctx.end
+                ? `L${ctx.start}`
+                : `L${ctx.start}-L${ctx.end}`;
+            contextTag = ` [in ${ctx.name} ${rangeStr}]`;
+          }
+        }
+      }
+      list.push(`L${item.lineNum}${contextTag}: ${item.text.slice(0, 100)}`);
     }
+    consumerMap.set(file, list);
   }
 
   const consumers: ImpactConsumerRef[] = Array.from(consumerMap.entries())
@@ -284,11 +340,13 @@ export function analyzeImpact(
   const maxRefsPerFile = options?.maxRefsPerFile ?? 5;
   const roots = resolveSearchRoots(cwd, options?.scopeDir);
   const absTarget = path.resolve(cwd, target);
+  const sfCache = new Map<string, ts.SourceFile>();
 
   if (fs.existsSync(absTarget) && fs.statSync(absTarget).isFile()) {
     const relTarget = path.relative(cwd, absTarget).replace(/\\/g, '/');
     const content = fs.readFileSync(absTarget, 'utf8');
     const sf = parseSource(absTarget, content);
+    sfCache.set(relTarget, sf);
     const internalImports = collectInternalImports(sf);
     const { definitions, exportNames } = extractFileExports(relTarget, sf);
 
@@ -303,6 +361,9 @@ export function analyzeImpact(
       matches,
       new Set([relTarget]),
       maxRefsPerFile,
+      cwd,
+      undefined,
+      sfCache,
     );
 
     return {
@@ -328,6 +389,7 @@ export function analyzeImpact(
     const abs = path.join(cwd, relFile);
     if (!fs.existsSync(abs)) continue;
     const sf = parseSource(abs, fs.readFileSync(abs, 'utf8'));
+    sfCache.set(relFile, sf);
     const defs = findSymbolDefinitionsInFile(relFile, sf, target);
     if (defs.length > 0) {
       definitions.push(...defs);
@@ -347,7 +409,9 @@ export function analyzeImpact(
     matches,
     new Set<string>(),
     maxRefsPerFile,
+    cwd,
     defLineMap,
+    sfCache,
   );
 
   return {
@@ -412,15 +476,72 @@ export function formatImpactReport(report: ImpactReport): string {
   return lines.join('\n');
 }
 
+export function formatMultipleImpactReports(
+  reports: ImpactReport[],
+  maxLines = MAX_IMPACT_OUTPUT_LINES,
+): string {
+  const full = reports.map((r) => formatImpactReport(r)).join('\n\n');
+  const allLines = full.split('\n');
+  if (allLines.length <= maxLines) {
+    return full;
+  }
+  const sliced = allLines.slice(0, maxLines).join('\n');
+  return `${sliced}\n... [Truncated: ${allLines.length - maxLines} more lines across ${reports.length} impact report(s)]`;
+}
+
+export function parseImpactCliArgs(
+  rawArgs: string[],
+  cwd = process.cwd(),
+): { targets: string[]; scopeDir?: string } {
+  let scopeDir: string | undefined;
+  const positional: string[] = [];
+
+  for (let i = 0; i < rawArgs.length; i++) {
+    const arg = rawArgs[i];
+    if (arg === '--scope' && rawArgs[i + 1]) {
+      scopeDir = rawArgs[i + 1];
+      i++;
+      continue;
+    }
+    if (arg.startsWith('--scope=')) {
+      scopeDir = arg.slice('--scope='.length);
+      continue;
+    }
+    if (arg.startsWith('-')) continue;
+    positional.push(arg);
+  }
+
+  // 後方互換: `bun run ai:impact <target> <existingDirectory>`
+  if (
+    !scopeDir &&
+    positional.length === 2 &&
+    fs.existsSync(path.resolve(cwd, positional[1])) &&
+    fs.statSync(path.resolve(cwd, positional[1])).isDirectory()
+  ) {
+    return {
+      targets: [positional[0]],
+      scopeDir: positional[1],
+    };
+  }
+
+  return { targets: positional, scopeDir };
+}
+
 if (import.meta.main) {
-  const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-  if (args.length === 0) {
-    console.error('Usage: bun run ai:impact <symbol|filePath> [scopeDir]');
+  const parsed = parseImpactCliArgs(process.argv.slice(2), process.cwd());
+  if (parsed.targets.length === 0) {
+    console.error(
+      'Usage: bun run ai:impact <symbol|filePath>... [--scope <dir>]',
+    );
     process.exit(1);
   }
-  const report = analyzeImpact(args[0], {
-    cwd: process.cwd(),
-    scopeDir: args[1],
-  });
-  console.log(formatImpactReport(report));
+  const maxRefsPerFile = parsed.targets.length > 1 ? 3 : 5;
+  const reports = parsed.targets.map((target) =>
+    analyzeImpact(target, {
+      cwd: process.cwd(),
+      scopeDir: parsed.scopeDir,
+      maxRefsPerFile,
+    }),
+  );
+  console.log(formatMultipleImpactReports(reports));
 }

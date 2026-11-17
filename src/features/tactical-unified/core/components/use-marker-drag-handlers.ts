@@ -65,6 +65,11 @@ export function useMarkerDragHandlers({
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      if (!selectedIds.includes(markerId)) {
+        const isShift = Boolean((e.evt as MouseEvent)?.shiftKey);
+        selectObject(markerId, isShift);
+      }
+
       setIsDragging(true);
       setIsHudOpen(false);
 
@@ -76,11 +81,6 @@ export function useMarkerDragHandlers({
       const effectiveSelectedIds = selectedIds.includes(markerId)
         ? selectedIds
         : [markerId];
-
-      if (!selectedIds.includes(markerId)) {
-        const isShift = Boolean((e.evt as MouseEvent)?.shiftKey);
-        selectObject(markerId, isShift);
-      }
 
       if (
         effectiveSelectedIds.length > 1 &&
@@ -175,7 +175,6 @@ export function useMarkerDragHandlers({
       tacticalStores?.sessionStore.getState().setActiveDragDelta(null);
       dragStartNormRef.current = null;
       setIsDragging(false);
-      setIsHudOpen(true);
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
       const clientY = (e.evt as MouseEvent | undefined)?.clientY;

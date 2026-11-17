@@ -67,9 +67,9 @@ bun run ai:audit --compare <before_id> <after_id>
 
 ---
 
-## 3. 33 検出器体系 (Audit Detectors)
+## 3. 34 検出器体系 (Audit Detectors)
 
-スクリプト（`ai:audit`）は以下の 33 項目（`INFRA` 3 / `EXP` 10 / `READ` 10 / `PIPE` 5 / `EFF` 3 / `QUAL` 2）を自動判定する：
+スクリプト（`ai:audit`）は以下の 34 項目（`INFRA` 3 / `EXP` 10 / `READ` 11 / `PIPE` 5 / `EFF` 3 / `QUAL` 2）を自動判定する：
 
 | カテゴリ | ID | コード | 重大度 | 検知内容 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -96,6 +96,7 @@ bun run ai:audit --compare <before_id> <after_id>
 | | READ-09 | `READ_UNUSED` | LOW | 読込後に本文・次ステップ `tool_calls` のいずれにも参照されないファイル |
 | | READ-10 | `WORKER_EXPLORES` | MED | `TASK_ASSIGN` および割り当て Phase の `Target Files` 外ファイルへの Worker 読込 |
 | | READ-11 | `COMPACT_LOOP_ALERT` | HIGH/MED | Planner ターン間で `cache_read_tokens` (>=80K) が 50% 超急落したオートコンパクション発生 |
+| | READ-12 | `AI_READ_BYPASS` | MED | Planner / Architect が `ai:read` を使わず TS/JS 3件以上または 100行超スライスを `read_file` で読込 |
 | **PIPE** | PIPE-01 | `WORKER_REUSE_OR_NO_KILL` | HIGH/MED | 完了済/肥大化 Worker の再利用試行、または `TASK_COMPLETE` 後の `manage_subagents(kill)` 漏れ |
 | | PIPE-02 | `POLLING_LOOP` | MED | `manage_subagents(list)` の連続ポーリング |
 | | PIPE-03 | `INTEGRATION_GATE_BYPASS` | HIGH | `TASK_COMPLETE` 後の `ai:preflight`/`ai:commit` 未実行、または生 `git commit` 試行 |
