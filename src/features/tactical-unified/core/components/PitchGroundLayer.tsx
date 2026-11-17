@@ -6,7 +6,6 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Line, Rect } from 'react-konva';
-import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import {
   selectDomainActivePhase,
   selectDomainActivePhaseAspectRatio,
@@ -31,6 +30,7 @@ import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { ArrowObject } from './annotations/ArrowObject';
 import { PitchBackgroundImage } from './BackgroundImageLayer';
 import { PlayerConnectLines } from './PlayerConnectLines';
+import { PitchGroundGhosts } from './pitch-ground-ghosts';
 import { ZoneObject } from './zones/ZoneObject';
 
 export interface PitchGroundLayerProps {
@@ -70,6 +70,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
   const activeTool = useSessionStore((s) => s.activeTool);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
   const selectObject = useSessionStore((s) => s.selectObject);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
@@ -259,39 +260,24 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
               />
             );
           })}
-        {!cleanRender &&
-          visibleMarkers.map((marker) => {
-            if (!selectedIds.includes(marker.id)) return null;
-            const prevPlayer = prevSlide?.players.find(
-              (p): p is typeof marker =>
-                p.area === 'pitch' && p.id === marker.id,
-            );
-            if (
-              !prevPlayer ||
-              Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) < 1.0
-            ) {
-              return null;
-            }
-            return (
-              <Group
-                key={`ghost-${marker.id}`}
-                id={`ghost-trajectory-${marker.id}`}
-              >
-                <PlayerGhostTrajectory
-                  player={marker}
-                  prevPlayer={prevPlayer}
-                  stageSize={{
-                    width: pitchRect.width,
-                    height: pitchRect.height,
-                  }}
-                  activeSlideId={activeSlideId}
-                  nodesRegistryRef={nodesRegistryRef}
-                  aspectRatio={aspectRatio}
-                  onUpdateTrajectory={updatePlayerTrajectory as never}
-                />
-              </Group>
-            );
-          })}
+        {!cleanRender && (
+          <PitchGroundGhosts
+            visibleMarkers={visibleMarkers}
+            prevPlayers={(prevSlide?.players ?? []).filter(
+              (p): p is (typeof visibleMarkers)[number] => p.area === 'pitch',
+            )}
+            selectedIds={selectedIds}
+            activeDragDelta={activeDragDelta}
+            stageSize={{
+              width: pitchRect.width,
+              height: pitchRect.height,
+            }}
+            activeSlideId={activeSlideId}
+            nodesRegistryRef={nodesRegistryRef}
+            aspectRatio={aspectRatio}
+            onUpdateTrajectory={updatePlayerTrajectory}
+          />
+        )}
       </Group>
     </Layer>
   );

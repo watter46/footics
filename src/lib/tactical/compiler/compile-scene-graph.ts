@@ -8,6 +8,7 @@ import {
   type ScreenNormPoint,
   type StagePixelPoint,
   toScreenNormPoint,
+  toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
@@ -18,6 +19,7 @@ import {
   type ResolvedPlayerInternal,
 } from './compile-billboards';
 import { compileDrawingPreview, compileZones } from './compile-zones';
+import { resolveEffectiveScreenNormPos } from './effective-coordinates';
 import { subdivideQuadraticBezier } from './geometry-primitives';
 import type {
   EphemeralSessionState,
@@ -26,61 +28,68 @@ import type {
 } from './scene-graph-dto';
 
 function computeTrajectoryPoints(
-  startPx: StagePixelPoint,
-  endPx: StagePixelPoint,
+  startRawPx: StagePixelPoint,
+  endRawPx: StagePixelPoint,
   type: 'straight' | 'arc_left' | 'arc_right' | 'custom',
   curveOffsetPercent: number | undefined,
   controlPointNorm: ScreenNormPoint | undefined,
   viewport: StageViewport,
   pitchTransform: PitchTransform | null | undefined,
 ): readonly number[] {
+  let rawPoints: readonly number[];
+
   if (type === 'custom' && controlPointNorm) {
     const rawCpPx = screenNormToStagePixel(controlPointNorm, viewport);
-    const cpPx = projectStagePixelWithPitchTransform(
-      rawCpPx,
+    rawPoints = subdivideQuadraticBezier(
+      startRawPx.x,
+      startRawPx.y,
+      rawCpPx.x,
+      rawCpPx.y,
+      endRawPx.x,
+      endRawPx.y,
+      30,
+    );
+  } else if (type === 'arc_left' || type === 'arc_right') {
+    const midX = (startRawPx.x + endRawPx.x) / 2;
+    const midY = (startRawPx.y + endRawPx.y) / 2;
+    const dx = endRawPx.x - startRawPx.x;
+    const dy = endRawPx.y - startRawPx.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) {
+      rawPoints = [startRawPx.x, startRawPx.y, endRawPx.x, endRawPx.y];
+    } else {
+      const offsetFactor = (curveOffsetPercent ?? 15) / 100;
+      const offset = dist * offsetFactor;
+      const sign = type === 'arc_left' ? 1 : -1;
+      const nx = (dy / dist) * sign;
+      const ny = (-dx / dist) * sign;
+      const cpX = midX + nx * offset;
+      const cpY = midY + ny * offset;
+      rawPoints = subdivideQuadraticBezier(
+        startRawPx.x,
+        startRawPx.y,
+        cpX,
+        cpY,
+        endRawPx.x,
+        endRawPx.y,
+        30,
+      );
+    }
+  } else {
+    // default / straight
+    rawPoints = [startRawPx.x, startRawPx.y, endRawPx.x, endRawPx.y];
+  }
+
+  const projected: number[] = [];
+  for (let i = 0; i < rawPoints.length; i += 2) {
+    const p = projectStagePixelWithPitchTransform(
+      toStagePixelPoint(rawPoints[i], rawPoints[i + 1]),
       viewport,
       pitchTransform,
     );
-    return subdivideQuadraticBezier(
-      startPx.x,
-      startPx.y,
-      cpPx.x,
-      cpPx.y,
-      endPx.x,
-      endPx.y,
-      30,
-    );
+    projected.push(p.x, p.y);
   }
-
-  if (type === 'arc_left' || type === 'arc_right') {
-    const midX = (startPx.x + endPx.x) / 2;
-    const midY = (startPx.y + endPx.y) / 2;
-    const dx = endPx.x - startPx.x;
-    const dy = endPx.y - startPx.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 1) {
-      return [startPx.x, startPx.y, endPx.x, endPx.y];
-    }
-    const offsetFactor = (curveOffsetPercent ?? 15) / 100;
-    const offset = dist * offsetFactor;
-    const sign = type === 'arc_left' ? 1 : -1;
-    const nx = (dy / dist) * sign;
-    const ny = (-dx / dist) * sign;
-    const cpX = midX + nx * offset;
-    const cpY = midY + ny * offset;
-    return subdivideQuadraticBezier(
-      startPx.x,
-      startPx.y,
-      cpX,
-      cpY,
-      endPx.x,
-      endPx.y,
-      30,
-    );
-  }
-
-  // default / straight
-  return [startPx.x, startPx.y, endPx.x, endPx.y];
+  return projected;
 }
 
 export function compileTrajectories(
@@ -106,10 +115,8 @@ export function compileTrajectories(
       if (!prevPlayer) continue;
 
       const currPlayer = resolvedPlayer.player;
-      const dist = Math.hypot(
-        currPlayer.x - prevPlayer.x,
-        currPlayer.y - prevPlayer.y,
-      );
+      const effPos = resolvedPlayer.screenNormPos;
+      const dist = Math.hypot(effPos.x - prevPlayer.x, effPos.y - prevPlayer.y);
       if (dist < 1) continue;
 
       const isEnabled =
@@ -119,17 +126,12 @@ export function compileTrajectories(
 
       const prevPosNorm = toScreenNormPoint(prevPlayer.x, prevPlayer.y, false);
       const rawStartPx = screenNormToStagePixel(prevPosNorm, viewport);
-      const startPx = projectStagePixelWithPitchTransform(
-        rawStartPx,
-        viewport,
-        pitchTransform,
-      );
-      const endPx = resolvedPlayer.positionPx;
+      const rawEndPx = screenNormToStagePixel(effPos, viewport);
 
       const trajType = currPlayer.trajectory?.type ?? 'straight';
       const flatPointsPx = computeTrajectoryPoints(
-        startPx,
-        endPx,
+        rawStartPx,
+        rawEndPx,
         trajType,
         currPlayer.trajectory?.curveOffset,
         currPlayer.trajectory?.controlPoint
@@ -160,9 +162,14 @@ export function compileTrajectories(
     if (prevSlide.ball) {
       const prevBall = prevSlide.ball;
       const currBall = frame.slide.ball;
+      const effBallPos = resolveEffectiveScreenNormPos(
+        currBall,
+        'ball',
+        session?.activeDragDelta,
+      );
       const ballDist = Math.hypot(
-        currBall.x - prevBall.x,
-        currBall.y - prevBall.y,
+        effBallPos.x - prevBall.x,
+        effBallPos.y - prevBall.y,
       );
       if (
         ballDist >= 1 &&
@@ -170,23 +177,12 @@ export function compileTrajectories(
       ) {
         const prevBallNorm = toScreenNormPoint(prevBall.x, prevBall.y, false);
         const rawBallStartPx = screenNormToStagePixel(prevBallNorm, viewport);
-        const startBallPx = projectStagePixelWithPitchTransform(
-          rawBallStartPx,
-          viewport,
-          pitchTransform,
-        );
-        const currBallNorm = toScreenNormPoint(currBall.x, currBall.y, false);
-        const rawBallEndPx = screenNormToStagePixel(currBallNorm, viewport);
-        const endBallPx = projectStagePixelWithPitchTransform(
-          rawBallEndPx,
-          viewport,
-          pitchTransform,
-        );
+        const rawBallEndPx = screenNormToStagePixel(effBallPos, viewport);
 
         const trajType = currBall.trajectory?.type ?? 'straight';
         const flatPointsPx = computeTrajectoryPoints(
-          startBallPx,
-          endBallPx,
+          rawBallStartPx,
+          rawBallEndPx,
           trajType,
           currBall.trajectory?.curveOffset,
           currBall.trajectory?.controlPoint

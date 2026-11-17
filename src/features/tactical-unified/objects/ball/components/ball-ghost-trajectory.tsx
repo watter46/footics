@@ -34,7 +34,7 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
   hasPrevBall,
   prevBall,
   ball,
-  isBallMoved: _isBallMoved,
+  isBallMoved,
   prevPxX,
   prevPxY,
   radius,
@@ -49,7 +49,7 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
   if (!isSelected && !isDragging) {
     return null;
   }
-  if (!hasPrevBall || !prevBall) {
+  if (!hasPrevBall || !prevBall || !isBallMoved) {
     return null;
   }
 

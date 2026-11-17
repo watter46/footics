@@ -17,6 +17,7 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { resolveEffectiveScreenNormPos } from '@/lib/tactical/compiler/effective-coordinates';
 import { screenNormToStagePixel } from '@/lib/tactical/engine/coordinates';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainBallState } from '@/lib/types/tactical/domain-entities';
@@ -36,6 +37,7 @@ function useBallObjectState({
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
   const selectObject = useSessionStore((s) => s.selectObject);
   const isSelected = useSessionStore((s) =>
     s.selectedObjects.some((o) => o.kind === 'ball'),
@@ -106,22 +108,7 @@ function useBallObjectState({
     [nodesRegistryRef],
   );
 
-  const prevBall = prevSlide?.ball;
-  const hasPrevBall =
-    (activeSlide?.index ?? 0) >= 1 &&
-    Boolean(prevBall?.visible) &&
-    resolvedBall.visible;
-  const prevPx = prevBall
-    ? screenNormToStagePixel(
-        { x: prevBall.x, y: prevBall.y },
-        { width: stageSize.width, height: stageSize.height },
-      )
-    : { x: 0, y: 0 };
-  const isBallMoved = prevBall
-    ? Math.hypot(px - prevPx.x, py - prevPx.y) >= 4
-    : false;
-
-  const domainBall: DomainBallState = activeSlide?.ball ?? {
+  const baseBall: DomainBallState = activeSlide?.ball ?? {
     ...ball,
     x: clampToScreenNorm(ball.x),
     y: clampToScreenNorm(ball.y),
@@ -138,9 +125,38 @@ function useBallObjectState({
       : undefined,
   };
 
+  const effBallPos = resolveEffectiveScreenNormPos(
+    baseBall,
+    'ball',
+    activeDragDelta,
+  );
+  const domainBall: DomainBallState = {
+    ...baseBall,
+    x: effBallPos.x,
+    y: effBallPos.y,
+  };
+
+  const prevBall = prevSlide?.ball;
+  const hasPrevBall =
+    (activeSlide?.index ?? 0) >= 1 &&
+    Boolean(prevBall?.visible) &&
+    resolvedBall.visible;
+  const prevPx = prevBall
+    ? screenNormToStagePixel(
+        { x: prevBall.x, y: prevBall.y },
+        { width: stageSize.width, height: stageSize.height },
+      )
+    : { x: 0, y: 0 };
+  const isBallMoved = prevBall
+    ? Math.hypot(effBallPos.x - prevBall.x, effBallPos.y - prevBall.y) >= 1.0
+    : false;
+  const isBallDragging =
+    drag.isDragging || Boolean(activeDragDelta?.entityIds.includes('ball'));
+
   return {
     domainBall,
     isSelected,
+    isBallDragging,
     ballImage,
     drag,
     radius,
@@ -170,6 +186,7 @@ export const BallObject = React.memo(function BallObject(
   const {
     domainBall,
     isSelected,
+    isBallDragging,
     ballImage,
     drag,
     radius,
@@ -184,14 +201,15 @@ export const BallObject = React.memo(function BallObject(
   return (
     <>
       {/* ── スライド間ゴーストボール & 追跡矢印 & ベジェハンドル ── */}
-      {!cleanRender && (isSelected || drag.isDragging) && (
+      {!cleanRender && (isSelected || isBallDragging) && (
         <BallGhostTrajectory
           isSelected={isSelected}
-          isDragging={drag.isDragging}
+          isDragging={isBallDragging}
           cleanRender={cleanRender}
           hasPrevBall={prevInfo.hasPrevBall}
           prevBall={prevInfo.prevBall}
           ball={domainBall}
+          isBallMoved={prevInfo.isBallMoved}
           prevPxX={prevInfo.prevPxX}
           prevPxY={prevInfo.prevPxY}
           radius={radius}

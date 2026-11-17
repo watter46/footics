@@ -92,9 +92,9 @@ export function compileArrows(
       ? resolvedPlayersMap.get(arrow.targetPlayerId)
       : undefined;
 
-    let startPx: StagePixelPoint;
+    let startRawPx: StagePixelPoint;
     if (sourcePlayer) {
-      startPx = sourcePlayer.positionPx;
+      startRawPx = screenNormToStagePixel(sourcePlayer.screenNormPos, viewport);
     } else {
       const basePt = arrow.points[0] ?? { x: 0, y: 0 };
       const rawStartNorm = toScreenNormPoint(
@@ -102,17 +102,12 @@ export function compileArrows(
         basePt.y + aDy,
         false,
       );
-      const rawStartPx = screenNormToStagePixel(rawStartNorm, viewport);
-      startPx = projectStagePixelWithPitchTransform(
-        rawStartPx,
-        viewport,
-        pitchTransform,
-      );
+      startRawPx = screenNormToStagePixel(rawStartNorm, viewport);
     }
 
-    let endPx: StagePixelPoint;
+    let endRawPx: StagePixelPoint;
     if (targetPlayer) {
-      endPx = targetPlayer.positionPx;
+      endRawPx = screenNormToStagePixel(targetPlayer.screenNormPos, viewport);
     } else {
       const basePt = arrow.points[arrow.points.length - 1] ?? {
         x: 100,
@@ -123,27 +118,17 @@ export function compileArrows(
         basePt.y + aDy,
         false,
       );
-      const rawEndPx = screenNormToStagePixel(rawEndNorm, viewport);
-      endPx = projectStagePixelWithPitchTransform(
-        rawEndPx,
-        viewport,
-        pitchTransform,
-      );
+      endRawPx = screenNormToStagePixel(rawEndNorm, viewport);
     }
 
-    let cpPx: StagePixelPoint | undefined;
+    let cpRawPx: StagePixelPoint | undefined;
     if (arrow.controlPoint) {
       const cpNorm = toScreenNormPoint(
         arrow.controlPoint.x + aDx,
         arrow.controlPoint.y + aDy,
         false,
       );
-      const rawCpPx = screenNormToStagePixel(cpNorm, viewport);
-      cpPx = projectStagePixelWithPitchTransform(
-        rawCpPx,
-        viewport,
-        pitchTransform,
-      );
+      cpRawPx = screenNormToStagePixel(cpNorm, viewport);
     }
 
     const dims = computeArrowDimensions(viewport.width, arrow.strokeWidth);
@@ -151,12 +136,12 @@ export function compileArrows(
     const targetRadius = targetPlayer ? targetPlayer.radiusPx : 0;
 
     const offsetRes = offsetArrowEndpoints({
-      startX: startPx.x,
-      startY: startPx.y,
-      endX: endPx.x,
-      endY: endPx.y,
-      cpX: cpPx?.x,
-      cpY: cpPx?.y,
+      startX: startRawPx.x,
+      startY: startRawPx.y,
+      endX: endRawPx.x,
+      endY: endRawPx.y,
+      cpX: cpRawPx?.x,
+      cpY: cpRawPx?.y,
       sourcePlayerRadius: sourceRadius,
       targetPlayerRadius: targetRadius,
       startMarker: arrow.startMarker,
@@ -168,7 +153,7 @@ export function compileArrows(
     const isCurved =
       arrow.curveType === 'curved' ||
       arrow.curveType === 'arc' ||
-      cpPx !== undefined;
+      cpRawPx !== undefined;
 
     let basePointsPx: number[];
     if (isWavy) {
@@ -179,8 +164,10 @@ export function compileArrows(
         offsetRes.endY,
       );
     } else if (isCurved) {
-      const effectiveCpX = cpPx?.x ?? (offsetRes.startX + offsetRes.endX) / 2;
-      const effectiveCpY = cpPx?.y ?? (offsetRes.startY + offsetRes.endY) / 2;
+      const effectiveCpX =
+        cpRawPx?.x ?? (offsetRes.startX + offsetRes.endX) / 2;
+      const effectiveCpY =
+        cpRawPx?.y ?? (offsetRes.startY + offsetRes.endY) / 2;
       basePointsPx = subdivideQuadraticBezier(
         offsetRes.startX,
         offsetRes.startY,
@@ -205,18 +192,23 @@ export function compileArrows(
       visible: true,
     };
 
-    let flatPointsPx = basePointsPx;
-    let endAngleRad = calculateLastSegmentAngle(basePointsPx);
+    const rawFlatPointsPx =
+      arrowEffect.progress < 1
+        ? trimFlatPoints(basePointsPx, arrowEffect.progress, isWavy)
+            .flatPointsPx
+        : basePointsPx;
 
-    if (arrowEffect.progress < 1) {
-      const trimmed = trimFlatPoints(
-        basePointsPx,
-        arrowEffect.progress,
-        isWavy,
+    const flatPointsPx: number[] = [];
+    for (let i = 0; i < rawFlatPointsPx.length; i += 2) {
+      const projected = projectStagePixelWithPitchTransform(
+        toStagePixelPoint(rawFlatPointsPx[i], rawFlatPointsPx[i + 1]),
+        viewport,
+        pitchTransform,
       );
-      flatPointsPx = trimmed.flatPointsPx;
-      endAngleRad = trimmed.endAngleRad;
+      flatPointsPx.push(projected.x, projected.y);
     }
+
+    const endAngleRad = calculateLastSegmentAngle(flatPointsPx);
 
     let dashArrayPx: readonly number[] = [];
     if (arrow.dashArray && arrow.dashArray.length > 0) {
@@ -226,10 +218,14 @@ export function compileArrows(
     }
 
     const controlHandlePx =
-      !isWavy && cpPx
-        ? toStagePixelPoint(
-            0.25 * offsetRes.startX + 0.5 * cpPx.x + 0.25 * offsetRes.endX,
-            0.25 * offsetRes.startY + 0.5 * cpPx.y + 0.25 * offsetRes.endY,
+      !isWavy && cpRawPx
+        ? projectStagePixelWithPitchTransform(
+            toStagePixelPoint(
+              0.25 * offsetRes.startX + 0.5 * cpRawPx.x + 0.25 * offsetRes.endX,
+              0.25 * offsetRes.startY + 0.5 * cpRawPx.y + 0.25 * offsetRes.endY,
+            ),
+            viewport,
+            pitchTransform,
           )
         : undefined;
 

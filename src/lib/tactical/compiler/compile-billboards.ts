@@ -11,10 +11,10 @@ import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-eval
 import {
   type ScreenNormPoint,
   type StagePixelPoint,
-  toScreenNormPoint,
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
+import { resolveEffectiveScreenNormPos } from './effective-coordinates';
 import {
   computeBallRadiusPx,
   computePlayerRadiusPx,
@@ -53,9 +53,6 @@ export function compileBillboardItems(
   readonly billboardPlayers: readonly ResolvedBillboardPlayerItem[];
 } {
   const activeDrag = session?.activeDragDelta;
-  const draggedIds = new Set(activeDrag?.entityIds ?? []);
-  const dragDx = activeDrag?.deltaScreenNormX ?? 0;
-  const dragDy = activeDrag?.deltaScreenNormY ?? 0;
 
   const selectedIds = new Set(session?.selectedIds ?? []);
   const pitchTransform = frame.slide.pitchTransform;
@@ -70,10 +67,11 @@ export function compileBillboardItems(
     if (player.area !== 'pitch') continue;
     const pitchPlayer = player as PitchPlayer;
 
-    const isDragged = draggedIds.has(player.id);
-    const effNormX = isDragged ? player.x + dragDx : player.x;
-    const effNormY = isDragged ? player.y + dragDy : player.y;
-    const screenNormPos = toScreenNormPoint(effNormX, effNormY, false);
+    const screenNormPos = resolveEffectiveScreenNormPos(
+      player,
+      player.id,
+      activeDrag,
+    );
     const rawPosPx = screenNormToStagePixel(screenNormPos, viewport);
     const projectedPos = projectStagePixelWithPitchTransform(
       rawPosPx,
@@ -167,15 +165,8 @@ export function compileBillboardItems(
   }
 
   // Ball
-  const isBallDragged = draggedIds.has('ball');
-  const effBallNormX = isBallDragged
-    ? frame.slide.ball.x + dragDx
-    : frame.slide.ball.x;
-  const effBallNormY = isBallDragged
-    ? frame.slide.ball.y + dragDy
-    : frame.slide.ball.y;
   const rawBallPos = screenNormToStagePixel(
-    toScreenNormPoint(effBallNormX, effBallNormY, false),
+    resolveEffectiveScreenNormPos(frame.slide.ball, 'ball', activeDrag),
     viewport,
   );
   const projectedBall = projectStagePixelWithPitchTransform(
@@ -203,11 +194,8 @@ export function compileBillboardItems(
   // Texts
   const billboardTexts: ResolvedBillboardItem[] = frame.slide.texts.map(
     (text) => {
-      const isTextDragged = draggedIds.has(text.id);
-      const effNormX = isTextDragged ? text.x + dragDx : text.x;
-      const effNormY = isTextDragged ? text.y + dragDy : text.y;
       const rawTextPos = screenNormToStagePixel(
-        toScreenNormPoint(effNormX, effNormY, false),
+        resolveEffectiveScreenNormPos(text, text.id, activeDrag),
         viewport,
       );
       const projectedText = projectStagePixelWithPitchTransform(

@@ -1,6 +1,6 @@
 # TASK-203c: ドラッグ中ゴースト軌道追従とチルト時矢印のピッチ平面投影
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `fix(tactical): track ghost trajectories during drag and project arrows on pitch plane`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2 (parallel)
