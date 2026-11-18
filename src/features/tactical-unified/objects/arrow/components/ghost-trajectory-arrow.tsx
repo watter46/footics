@@ -12,7 +12,7 @@ import {
   getBezierControlPointPx,
   getBezierMidpoint,
   getQuadraticBezierPoints,
-} from '@/lib/tactical/trajectory';
+} from '@/lib/tactical/engine/trajectory';
 import { useGhostTrajectoryArrow } from '../hooks';
 import type { GhostTrajectoryArrowProps } from '../types';
 

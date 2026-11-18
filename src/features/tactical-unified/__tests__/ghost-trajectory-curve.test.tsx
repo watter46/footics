@@ -3,7 +3,7 @@ import { syncTrajectoryEntryKonva } from '@/features/tactical-unified/core/utils
 import {
   getBezierControlPointPx,
   getBezierMidpoint,
-} from '@/lib/tactical/trajectory';
+} from '@/lib/tactical/engine/trajectory';
 import {
   toScreenNormCoord,
   toScreenNormPoint,

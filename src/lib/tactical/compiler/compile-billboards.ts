@@ -1,8 +1,8 @@
-import { computeRippleRings } from '@/lib/tactical/effect-geometry';
 import {
   type StageViewport,
   screenNormToStagePixel,
 } from '@/lib/tactical/engine/coordinates';
+import { computeRippleRings } from '@/lib/tactical/engine/effect-geometry';
 import {
   computeBillboardDepthKey,
   projectStagePixelWithPitchTransform,

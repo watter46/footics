@@ -4,7 +4,7 @@ import {
 } from '@/lib/tactical/engine/coordinates';
 import { projectStagePixelWithPitchTransform } from '@/lib/tactical/engine/projection-3d';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
-import { getBezierControlPointPx } from '@/lib/tactical/trajectory';
+import { getBezierControlPointPx } from '@/lib/tactical/engine/trajectory';
 import {
   type StagePixelPoint,
   toScreenNormPoint,

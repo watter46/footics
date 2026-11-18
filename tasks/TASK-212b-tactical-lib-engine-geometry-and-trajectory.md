@@ -1,6 +1,6 @@
 # TASK-212b: effect-geometry と trajectory の engine コンテキスト移設
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): move effect-geometry and trajectory into engine context`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 3 (parallel)

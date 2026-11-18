@@ -1,8 +1,4 @@
 import {
-  computeArrowEffectState,
-  computeZonePulseOpacity,
-} from '@/lib/tactical/effect-geometry';
-import {
   type Milliseconds,
   toScreenNormCoord,
 } from '@/lib/types/tactical/branded';
@@ -11,6 +7,10 @@ import type {
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
 import { applyEasing } from './easing';
+import {
+  computeArrowEffectState,
+  computeZonePulseOpacity,
+} from './effect-geometry';
 import { interpolateSlide } from './slide-interpolator';
 
 export interface EvaluatedTimelineFrame {

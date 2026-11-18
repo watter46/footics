@@ -1,7 +1,7 @@
 import type Konva from 'konva';
 import { useEffect, useRef } from 'react';
 import { syncTrajectoryEntryKonva } from '@/features/tactical-unified/core/utils/drag-konva-sync';
-import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
+import { getQuadraticBezierPoints } from '@/lib/tactical/engine/trajectory';
 import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type { GhostTrajectoryArrowProps } from '../types';
 

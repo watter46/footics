@@ -1,5 +1,5 @@
-import { trimRenderPoints } from '@/lib/tactical/effect-geometry';
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
+import { trimRenderPoints } from '@/lib/tactical/engine/effect-geometry';
 
 export interface ArrowDimensions {
   readonly scale: number;

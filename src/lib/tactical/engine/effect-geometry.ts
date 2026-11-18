@@ -1,10 +1,10 @@
-import { applyEasing } from '@/lib/tactical/engine/easing';
 import type {
   ArrowEffectConfig,
   MarkerEffectConfig,
   ZoneEffectConfig,
 } from '@/lib/types/tactical/effect-config';
 import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
+import { applyEasing } from './easing';
 
 export interface ArrowEffectState {
   progress: number;

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { computeArrowDimensions } from '@/lib/tactical/compiler/geometry-primitives';
-import type {
-  ArrowEffectConfig,
-  MarkerEffectConfig,
-  ZoneEffectConfig,
-} from '@/lib/types/tactical/effect-config';
-import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 import {
   computeArrowEffectState,
   computeArrowFlowDashOffset,
   computeRippleRings,
   computeZonePulseOpacity,
   trimRenderPoints,
-} from '../effect-geometry';
+} from '@/lib/tactical/engine/effect-geometry';
+import type {
+  ArrowEffectConfig,
+  MarkerEffectConfig,
+  ZoneEffectConfig,
+} from '@/lib/types/tactical/effect-config';
+import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 
 describe('effect-geometry', () => {
   describe('computeArrowEffectState', () => {

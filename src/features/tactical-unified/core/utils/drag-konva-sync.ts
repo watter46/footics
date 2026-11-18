@@ -8,7 +8,7 @@ import {
   getBezierControlPointPx,
   getBezierMidpoint,
   getQuadraticBezierPoints,
-} from '@/lib/tactical/trajectory';
+} from '@/lib/tactical/engine/trajectory';
 import type { DomainPlayerTrajectory } from '@/lib/types/tactical/domain-entities';
 import type {
   CanvasNodesRegistry,

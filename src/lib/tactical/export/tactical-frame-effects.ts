@@ -1,13 +1,13 @@
 import {
+  type ResolveSyntheticDirectorCameraOptions,
+  resolveEffectiveSlideSegments,
+} from '@/lib/tactical/engine/director-camera';
+import {
   computeArrowEffectState,
   computeRippleRings,
   computeZonePulseOpacity,
   type RippleRing,
-} from '@/lib/tactical/effect-geometry';
-import {
-  type ResolveSyntheticDirectorCameraOptions,
-  resolveEffectiveSlideSegments,
-} from '@/lib/tactical/engine/director-camera';
+} from '@/lib/tactical/engine/effect-geometry';
 import type { DirectorCameraTrack } from '@/lib/types/tactical/camera-config';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type {

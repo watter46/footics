@@ -1,4 +1,3 @@
-import { calculateBezierPoint } from '@/lib/tactical/trajectory';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type {
   DomainBallState,
@@ -11,6 +10,7 @@ import {
   interpolateTexts,
   interpolateZones,
 } from './slide-entity-interpolators';
+import { calculateBezierPoint } from './trajectory';
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;

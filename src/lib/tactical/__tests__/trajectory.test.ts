@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import {
+  calculateBezierPoint,
+  getBezierControlPoint,
+} from '@/lib/tactical/engine/trajectory';
 import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import type {
   DomainPlayer,
   DomainPlayerTrajectory,
 } from '@/lib/types/tactical/domain-entities';
 import { matchSlidePlayers } from '../export/tactical-video-exporter';
-import { calculateBezierPoint, getBezierControlPoint } from '../trajectory';
 
 describe('trajectory utility', () => {
   const p0 = { x: 20, y: 80 };

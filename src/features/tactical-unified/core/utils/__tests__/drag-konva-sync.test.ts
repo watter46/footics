@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getBezierControlPoint,
   getBezierMidpoint,
-} from '@/lib/tactical/trajectory';
+} from '@/lib/tactical/engine/trajectory';
 import { createCanvasNodesRegistry } from '../canvas-registry';
 import {
   syncBallDragKonvaNodes,
