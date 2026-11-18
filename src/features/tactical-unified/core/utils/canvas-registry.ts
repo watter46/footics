@@ -37,6 +37,12 @@ export interface TrajectoryArrowNodeEntry {
   trajectory?: DomainPlayerTrajectory;
 }
 
+export interface TrajectoryEffectLineEntry {
+  lineNode: Konva.Line | null;
+  startPx: { x: number; y: number };
+  trajectory?: DomainPlayerTrajectory;
+}
+
 export interface ConnectLineNodeEntry {
   glowNode?: Konva.Line | null;
   highlightNode?: Konva.Line | null;
@@ -49,6 +55,7 @@ export interface CanvasNodesRegistry {
   playerNodes: Map<string, Konva.Group>;
   arrowNodes: Map<string, ArrowNodeEntry>;
   trajectoryArrowNodes: Map<string, TrajectoryArrowNodeEntry>;
+  trajectoryEffectLines: Map<string, TrajectoryEffectLineEntry>;
   textNodes: Map<string, Konva.Text>;
   zoneNodes: Map<string, Konva.Shape>;
   zoneTransformers?: Map<string, Konva.Transformer>;
@@ -68,6 +75,7 @@ export function createCanvasNodesRegistry(): CanvasNodesRegistry {
     playerNodes: new Map(),
     arrowNodes: new Map(),
     trajectoryArrowNodes: new Map(),
+    trajectoryEffectLines: new Map(),
     textNodes: new Map(),
     zoneNodes: new Map(),
     zoneTransformers: new Map(),

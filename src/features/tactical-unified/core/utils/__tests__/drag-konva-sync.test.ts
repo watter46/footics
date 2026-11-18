@@ -175,4 +175,61 @@ describe('drag-konva-sync', () => {
     expect(ballGroup.visible()).toBe(true);
     expect(ballArrow.points()).toEqual([50, 50, 90, 80]);
   });
+
+  it('case 5: syncs trajectoryEffectLines for ball and player on straight and arc_left trajectories with 4px threshold', () => {
+    const { layer } = createTestStage();
+    const registry = createCanvasNodesRegistry();
+
+    const ballLine = new Konva.Line({
+      points: [50, 50, 50, 50],
+      visible: true,
+    });
+    const p1Line = new Konva.Line({
+      points: [100, 100, 100, 100],
+      visible: false,
+    });
+    layer.add(ballLine, p1Line);
+
+    registry.trajectoryEffectLines.set('ball', {
+      lineNode: ballLine,
+      startPx: { x: 50, y: 50 },
+    });
+    registry.trajectoryEffectLines.set('p1', {
+      lineNode: p1Line,
+      startPx: { x: 100, y: 100 },
+      trajectory: { type: 'arc_left' },
+    });
+
+    // 4px 未満は非表示
+    syncBallDragKonvaNodes({
+      registry,
+      ballPx: { x: 52, y: 52 },
+      stageSize: { width: 800, height: 500 },
+    });
+    expect(ballLine.visible()).toBe(false);
+
+    // 4px 以上（直線）
+    syncBallDragKonvaNodes({
+      registry,
+      ballPx: { x: 120, y: 90 },
+      stageSize: { width: 800, height: 500 },
+    });
+    expect(ballLine.visible()).toBe(true);
+    expect(ballLine.points()).toEqual([50, 50, 120, 90]);
+
+    // 選手 arc_left 曲線
+    syncPlayerDragKonvaNodes({
+      registry,
+      movedPlayers: new Map([['p1', { xPx: 300, yPx: 100 }]]),
+      primaryPlayerId: 'p1',
+      stageSize: { width: 800, height: 500 },
+    });
+    expect(p1Line.visible()).toBe(true);
+    const p1Pts = p1Line.points();
+    expect(p1Pts.length).toBeGreaterThan(4);
+    expect(p1Pts[0]).toBeCloseTo(100);
+    expect(p1Pts[1]).toBeCloseTo(100);
+    expect(p1Pts[p1Pts.length - 2]).toBeCloseTo(300);
+    expect(p1Pts[p1Pts.length - 1]).toBeCloseTo(100);
+  });
 });

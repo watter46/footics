@@ -17,6 +17,7 @@ export interface PitchGroundGhostsProps {
   visibleMarkers: readonly DomainPitchPlayer[];
   prevPlayers: readonly DomainPitchPlayer[];
   selectedIds: readonly string[];
+  isDragging?: boolean;
   stageSize: { width: number; height: number };
   activeSlideId: string;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
@@ -32,6 +33,7 @@ export function PitchGroundGhosts({
   visibleMarkers,
   prevPlayers,
   selectedIds,
+  isDragging = false,
   stageSize,
   activeSlideId,
   nodesRegistryRef,
@@ -39,7 +41,7 @@ export function PitchGroundGhosts({
   onUpdateTrajectory,
 }: PitchGroundGhostsProps): ReactNode {
   return visibleMarkers.map((marker) => {
-    if (!selectedIds.includes(marker.id)) return null;
+    if (!selectedIds.includes(marker.id) && !isDragging) return null;
     const prevPlayer = prevPlayers.find((p) => p.id === marker.id);
     if (!prevPlayer) {
       return null;

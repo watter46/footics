@@ -9,12 +9,47 @@ import {
   getBezierMidpoint,
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
+import type { DomainPlayerTrajectory } from '@/lib/types/tactical/domain-entities';
 import type {
   CanvasNodesRegistry,
   TrajectoryArrowNodeEntry,
+  TrajectoryEffectLineEntry,
 } from './canvas-registry';
 
 const TRAJECTORY_VISIBILITY_THRESHOLD_PX = 4;
+
+export function computeKonvaTrajectoryPoints(
+  startPx: { x: number; y: number },
+  endPx: { x: number; y: number },
+  trajectory: DomainPlayerTrajectory | undefined,
+  stageSize: { width: number; height: number },
+): { points: number[]; handleMidPx: { x: number; y: number } } {
+  const isCurved = trajectory !== undefined && trajectory.type !== 'straight';
+
+  if (isCurved) {
+    const cp = getBezierControlPointPx(startPx, endPx, trajectory, stageSize);
+    const points = getQuadraticBezierPoints(
+      startPx.x,
+      startPx.y,
+      cp.x,
+      cp.y,
+      endPx.x,
+      endPx.y,
+    );
+    return {
+      points,
+      handleMidPx: getBezierMidpoint(startPx, endPx, cp),
+    };
+  }
+
+  return {
+    points: [startPx.x, startPx.y, endPx.x, endPx.y],
+    handleMidPx: {
+      x: (startPx.x + endPx.x) / 2,
+      y: (startPx.y + endPx.y) / 2,
+    },
+  };
+}
 
 export function syncTrajectoryEntryKonva(
   entry: TrajectoryArrowNodeEntry,
@@ -28,40 +63,14 @@ export function syncTrajectoryEntryKonva(
   entry.ghostGroupNode?.visible(visible);
 
   if (visible && entry.arrowNode) {
-    const isCurved =
-      entry.trajectory !== undefined && entry.trajectory.type !== 'straight';
-
-    if (isCurved) {
-      const cp = getBezierControlPointPx(
-        entry.startPx,
-        endPx,
-        entry.trajectory,
-        stageSize,
-      );
-      const points = getQuadraticBezierPoints(
-        entry.startPx.x,
-        entry.startPx.y,
-        cp.x,
-        cp.y,
-        endPx.x,
-        endPx.y,
-      );
-      entry.arrowNode.points(points);
-      entry.controlHandleNode?.position(
-        getBezierMidpoint(entry.startPx, endPx, cp),
-      );
-    } else {
-      entry.arrowNode.points([
-        entry.startPx.x,
-        entry.startPx.y,
-        endPx.x,
-        endPx.y,
-      ]);
-      entry.controlHandleNode?.position({
-        x: (entry.startPx.x + endPx.x) / 2,
-        y: (entry.startPx.y + endPx.y) / 2,
-      });
-    }
+    const { points, handleMidPx } = computeKonvaTrajectoryPoints(
+      entry.startPx,
+      endPx,
+      entry.trajectory,
+      stageSize,
+    );
+    entry.arrowNode.points(points);
+    entry.controlHandleNode?.position(handleMidPx);
   }
 
   return (
@@ -70,6 +79,52 @@ export function syncTrajectoryEntryKonva(
     entry.ghostGroupNode?.getLayer() ??
     null
   );
+}
+
+export function syncTrajectoryEffectLineKonva(
+  entry: TrajectoryEffectLineEntry,
+  endPx: { x: number; y: number },
+  stageSize: { width: number; height: number },
+): Konva.Layer | null {
+  const dist = Math.hypot(endPx.x - entry.startPx.x, endPx.y - entry.startPx.y);
+  const visible = dist >= TRAJECTORY_VISIBILITY_THRESHOLD_PX;
+
+  entry.lineNode?.visible(visible);
+
+  if (visible && entry.lineNode) {
+    const { points } = computeKonvaTrajectoryPoints(
+      entry.startPx,
+      endPx,
+      entry.trajectory,
+      stageSize,
+    );
+    entry.lineNode.points(points);
+  }
+
+  return entry.lineNode?.getLayer() ?? null;
+}
+
+export function syncObjectTrajectoryKonva(
+  registry: CanvasNodesRegistry,
+  objectId: string,
+  endPx: { x: number; y: number },
+  stageSize: { width: number; height: number },
+): Konva.Layer[] {
+  const layers: Konva.Layer[] = [];
+
+  const arrowEntry = registry.trajectoryArrowNodes.get(objectId);
+  if (arrowEntry) {
+    const layer = syncTrajectoryEntryKonva(arrowEntry, endPx, stageSize);
+    if (layer) layers.push(layer);
+  }
+
+  const effectEntry = registry.trajectoryEffectLines?.get(objectId);
+  if (effectEntry) {
+    const layer = syncTrajectoryEffectLineKonva(effectEntry, endPx, stageSize);
+    if (layer) layers.push(layer);
+  }
+
+  return layers;
 }
 
 function resolvePlayerPosition(
@@ -105,14 +160,14 @@ export function syncPlayerDragKonvaNodes(params: {
       }
     }
 
-    const trajectoryEntry = registry.trajectoryArrowNodes.get(playerId);
-    if (trajectoryEntry) {
-      const layer = syncTrajectoryEntryKonva(
-        trajectoryEntry,
-        { x: pos.xPx, y: pos.yPx },
-        stageSize,
-      );
-      if (layer) dirtyLayers.add(layer);
+    const trajectoryLayers = syncObjectTrajectoryKonva(
+      registry,
+      playerId,
+      { x: pos.xPx, y: pos.yPx },
+      stageSize,
+    );
+    for (const layer of trajectoryLayers) {
+      dirtyLayers.add(layer);
     }
   }
 
@@ -236,9 +291,8 @@ export function syncBallDragKonvaNodes(params: {
   stageSize: { width: number; height: number };
 }): void {
   const { registry, ballPx, stageSize } = params;
-  const entry = registry.trajectoryArrowNodes.get('ball');
-  if (!entry) return;
-
-  const layer = syncTrajectoryEntryKonva(entry, ballPx, stageSize);
-  layer?.batchDraw();
+  const layers = syncObjectTrajectoryKonva(registry, 'ball', ballPx, stageSize);
+  for (const layer of new Set(layers)) {
+    layer.batchDraw();
+  }
 }

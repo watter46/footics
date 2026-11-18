@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Group, Layer, Line } from 'react-konva';
+import { Group, Layer } from 'react-konva';
 import {
   selectDomainActivePhase,
   selectDomainActivePhaseAspectRatio,
@@ -16,6 +16,8 @@ import {
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
+import { screenNormToStagePixel } from '@/lib/tactical/engine/coordinates';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type {
   DomainArrowAnnotation,
   DomainPlayerTrajectory,
@@ -33,6 +35,7 @@ import {
   buildSelectHandlerMap,
   sortBySelectedIds,
 } from './pitch-ground-helpers';
+import { TrajectoryEffectLine } from './trajectory-effect-line';
 import { ZoneObject } from './zones/ZoneObject';
 
 export interface PitchGroundLayerProps {
@@ -57,6 +60,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const isDragging = useSessionStore((s) => s.isDragging);
   const activeTool = useSessionStore((s) => s.activeTool);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
   const selectObject = useSessionStore((s) => s.selectObject);
@@ -241,17 +245,35 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
           sceneGraph.trajectories.map((traj) => {
             if (!traj.visible || selectedIds.includes(traj.playerId))
               return null;
+            const prevObj =
+              traj.playerId === 'ball'
+                ? prevSlide?.ball
+                : prevPitchPlayers.find((p) => p.id === traj.playerId);
+            const startPx = prevObj
+              ? screenNormToStagePixel(
+                  toScreenNormPoint(prevObj.x, prevObj.y),
+                  pitchStageSize,
+                )
+              : {
+                  x: traj.flatPointsPx[0] ?? 0,
+                  y: traj.flatPointsPx[1] ?? 0,
+                };
+            const trajectory =
+              traj.playerId === 'ball'
+                ? activeSlide?.ball?.trajectory
+                : visibleMarkers.find((p) => p.id === traj.playerId)
+                    ?.trajectory;
             return (
-              <Line
+              <TrajectoryEffectLine
                 key={`traj-dto-${traj.playerId}`}
-                points={traj.flatPointsPx as number[]}
-                stroke={traj.color}
-                strokeWidth={2}
-                dash={traj.dashArrayPx as number[]}
-                lineCap="round"
-                lineJoin="round"
-                listening={false}
-                perfectDrawEnabled={false}
+                playerId={traj.playerId}
+                flatPointsPx={traj.flatPointsPx}
+                color={traj.color}
+                dashArrayPx={traj.dashArrayPx}
+                startPx={startPx}
+                trajectory={trajectory}
+                stageSize={pitchStageSize}
+                nodesRegistryRef={nodesRegistryRef}
               />
             );
           })}
@@ -260,6 +282,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
             visibleMarkers={visibleMarkers}
             prevPlayers={prevPitchPlayers}
             selectedIds={selectedIds}
+            isDragging={isDragging}
             stageSize={pitchStageSize}
             activeSlideId={activeSlideId}
             nodesRegistryRef={nodesRegistryRef}

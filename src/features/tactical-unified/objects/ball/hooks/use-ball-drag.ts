@@ -5,6 +5,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useRef } from 'react';
 import { pxToNorm } from '@/features/tactical-unified/core';
+import { useObjectDragLifecycle } from '@/features/tactical-unified/core/hooks/use-object-drag-lifecycle';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { syncBallDragKonvaNodes } from '@/features/tactical-unified/core/utils/drag-konva-sync';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
@@ -31,8 +32,12 @@ export function useBallDrag({
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const setIsDragging = useSessionStore((s) => s.setIsDragging);
-  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const selectObject = useSessionStore((s) => s.selectObject);
+
+  const { isDragging, beginDrag, endDrag } = useObjectDragLifecycle({
+    isSelected: Boolean(isSelected),
+    onSelect: (isShift) => selectObject({ id: 'ball', kind: 'ball' }, isShift),
+  });
 
   const activeSlide = selectDomainActiveSlide(
     project,
@@ -44,9 +49,7 @@ export function useBallDrag({
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
-      e.cancelBubble = true;
-      setIsDragging(true);
-      setIsHudOpen(false);
+      beginDrag(e);
       selectionRingRef?.current?.visible(false);
       startPosRef.current = activeSlide
         ? { x: activeSlide.ball.x, y: activeSlide.ball.y }
@@ -57,7 +60,7 @@ export function useBallDrag({
       const stage = node.getStage();
       if (stage) stage.container().style.cursor = 'grabbing';
     },
-    [activeSlide, selectionRingRef, setIsDragging, setIsHudOpen],
+    [activeSlide, beginDrag, selectionRingRef],
   );
 
   const handleDragMove = useCallback(
@@ -98,7 +101,7 @@ export function useBallDrag({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
-      setIsDragging(false);
+      endDrag();
       selectionRingRef?.current?.visible(Boolean(isSelected));
       startPosRef.current = null;
 
@@ -119,15 +122,16 @@ export function useBallDrag({
       activePhaseId,
       activeSlideId,
       dispatchSlide,
+      endDrag,
       isSelected,
       selectionRingRef,
-      setIsDragging,
       stageSize.width,
       stageSize.height,
     ],
   );
 
   return {
+    isDragging,
     dragBoundFunc,
     handleDragStart,
     handleDragMove,

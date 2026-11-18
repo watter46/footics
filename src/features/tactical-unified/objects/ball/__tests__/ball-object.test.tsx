@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import Konva from 'konva';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it } from 'vitest';
@@ -193,5 +193,102 @@ describe('BallObject 3-frequency store integration', () => {
       documentStore.getState().project.phases[0].slides[0].ball;
     expect(updatedBall.x).toBeCloseTo(70, 5);
     expect(updatedBall.y).toBeCloseTo(70, 5);
+  });
+
+  it('mounts BallGhostTrajectory and syncs arrow on unselected ball dragstart -> dragmove on slide 2+', () => {
+    const baseProject = createDefaultTacticalProject();
+    const slide1 = baseProject.phases[0].slides[0];
+    const slide2 = {
+      ...slide1,
+      id: 'slide-2',
+      index: 1,
+      ball: {
+        ...slide1.ball,
+        x: clampToScreenNorm(50),
+        y: clampToScreenNorm(50),
+        visible: true,
+      },
+    };
+    const project = {
+      ...baseProject,
+      phases: [
+        {
+          ...baseProject.phases[0],
+          slides: [slide1, slide2],
+        },
+      ],
+    };
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: project.phases[0].id,
+      activeSlideId: slide2.id,
+    });
+    const registryRef = { current: createCanvasNodesRegistry() };
+
+    render(
+      <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+        <Stage width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
+          <Layer>
+            <BallObject
+              ball={slide2.ball}
+              resolvedBall={createResolvedBall()}
+              stageSize={STAGE_SIZE}
+              nodesRegistryRef={registryRef}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
+    );
+
+    const ballNode = registryRef.current.ballNode as Konva.Group;
+    act(() => {
+      ballNode.fire('dragstart', { evt: { shiftKey: false } });
+    });
+
+    expect(sessionStore.getState().selectedObjects).toEqual([
+      { id: 'ball', kind: 'ball' },
+    ]);
+
+    act(() => {
+      ballNode.position({ x: 480, y: 600 });
+      ballNode.fire('dragmove', {});
+    });
+
+    const arrowEntry = registryRef.current.trajectoryArrowNodes.get('ball');
+    expect(arrowEntry).toBeDefined();
+    expect(arrowEntry?.groupNode?.visible()).toBe(true);
+    const pts = arrowEntry?.arrowNode?.points() ?? [];
+    expect(pts[pts.length - 2]).toBeCloseTo(480, 0);
+    expect(pts[pts.length - 1]).toBeCloseTo(600, 0);
+    expect(documentStore.getState().past).toHaveLength(0);
+  });
+
+  it('sets ballNode.draggable() to false when isInteractive is false', () => {
+    const project = createDefaultTacticalProject();
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: project.phases[0].id,
+      activeSlideId: project.phases[0].slides[0].id,
+    });
+    const registryRef = { current: createCanvasNodesRegistry() };
+
+    render(
+      <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+        <Stage width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
+          <Layer>
+            <BallObject
+              ball={createTestBall()}
+              resolvedBall={createResolvedBall()}
+              stageSize={STAGE_SIZE}
+              nodesRegistryRef={registryRef}
+              isInteractive={false}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
+    );
+
+    const ballNode = registryRef.current.ballNode as Konva.Group;
+    expect(ballNode.draggable()).toBe(false);
   });
 });

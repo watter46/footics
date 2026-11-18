@@ -174,7 +174,13 @@ function useBallObjectState({
 export const BallObject = React.memo(function BallObject(
   props: BallObjectProps,
 ) {
-  const { ball, resolvedBall, stageSize, cleanRender } = props;
+  const {
+    ball,
+    resolvedBall,
+    stageSize,
+    cleanRender,
+    isInteractive = true,
+  } = props;
   const state = useBallObjectState(props);
 
   if (!resolvedBall.visible) return null;
@@ -200,6 +206,7 @@ export const BallObject = React.memo(function BallObject(
       {!cleanRender && prevInfo.hasPrevBall && prevInfo.prevBall && (
         <BallGhostTrajectory
           isSelected={isSelected}
+          isDragging={drag.isDragging}
           cleanRender={cleanRender}
           hasPrevBall={prevInfo.hasPrevBall}
           prevBall={prevInfo.prevBall}
@@ -219,7 +226,7 @@ export const BallObject = React.memo(function BallObject(
         ref={setBallGroupRef}
         x={px}
         y={py}
-        draggable={!cleanRender && !ball.locked}
+        draggable={!cleanRender && isInteractive && !ball.locked}
         dragBoundFunc={drag.dragBoundFunc}
         onClick={handleSelect}
         onTap={handleSelect}

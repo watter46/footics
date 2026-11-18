@@ -1,10 +1,7 @@
 ---
+trigger: glob
 description: "戦術ボード領域（tactical）専任の関数型DDD・6コンテキスト・決定論的パイプライン設計規約"
-globs:
-- "src/features/tactical-unified/**"
-- "src/lib/tactical/**"
-- "src/lib/types/tactical/**"
-- "src/lib/types/tactical-unified.ts"
+globs: "**/src/features/tactical-unified/**, **/src/lib/tactical/**, **/src/lib/types/tactical/**, **/src/lib/types/tactical-unified.ts"
 ---
 # 戦術ボード・関数型DDDアーキテクチャ規約 (Tactical Functional DDD Architecture)
 
@@ -57,22 +54,68 @@ Next.js + React + Konva + WebCodecs Worker + IndexedDB 環境において、状�
 
 ## 3. 3頻度状態分離と純粋 Command Reducer (State & Command Rules)
 
-### 3.1 更新頻度（Frequency）に応じた3つの状態分離
-パフォーマンス劣化と Undo 履歴汚染を防ぐため、更新頻度の異なる状態を単一のストア更新経路に混ぜてはならない。
+### 3.1 更新頻度（Frequency）に応じた3つの独立ストア (`TacticalStoreProvider`)
+パフォーマンス劣化と Undo 履歴汚染を防ぐため、`TacticalStoreProvider` は更新頻度の異なる3つの Zustand ストアを独立して管理する。
 
-1. **Cold State (`DocumentState` — 更新頻度: 操作確定時のみ)**:
-   - 永続ドメインモデル（`TacticalProject`）。
-   - `onDragEnd` / `onPointerUp` / HUD ボタンクリック / ショートカット実行などの**確定タイミングでのみ**、`dispatch(command: TacticalCommand)` を1回発行して更新する。
-   - この経路のみが Undo/Redo History スタックの記録と IndexedDB 自動保存をトリガーする。
-2. **Hot State (`EphemeralSessionState` — 更新頻度: 60〜120Hz ポインタ移動中)**:
-   - `activePhaseId`, `activeSlideId`, `workspaceMode`, `activeTool`, `selectedIds`、およびドラッグ中の一時移動デルタ（`activeDragDelta`）・作図中プレビュー（`drawingPreview`）・ポリゴン頂点ドラフト・範囲選択ボックス。
-   - `onDragMove` / `onPointerMove` 中は `DocumentState` を一切クローン・更新せず、`EphemeralSessionState` のみを高速更新する。
-3. **Stream State (`PlaybackClock` — 更新頻度: 60fps アニメーションループ)**:
-   - 再生・シーク中の絶対時刻 `timeMs: Milliseconds`。React コンポーネントツリー全体の再レンダーを引き起こさず、時間補間エンジンと Scene Compiler を駆動する。
+1. **Cold State (`documentStore` — 更新頻度: 操作確定時のみ)**:
+   - 永続ドメインモデル（`project: DomainTacticalProject`）と Undo/Redo 履歴（`past`, `future`）。
+   - `onDragEnd` / `onPointerUp` / HUD 操作 / ショートカット実行などの**確定タイミングでのみ**、`dispatch(command)` または `dispatchSlide(command)` を1回発行して更新する。
+   - この経路のみが Undo/Redo 履歴の記録と IndexedDB 自動保存をトリガーする。
+2. **Hot State (`sessionStore` — 更新頻度: 60〜120Hz ポインタ移動中)**:
+   - `activePhaseId`, `activeSlideId`, `workspaceMode`, `activeTool`, `selectedObjects`、およびドラッグ中の一時移動デルタ（`activeDragDelta`）・作図中プレビュー（`drawingPreview`）。
+   - `onDragMove` / `onPointerMove` 中は `documentStore` を一切更新せず、`sessionStore` のみを更新する。
+3. **Stream State (`playbackStore` — 更新頻度: 60fps アニメーションループ)**:
+   - 再生状態 `isPlaying` と絶対時刻 `timeMs: Milliseconds`。
 
-### 3.2 純粋 Command Reducer と単一不変条件ノーマライザ (`enforceSlideInvariants`)
+### 3.2 `playbackStore.timeMs` と `documentStore` の購読コード規約（再レンダー遮断）
+1. **`timeMs` の React State 直接購読の禁止**:
+   - コンポーネントやカスタムフック内で `usePlaybackStore((s) => s.timeMs)` または `useStore(playbackStore, (s) => s.timeMs)` を呼び出してはならない（60fps 再生中やシーク操作のたびに React コンポーネントツリー全体が再レンダーされるため）。
+2. **`timeMs` の必須購読パターン**:
+   - **連続フレーム描画・DOM（シークバー・時刻ラベル）更新**: `useTacticalStoresContext()` から `playbackStore`（Store API）を取得し、`useEffect` 内の `playbackStore.subscribe()` で Canvas2D 描画や DOM `ref` を直接更新する。
+   - **イベントハンドラ（操作確定時）での現在時刻参照**: `onPointerUp` や `onWheel` 等のカメラキーフレーム記録時に時刻が必要な場合は、React 購読ではなくハンドラ内で `playbackStore.getState().timeMs`（または `currentTimeMsRef.current`）を同期取得する。
+   - **静止編集時のみ時刻を参照する UI のガード**: 静止中のみ `timeMs` を参照する必要がある場合は、`usePlaybackStore((s) => (s.isPlaying ? 0 : s.timeMs))` のように再生中（`isPlaying: true`）は定数を返して 60fps 再レンダーを遮断する。
+3. **ルート `s.project` 丸ごと購読の禁止**:
+   - UI コンポーネントや Konva Layer 内で `useDocumentStore((s) => s.project)` を購読してはならない。必ずセレクタ関数内で `selectDomainActiveSlide(s.project, activePhaseId, activeSlideId)` 等の最小スコープに絞り込んで返すこと。
+
+```tsx
+// ❌ 禁止: timeMs を React State として直接購読し、毎フレーム再レンダーを起こす
+const timeMs = usePlaybackStore((s) => s.timeMs);
+const project = useDocumentStore((s) => s.project); // ❌ ルート集約の丸ごと購読
+
+// ✅ 必須1: playbackStore.subscribe() + Ref で React 再レンダーゼロで Canvas / DOM を駆動する
+const { playbackStore } = useTacticalStoresContext();
+const currentTimeMsRef = useRef<number>(Number(playbackStore.getState().timeMs));
+
+useEffect(() => {
+  return playbackStore.subscribe((state, prevState) => {
+    if (state.timeMs === prevState.timeMs) return;
+    const nextMs = Number(state.timeMs);
+    currentTimeMsRef.current = nextMs;
+    if (timeLabelRef.current) {
+      timeLabelRef.current.textContent = `${(nextMs / 1000).toFixed(1)}s`;
+    }
+    if (sliderRef.current) {
+      sliderRef.current.value = String(Math.round(nextMs));
+    }
+    drawFrame(nextMs);
+  });
+}, [playbackStore, drawFrame]);
+
+// ✅ 必須2: イベント確定時は getState().timeMs を同期取得する
+const handlePointerUp = () => {
+  const timeMs = Number(playbackStore.getState().timeMs);
+  upsertGlobalCameraKeyframe(timeMs, { tilt, yaw });
+};
+
+// ✅ 必須3: DocumentStore はセレクタ内で対象 Slide / Phase に絞り込む
+const activeSlide = useDocumentStore((s) =>
+  selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+);
+```
+
+### 3.3 純粋 Command Reducer と単一不変条件ノーマライザ (`enforceSlideInvariants`)
 1. **Zustand `set()` 内へのドメインロジック直書き禁止**:
-   Zustand ストアは `dispatch(command)` を受けて純粋関数 `applyTacticalCommand(project, command)` を呼び出すだけの薄いリアクティブ・シェルとする。
+   `documentStore` は `dispatch(command)` を受けて純粋関数 `applyTacticalCommand(project, command)` を呼び出すだけの薄いリアクティブ・シェルとする。
 2. **集約出口での単一不変条件の強制**:
    `Slide` を変更するすべての Command は、純粋 Reducer の出口で必ず単一の純粋関数 `enforceSlideInvariants(prevSlide, candidateSlide, command): Slide` を通過しなければならない。ここで以下の不変条件を一括保証する：
    - **ロック不変条件**: `prevSlide` で `locked: true` のエンティティは、ロック解除コマンド以外のいかなるコマンドによっても座標・形状変更・削除されない。
@@ -103,5 +146,5 @@ Next.js + React + Konva + WebCodecs Worker + IndexedDB 環境において、状�
 3. **Scene Compiler の完全解決義務（プレースホルダ禁止）**:
    - `compileSceneGraph` 内で `// placeholder` や空配列 `[]` ハードコードで機能を省略することを禁じる。3D MVP 行列投影（`pitchTransform` / `directorCamera`）、ゴースト軌道（`trajectories`）、選手の視野角（`visionCone`）・スポットライト（`focus`）、および全エンティティ（Player / Ball / Text / Zone / Arrow）への `activeDragDelta` 合成を必ず Compiler 内で完結させること。
 4. **Canvas2D 背景ピッチキャッシュとセレクタ粒度**:
-   - `useResolvedSceneGraph` ではストア全体購読（`useSessionStore(s => s)`）やオブジェクト参照依存（`[viewport]`）を禁止し、プリミティブ単位の依存配列とすること。
+   - `useResolvedSceneGraph` ではストア全体購読（`useSessionStore(s => s)`）、オブジェクト参照依存（`[viewport]`）、および静止時（`!isPlaying`）の `timeMs` 変化による再評価を禁止し、プリミティブ単位の依存配列とすること。
    - 連続フレーム描画（プレビュー・動画出力）では、ピッチ外観設定・Viewport・カメラ行列が不変の間は OffscreenCanvas キャッシュを転写し、毎フレームのピッチ再描画を行わないこと。

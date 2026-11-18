@@ -5,84 +5,150 @@ description: Konva.js + react-konva を使用した戦術ボード実装のベ�
 
 # Konva.js + react-konva スキルガイド
 
-Footics のメイン機能である戦術ボード（Canvas）を実装・修正する際のガイドラインです。
-`src/features/tactical-unified` 配下の実例に基づいています。特に数千のノードを扱う際のパフォーマンス最適化に留意してください。
+Footics の戦術ボード（`src/features/tactical-unified`）における Konva.js + react-konva の実装・パフォーマンス最適化ガイドラインです。
 
-## 1. イベントリスナーの最適化 (`listening`)
+---
 
-KonvaはデフォルトでHit graphを構築しマウス・タッチイベントを計算します。これは非常に重い処理です。
-インタラクティブでない要素（背景要素、静的装飾、または現在のツールモードでは操作対象外の要素）には、動的に `listening={false}` を設定し、計算をスキップさせてください。
+## 1. Hit Graph（当たり判定）とバッファキャンバスの徹底遮断 (`listening` / `perfectDrawEnabled`)
+
+Konva はデフォルトで全ノードに対して裏面の Hit Canvas（当たり判定用キャンバス）と半透明合成用のバッファキャンバスを構築します。要素数が増えるとこれが最大のボトルネックになるため、以下の3段階の遮断基準をすべて満たしてください。
+
+### 必須適用基準
+1. **Layer 単位の `listening` 遮断**:
+   - 静的な背景レイヤー（`PitchBackgroundLayer`）、作図プレビュー・選択枠専用レイヤー（`InteractionPreviewLayer`）は、常時 `<Layer listening={false}>` を指定し Hit Canvas 自体を生成させないでください。
+   - アニメーション再生中および画像・動画エクスポート時（`cleanRender === true`）は、すべての Layer に `listening={false}` を渡してイベント計算を完全に停止させてください。
+2. **非対話・装飾 Shape への `listening={false}` + `perfectDrawEnabled={false}` 同時指定**:
+   - イベントを受け取らないすべての装飾 Shape（選手マーカーの外周リング・フェードリング・影・背番号/名前ラベル背景、ボールの模様・影、矢印の先端ヘッド、ゴースト軌道、視野角コーン、フォーカススポットライト、パルス波紋、ゾーンの補助線）には、**`listening={false}` と `perfectDrawEnabled={false}` を必ずセットで指定**してください。
+3. **ツール・ドラッグ状態に応じた動的 `listening` 制御**:
+   - 作図ツール選択中や他オブジェクトのドラッグ移動中など、対象オブジェクトが操作対象外となる状態では、親 `<Group>` の `listening` を `false` に切り替えてください。
 
 ```tsx
-const isInteractive = activeTool === 'select';
+// ❌ 禁止: 装飾用の Circle / Line / Rect に listening={false} と perfectDrawEnabled={false} を付け忘れる
+<Group draggable={isInteractive}>
+  <Circle radius={24} fill="rgba(255, 85, 0, 0.2)" stroke="#FF5500" />
+  <Circle radius={14} fill={teamColor} />
+  <Text text={player.name} />
+</Group>
+
+// ✅ 必須: 親 Group で対話可否を制御し、内部の装飾 Shape には listening={false} と perfectDrawEnabled={false} を同時指定する
+const isNodeInteractive = !cleanRender && isInteractive && activeTool === 'select';
 
 <Group
-  listening={isInteractive} // ツール状態に応じて切り替え
-  draggable={isInteractive && !isLocked}
+  listening={isNodeInteractive}
+  draggable={isNodeInteractive && !player.locked}
 >
-  <Circle radius={10} fill="red" listening={false} /> {/* 背景や装飾は常に false */}
+  {/* 外周エフェクト・影・装飾リングは常に Hit 判定とバッファ描画をスキップ */}
+  <Circle
+    radius={24}
+    fill="rgba(255, 85, 0, 0.2)"
+    stroke="#FF5500"
+    listening={false}
+    perfectDrawEnabled={false}
+  />
+  {/* メインの当たり判定を持つ本体のみ listening を維持し、perfectDrawEnabled は false */}
+  <Circle radius={14} fill={teamColor} perfectDrawEnabled={false} />
+  <Text text={player.name} listening={false} perfectDrawEnabled={false} />
 </Group>
 ```
 
-## 2. レンダリング品質と速度のトレードオフ (`perfectDrawEnabled`)
+---
 
-Konvaはデフォルトでバッファキャンバスを使用して、透明度のある枠線と塗りの重なりを完璧に描画します。しかし、これも描画パフォーマンスを著しく低下させます。
-大量の半透明な図形を描画する際、完璧な描画よりも速度が重要な場合は `perfectDrawEnabled={false}` を設定してください。
+## 2. Dumb Rasterizer 原則と `React.memo` レイヤーの Store 購読貫通防止
+
+戦術ボードの編集キャンバス（Konva）と動画・プレビュー出力（Canvas2D）で1ピクセルの描画ズレも起こさず、かつ 60〜120Hz の操作レスポンスを維持するため、以下の規約を厳守してください（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
+
+1. **Konva コンポーネント内での幾何学計算・ドメイン逆引きの全面禁止**:
+   - Konva コンポーネント（`PitchGroundLayer`, `BillboardObjectLayer`, `ArrowObject`, `ZoneObject` 等）の内部で、ベジェ曲線・波線の頂点分割、選手半径オフセット、伸長エフェクトのトリミング、波紋リング半径、3D遠近投影を計算することを禁止します。
+   - すべての幾何学・エフェクト解決は純粋関数 `compileSceneGraph(frame, session, viewport): ResolvedSceneGraphDTO` で一括計算し、Konva 側は渡された `sceneGraph` の計算済みピクセル座標列（`flatPointsPx` 等）をそのまま描画するだけの **Dumb Rasterizer（純粋出力装置）** としてください。
+2. **`React.memo` レイヤー内部での粗い Store 購読（`s.project` 等）の禁止**:
+   - Konva Layer（`PitchGroundLayer`, `BillboardObjectLayer` 等）を `React.memo` でラップしていても、**Layer の内部で `useDocumentStore((s) => s.project)` のような上位オブジェクト購読を行うと、Props が不変でも Context 更新が `memo` を貫通してレイヤー全体が再描画されます**。
+   - Layer の描画入力は Props の `sceneGraph: ResolvedSceneGraphDTO` に一本化し、Layer 内部での Store 購読はイベント発火用のアクション関数（`dispatchSlide`, `selectObject` 等）または細粒度のプリミティブ状態のみに限定してください。
+3. **高頻度ドラッグ（Hot State）と確定コミット（Cold State）の分離**:
+   - `onDragMove` / `onPointerMove`（60〜120Hz）のたびに `documentStore` を更新してはなりません。移動中は `sessionStore`（`activeDragDelta` / `drawingPreview`）のみを更新し、`onDragEnd` / `onPointerUp` の確定瞬間にのみ1回だけ `dispatchSlide(command)` を発行してください。
 
 ```tsx
-<Rect
-  x={0}
-  y={0}
-  width={100}
-  height={100}
-  fill="rgba(255, 0, 0, 0.5)"
-  stroke="black"
-  perfectDrawEnabled={false} // バッファキャンバスをスキップして高速化
-/>
+// ❌ 禁止: React.memo した Layer の内部で s.project を丸ごと購読し、activeSlide を逆引きする
+export const PitchGroundLayer = memo(function PitchGroundLayer({
+  sceneGraph,
+  listening,
+}: PitchGroundLayerProps) {
+  // ❌ これを書くと他フェーズの変更でも memo を貫通して再レンダーされる
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const activeSlide = selectDomainActiveSlide(project, activePhaseId, activeSlideId);
+
+  return (
+    <Layer listening={listening}>
+      {sceneGraph.groundZones.map((resolvedZone) => {
+        // ❌ ドメインモデルの逆引き禁止（ResolvedSceneGraphDTO のデータのみで描画すること）
+        const rawZone = activeSlide?.zones.find((z) => z.id === resolvedZone.id);
+        return <ZoneNode key={resolvedZone.id} zone={rawZone} />;
+      })}
+    </Layer>
+  );
+});
+
+// ✅ 必須: 描画データは Props の sceneGraph (ResolvedSceneGraphDTO) に完全一本化し、Store 購読は細粒度セレクタとアクションのみにする
+export const PitchGroundLayer = memo(function PitchGroundLayer({
+  sceneGraph,
+  cleanRender,
+  listening = true,
+}: PitchGroundLayerProps) {
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const selectObject = useSessionStore((s) => s.selectObject);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const isLayerInteractive = !cleanRender && listening;
+
+  return (
+    <Layer id="pitch-ground-layer" listening={isLayerInteractive}>
+      {sceneGraph.groundZones.map((zoneDto) => (
+        <ZoneNode
+          key={zoneDto.id}
+          dto={zoneDto}
+          isInteractive={isLayerInteractive && activeTool === 'select'}
+          onSelect={selectObject}
+          onCommit={dispatchSlide}
+        />
+      ))}
+    </Layer>
+  );
+});
 ```
 
-## 3. ドラッグ操作・3頻度状態分離・Dumb Rasterizer 原則
+---
 
-戦術ボードの描画（Konva）と動画・プレビュー出力（Canvas2D）で1ピクセルの描画ズレも起こさず、かつ 60〜120Hz の操作レスポンスを維持するため、以下の **Dumb Rasterizer & 3頻度状態分離原則** を厳守してください（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
+## 3. カメラ・チルト・パン・ズームを見据えた 5層レイヤー分離 (Layer Separation)
 
-1. **Konva コンポーネント内での幾何学計算・ドメイン計算の全面禁止**:
-   - Konva コンポーネント（`ArrowObject`, `PlayerMarkerItem`, `ZoneObject` 等）の内部や専用フックで、ベジェ曲線・波線の頂点分割、選手半径分のオフセット計算、伸長エフェクトのポリライントリミング、波紋リング計算、3D遠近投影を個別に計算してはなりません。
-   - すべての幾何学・エフェクト解決は、React/Konva 非依存の純粋関数 **`compileSceneGraph(frame, session, viewport): ResolvedSceneGraphDTO`** で一括計算し、Konva コンポーネントはその DTO の計算済みピクセル座標列（`flatPointsPx` 等）をそのまま `<Line points={dto.flatPointsPx} />` 等に投影するだけの **Dumb Rasterizer（純粋出力装置）** として実装してください。
-2. **命令的 Konva ノード直接書き換えの禁止**:
-   - アニメーション再生時に React や Scene Compiler を迂回して `node.x()`, `node.points()` 等を命令的に直接ミューテートするハック（旧 `animation-node-updater` パターン）は禁止です。再生時も静止時も必ず `evaluateTimelineFrame` ➔ `compileSceneGraph` の単一導出パイプラインを通してください。
-3. **高頻度ドラッグ（Hot Session State）と確定コミット（Cold Document Command）の分離**:
-   - `onDragMove` / `onPointerMove`（60〜120Hz）のたびに永続ドメイン状態（`DocumentState`）を更新・クローンしたり Undo History を記録してはなりません。
-   - ドラッグ移動中は軽量な一時状態 **`EphemeralSessionState`（`activeDragDelta` / `drawingPreview`）** のみを更新し、`onDragEnd` / `onPointerUp` の確定瞬間にのみ **1回だけ `dispatch(command: TacticalCommand)`** を発行して `DocumentState` にコミットしてください。
-
-## 4. カメラ・チルト・パン・ズームを見据えた 5層レイヤー分離 (Layer Separation)
-
-再描画コストを抑え、かつ将来のカメラ操作（ピッチの縦チルト・左右からの覗き込み回転・パン・ズーム）および再生・出力時の「純粋描画（Clean Render）」でバグを一切生まないよう、Konva Stage 内とオーバーレイは以下の **5層構造** に厳格に分離してください。
+再描画コストを抑え、カメラ操作（ピッチの縦チルト・左右回転・パン・ズーム）および再生・出力時の「純粋描画（Clean Render）」で編集UIの映り込みを防ぐため、Konva Stage 内とオーバーレイは以下の **5層構造** に分離してください。
 
 1. **Layer 1: `PitchGroundLayer`（地面・平面投影レイヤー）**:
    - ピッチ枠（`PitchFrame`）、地面に描かれるゾーン（`Zone`）、地面上の矢印・直線・コネクタ・ゴースト軌道のライン。
-   - カメラのチルトや左右回転時に、地面の平面変形（パースペクティブ投影）をそのまま受ける層。
 2. **Layer 2: `BillboardObjectLayer`（ビルボード・立ちオブジェクトレイヤー）**:
-   - 選手マーカー（Webの2D丸マーカー / Extensionの3D足元リング＋下部の選手名ラベル）、ボール、テキスト。
-   - **ビルボード原則**: 基準位置 `(x, y)` はカメラ投影位置へ移動し、奥行きに応じた遠近スケール（`perspectiveScale`）が掛かるが、**マーカーの円や文字ラベル自体は縦に潰れず常にカメラ正面（正円・読める文字）を向く**構造にする。また、カメラを傾けた際に手前の選手が奥の選手の前に重なるよう、スクリーンY座標（深さ）で描画順ソートを行える構造とする。
+   - 選手マーカー、ボール、テキスト。
+   - **ビルボード原則**: 基準位置 `(x, y)` はカメラ投影位置へ移動し、奥行きに応じた遠近スケール（`perspectiveScale`）が掛かるが、**マーカーの円や文字ラベル自体は縦に潰れず常にカメラ正面（正円・読める文字）を向く**構造にする。描画順は `compileSceneGraph` で解決された深さ（Y座標）ソート順に従う。
 3. **Layer 3: `InteractionPreviewLayer`（作図プレビュー・編集補助レイヤー）**:
-   - 作図中のプレビュー図形、範囲選択ボックス、選択ハイライト、ゴースト軌道の操作ハンドル、矢印・ゾーンの頂点ハンドル。作図中プレビュー図形は `DrawingPreviewLayer.tsx` の純粋レンダラー関数（`renderDrawingPreviewNode`, `PREVIEW_SHAPE_RENDERERS`）を呼び出して描画する構造とする。
-   - **純粋描画（Clean Render）原則**: アニメーション再生中および画像・動画の出力時は、この編集補助レイヤー（および選択強調・ゴースト軌道）を一括で非表示（`visible={false}`）にし、出力結果に編集UIが絶対に映り込まない構造とする。
-4. **Overlay 1: `ViewportCropOverlay` / `BoundaryBoxOverlay`（画面基準の境界線枠レイヤー）**:
-   - `TacticalPhase` 単位の `boundaryBox`（`16:9` スクリーン `0..100` 基準）と外側マスクを描画する。これは地面ではなく「カメラのレンズ枠（画面切り抜き枠）」に属するため、ピッチを傾けたり回転させたりしても境界線枠自体は傾かず、常に画面に対して水平・垂直な矩形として動作する。また、初期状態ではキャンバス上で非表示とし、ツールバーの「境界線」がONの時のみ表示する。
+   - 作図中のプレビュー図形、範囲選択ボックス、選択ハイライト、頂点ハンドル。常時 `<Layer listening={false}>` とし、アニメーション再生中および出力時（`cleanRender === true`）は非表示にして出力結果に編集UIが映り込まない構造とする。
+4. **Overlay 1: `BoundaryBoxOverlay`（画面基準の境界線枠レイヤー）**:
+   - `TacticalPhase` 単位の `boundaryBox`（`16:9` スクリーン `0..100` 基準）と外側マスクを描画する。ピッチを傾けても境界線枠自体は常に画面に対して水平・垂直な矩形として動作する。
 5. **Overlay 2: `HtmlHudOverlay`（オブジェクトオプション・境界線オプション）**:
-   - 選択オブジェクトのスクリーン投影座標（`worldToScreen`）を購読して浮動表示される `ObjectOptions` 等。
+   - 選択オブジェクトのスクリーン投影座標を購読して浮動表示される `ObjectOptions` 等。
 
-## 5. ホスト非依存の Composable Core 設計 (Headless Annotation Core)
+---
 
-Web アプリ（Footics 本体戦術盤）と Chrome Extension（動画スクショ クイック編集）で描画機能を共有する場合、**特定のホストアプリ（Web専用パネルやExtension専用ストレージ）に依存しない純粋な Core レイヤー** を設計してください。
-- **God Component の禁止**: 1つのコンポーネント（Stage）にピッチ背景・選手22人・アノテーション・ツールバー・各種モーダルを直結してはならない。
-- **頭脳（ロジック）と見た目（Renderer）の分離**: 選手マーカー、ボール、矢印、ゾーン等の全オブジェクトは、共通の頭脳（位置、ドラッグ、選択、オブジェクトオプション制御）と着せ替え可能な見た目（Webの2D丸マーカー / Extensionの3D足元リング）を分離してパッケージ化する。
-- **Store Provider パターン**: グローバルシングルトンの Zustand ストアに直接依存せず、React Context Provider 経由で初期状態を Props 注入できる構造にし、マウント時のチラつき（Flicker）を根絶すること。
-- **グローバルカスタムイベントの禁止**: `window.dispatchEvent` による `tactical:copy-png` などの暗黙的な疎結合を避け、コンポーネントの Imperative Ref（`canvasRef.current.exportPng()`）または Context メソッドで明示的にやり取りすること。
+## 4. ホスト非依存の Composable Core 設計 (Headless Annotation Core)
 
-## 6. 4層単一座標系アーキテクチャと投影パイプライン (4-Layer Single Coordinate & Projection Pipeline)
+Web アプリ（Footics 本体戦術盤）と Chrome Extension（動画スクショ クイック編集）で描画機能を共有するため、特定のホストアプリに依存しない Core レイヤーを維持してください。
+- **God Component の禁止**: 1つのコンポーネントにピッチ背景・選手22人・アノテーション・ツールバー・各種モーダルを直結してはならない。
+- **頭脳（ロジック）と見た目（Renderer）の分離**: 選手マーカー、ボール、矢印、ゾーン等の全オブジェクトは、共通の操作制御と見た目（Webの2D丸マーカー / Extensionの3D足元リング）を分離して構成する。
+- **Store Provider パターン**: グローバルシングルトンのストアに直接依存せず、`TacticalStoreProvider` 経由で初期状態を Props 注入し、マウント時のチラつき（Flicker）を根絶すること。
+- **グローバルカスタムイベントの禁止**: `window.dispatchEvent` による暗黙的な連携を禁止し、Imperative Ref（`canvasRef.current.exportPng()`）または Context メソッドで明示的にやり取りすること。
 
-メインキャンバスの大きさは常に不変とし、アスペクト比切替・リサイズ・カメラ操作（チルト・3D投影・パン・ズーム）に対して一切の座標ズレを生まないよう、座標変換は以下の **4層単一座標系アーキテクチャ** に集約してください（各コンポーネントでの個別計算は厳禁）。
+---
+
+## 5. 4層単一座標系アーキテクチャと投影パイプライン
+
+メインキャンバスの大きさは常に不変とし、アスペクト比切替・リサイズ・カメラ操作に対して座標ズレを生まないよう、座標変換は以下の **4層単一座標系アーキテクチャ** に集約してください（各コンポーネントでの個別計算は厳禁）。
 
 1. **第1層: スクリーン外枠（`16:9` 固定・`X: 0〜100, Y: 0〜100` 単一論理座標）**:
    - 全画面（ボード・レイアウト・エクスポート）の基準外枠は `16:9`（1920×1080）固定とし、ストアに保存される全座標は `16:9` スクリーン全体の `0〜100` とする。
@@ -91,62 +157,16 @@ Web アプリ（Footics 本体戦術盤）と Chrome Extension（動画スクシ
    - `16:9` スクリーン中央にアクティブフェーズの `aspectRatio`（`'16:9' | '4:5' | '9:16' | '1:1'`）のサブピッチ（`calculatePitchRect` / `getScreenOuterPitchRect` / `getScreenPitchBounds`）を内接配置する。
    - 3D視点投影およびスクリーン変換は `canvas-screen-coordinates.ts`（`worldToScreen` / `screenToWorld`, `DEFAULT_PITCH_PERSPECTIVE = 1200`）を通し、縦向きピッチの3D二重スケーリングを防止する。
 3. **第3層: フェーズ単位の境界線クロップ（`TacticalPhase.boundaryBox`）**:
-   - `aspectRatio` と `boundaryBox` は `TacticalPhase` 単位で独立保持し（`selectActivePhaseAspectRatio` / `selectActivePhaseBoundaryBox` で購読）、比率切替（`setAspectRatio`）は `boundaryBox` を一切書き換えない。
+   - `aspectRatio` と `boundaryBox` は `TacticalPhase` 単位で独立保持し（`selectDomainActivePhaseAspectRatio` / `selectDomainActiveBoundaryBox` で購読）、比率切替は `boundaryBox` を一切書き換えない。
    - レイアウト画面・エクスポート画面は第1層＋第2層を `16:9`（1920×1080）で正規描画した上で、`boundaryBox`（`resolveBoundaryBoxPixelRect`）の内側領域をクロップ出力する。
 4. **第4層: フォーメーション配置と比率変換（`getFormationActualPos` / `transformCoord`）**:
-   - Full/Half コートモードおよびピッチの向き（`'16:9'`=横: Home左/Away右、`'9:16' | '4:5' | '1:1'`=縦: Home下/Away上）に基づき、`getScreenPitchBounds(aspectRatio)` 基準で単一変換を行う。
-   - ベンチ配置選手も含め選手マーカー写真は `PlayerPhotoContext`（`player-photo-resolver.ts`）で解決する。
+   - Full/Half コートモードおよびピッチの向きに基づき、`getScreenPitchBounds(aspectRatio)` 基準で単一変換を行う。
 
-## 7. プラグイン型ツール・オブジェクトアーキテクチャ (`CanvasToolPlugin` & Object Modules)
+---
 
-描画ツールやオブジェクトの追加・変更時に、既存の `Stage` や `PreviewLayer` に `switch / if` を追加することを固く禁じます（開放閉鎖原則 OCP の厳守）。
-- **`CanvasToolPlugin` 契約**: 各ツールは「メタデータ」「生成データロジック（`createObject`）」「ドラッグ中 Konva プレビュー（`PreviewComponent`）」「配置後 Konva 確定描画（`RenderComponent`）」をカプセル化してください。
-- **ホスト別カタログ注入**: Web版と Extension版のツールバー構成の違いは、起動時に渡すツールカタログ設定で宣言的に切り替えてください。
+## 6. プラグイン型ツールとオブジェクトオプションへの一本化
 
-## 8. オブジェクトオプションへの完全一本化 (`ObjectOptions`)
-
-オブジェクトのプロパティ（色、太さ、視野、コネクタ、選手情報変更、サイズ等）の編集 UI は、Web・Extension ともに選択時にオブジェクトの近くへ浮動表示される **オブジェクトオプション（`ObjectOptions`）** に100%一本化します。
-- 旧右パネルの `Properties / Inspector` タブは完全廃止し、UIの二重管理を排除します。
-- Web版（2Dマーカー）と Extension版（3Dマーカー）は、選手に名前が設定されている場合はどちらもマーカーの下部に名前ラベルを表示し、オブジェクトオプションの「選手情報変更ボタン」からミニフォームで変更できる共通設計とします。
-
-## 9. レイヤー単位の再描画遮断（memo化）
-
-Stage コンテナ（`CanvasStageContainer` 等）でドラッグ選択枠の更新やプレビュー描画など高頻度な State 更新が発生した際、影響のない他の Konva Layer まで毎フレーム再描画されるとパフォーマンスが劇的に低下します。
-
-Konva Layer コンポーネント（`PitchGroundLayer`, `BillboardObjectLayer` 等）は必ず `React.memo` でラップし、Props が変更されない限り Konva ノードツリーの不要な再評価を遮断してください。
-
-```tsx
-import { memo } from 'react';
-import { Layer } from 'react-konva';
-
-export const PitchGroundLayer = memo(function PitchGroundLayer({
-  aspectRatio,
-  is3dPitch,
-  // ...
-}: PitchGroundLayerProps) {
-  return (
-    <Layer listening={false}>
-      {/* 静的なピッチ描画 */}
-    </Layer>
-  );
-});
-
-export const BillboardObjectLayer = memo(function BillboardObjectLayer({
-  items,
-  // ...
-}: BillboardObjectLayerProps) {
-  // アイテムのソートなどは useMemo で保護
-  const sortedItems = useMemo(() => sortItems(items), [items]);
-
-  return (
-    <Layer>
-      {/* オブジェクト群描画 */}
-    </Layer>
-  );
-});
-```
-
-また、レイヤー内の `useEffect` で Konva ノードや Canvas コンテキストを操作する場合は、依存配列の省略（毎レンダー実行）を厳禁とし、対象 Ref や Rect のみを依存配列に指定してください。
-
-
-
+1. **`CanvasToolPlugin` 契約（OCP 厳守）**:
+   - 描画ツールやオブジェクトの追加・変更時に、既存の `Stage` や `PreviewLayer` に `switch / if` を追加することを禁じます。各ツールは「メタデータ」「生成ロジック」「ドラッグ中プレビュー」「配置後確定描画」をカプセル化し、カタログ注入で切り替えてください。
+2. **オブジェクトオプション（`ObjectOptions`）への完全一本化**:
+   - オブジェクトのプロパティ（色、太さ、視野角、コネクタ、選手情報変更、サイズ等）の編集 UI は、選択時にオブジェクトの近くへ浮動表示される `ObjectOptions` に一本化します。

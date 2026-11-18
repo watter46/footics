@@ -21,7 +21,10 @@ import {
   type CanvasNodesRegistry,
   createCanvasNodesRegistry,
 } from '../../utils/canvas-registry';
-import { syncPlayerDragKonvaNodes } from '../../utils/drag-konva-sync';
+import {
+  syncBallDragKonvaNodes,
+  syncPlayerDragKonvaNodes,
+} from '../../utils/drag-konva-sync';
 import { PitchGroundLayer } from '../PitchGroundLayer';
 
 function createTwoSlideProjectWithPlayer(
@@ -207,5 +210,114 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
     expect(pts.length).toBeGreaterThanOrEqual(4);
     expect(pts[pts.length - 2]).toBeCloseTo(650, 0);
     expect(pts[pts.length - 1]).toBeCloseTo(300, 0);
+  });
+
+  it('case 3: registers trajectoryEffectLines for unselected ball and player and syncs lineNode on drag', () => {
+    const base = createTwoSlideProjectWithPlayer('p-1', 30, 40);
+    const phase = base.phases[0];
+    const slide1 = {
+      ...phase.slides[0],
+      ball: {
+        ...phase.slides[0].ball,
+        x: toScreenNormCoord(50),
+        y: toScreenNormCoord(50),
+      },
+    };
+    const slide2 = {
+      ...phase.slides[1],
+      players: [
+        {
+          ...phase.slides[1].players[0],
+          x: toScreenNormCoord(45),
+          y: toScreenNormCoord(40),
+          trajectoryEffect: {
+            enabled: true,
+            lineStyle: 'dashed' as const,
+            exitAction: 'keep' as const,
+            color: '#ef4444',
+          },
+        },
+      ],
+      ball: {
+        ...phase.slides[1].ball,
+        x: toScreenNormCoord(60),
+        y: toScreenNormCoord(50),
+        trajectoryEffect: {
+          enabled: true,
+          lineStyle: 'dashed' as const,
+          exitAction: 'keep' as const,
+          color: '#facc15',
+        },
+      },
+    };
+    const project = {
+      ...base,
+      phases: [{ ...phase, slides: [slide1, slide2] }],
+    };
+
+    const nodesRegistryRef: { current: CanvasNodesRegistry } = {
+      current: createCanvasNodesRegistry(),
+    };
+    const frame = evaluateTimelineFrame(
+      project.phases[0],
+      toMilliseconds(2000),
+    );
+    const sceneGraph = compileSceneGraph(
+      frame,
+      {
+        activePhaseId: phase.id,
+        activeSlideId: slide2.id,
+        selectedIds: [],
+      },
+      viewport,
+      slide1,
+    );
+
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: phase.id,
+      activeSlideId: slide2.id,
+    });
+
+    act(() => {
+      render(
+        <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+          <Stage width={stageSize.width} height={stageSize.height}>
+            <PitchGroundLayer
+              stageSize={stageSize}
+              pitchRect={pitchRect}
+              sceneGraph={sceneGraph}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+          </Stage>
+        </TacticalStoreProvider>,
+      );
+    });
+
+    const ballEntry =
+      nodesRegistryRef.current.trajectoryEffectLines.get('ball');
+    const playerEntry =
+      nodesRegistryRef.current.trajectoryEffectLines.get('p-1');
+    expect(ballEntry?.lineNode).toBeTruthy();
+    expect(playerEntry?.lineNode).toBeTruthy();
+
+    syncBallDragKonvaNodes({
+      registry: nodesRegistryRef.current,
+      ballPx: { x: 720, y: 360 },
+      stageSize,
+    });
+    const ballPts = ballEntry?.lineNode?.points() ?? [];
+    expect(ballPts[ballPts.length - 2]).toBeCloseTo(720, 0);
+    expect(ballPts[ballPts.length - 1]).toBeCloseTo(360, 0);
+
+    syncPlayerDragKonvaNodes({
+      registry: nodesRegistryRef.current,
+      movedPlayers: new Map([['p-1', { xPx: 640, yPx: 280 }]]),
+      primaryPlayerId: 'p-1',
+      stageSize,
+    });
+    const playerPts = playerEntry?.lineNode?.points() ?? [];
+    expect(playerPts[playerPts.length - 2]).toBeCloseTo(640, 0);
+    expect(playerPts[playerPts.length - 1]).toBeCloseTo(280, 0);
   });
 });
