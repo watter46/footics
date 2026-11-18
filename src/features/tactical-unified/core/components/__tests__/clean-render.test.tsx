@@ -431,4 +431,49 @@ describe('Clean Render Propagation', () => {
     expect(stageRef.current?.find('Arrow')).toHaveLength(0);
     expect(stageRef.current?.find('Circle')).toHaveLength(0);
   });
+
+  it('PitchGroundLayer: cleanRender=true 時に選択中かつ trajectoryEffect.enabled !== true のゴースト軌道が描画されないこと', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const documentStore = createDocumentStore(createDefaultTacticalProject());
+    const sessionStore = createSessionStore();
+    const playbackStore = createPlaybackStore();
+
+    // 選択状態によって sceneGraph.trajectories に含まれたケースを模擬
+    sessionStore.getState().selectObject({ kind: 'player', id: 'p1' });
+
+    const sceneGraph: ResolvedSceneGraphDTO = {
+      zones: [],
+      arrows: [],
+      connectLines: [],
+      trajectories: [
+        {
+          playerId: 'p1',
+          flatPointsPx: [100, 100, 200, 200],
+          color: '#ff0000',
+          dashArrayPx: [6, 4],
+          visible: true,
+        },
+      ],
+    } as unknown as ResolvedSceneGraphDTO;
+
+    render(
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <Stage ref={stageRef} width={800} height={450}>
+          <PitchGroundLayer
+            stageSize={{ width: 800, height: 450 }}
+            pitchRect={{ x: 0, y: 0, width: 800, height: 450 }}
+            nodesRegistryRef={registryRef}
+            cleanRender={true}
+            sceneGraph={sceneGraph}
+          />
+        </Stage>
+      </TacticalStoreProvider>,
+    );
+
+    expect(registryRef.current.trajectoryEffectLines.has('p1')).toBe(false);
+    expect(stageRef.current?.find('Line')).toHaveLength(0);
+  });
 });

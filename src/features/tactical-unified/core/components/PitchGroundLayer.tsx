@@ -235,11 +235,20 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
 
         {/* ── 6. ゴースト & 移動軌道 (Ghost & Trajectories) ── */}
         {sceneGraph.trajectories.map((traj) => {
+          if (!traj.visible) return null;
+          const isSelected = selectedIds.includes(traj.playerId);
+          if (!cleanRender && isSelected) return null;
+          const targetObj =
+            traj.playerId === 'ball'
+              ? activeSlide?.ball
+              : visibleMarkers.find((p) => p.id === traj.playerId);
           if (
-            !traj.visible ||
-            (!cleanRender && selectedIds.includes(traj.playerId))
-          )
+            cleanRender &&
+            isSelected &&
+            targetObj?.trajectoryEffect?.enabled !== true
+          ) {
             return null;
+          }
           const prevObj =
             traj.playerId === 'ball'
               ? prevSlide?.ball
@@ -253,10 +262,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
                 x: traj.flatPointsPx[0] ?? 0,
                 y: traj.flatPointsPx[1] ?? 0,
               };
-          const trajectory =
-            traj.playerId === 'ball'
-              ? activeSlide?.ball?.trajectory
-              : visibleMarkers.find((p) => p.id === traj.playerId)?.trajectory;
+          const trajectory = targetObj?.trajectory;
           return (
             <TrajectoryEffectLine
               key={`traj-dto-${traj.playerId}`}
