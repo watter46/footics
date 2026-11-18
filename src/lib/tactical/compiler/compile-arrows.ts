@@ -72,19 +72,11 @@ export function compileArrows(
   viewport: StageViewport,
   resolvedPlayersMap: ReadonlyMap<string, ResolvedPlayerInternal>,
 ): readonly ResolvedArrowPrimitive[] {
-  const activeDrag = session?.activeDragDelta;
-  const draggedIds = new Set(activeDrag?.entityIds ?? []);
-  const dragDx = activeDrag?.deltaScreenNormX ?? 0;
-  const dragDy = activeDrag?.deltaScreenNormY ?? 0;
   const selectedIds = new Set(session?.selectedIds ?? []);
   const scale = viewport.width > 0 ? viewport.width / 1200 : 1;
   const pitchTransform = frame.slide.pitchTransform;
 
   return frame.slide.arrows.map((arrow) => {
-    const isArrowDragged = draggedIds.has(arrow.id);
-    const aDx = isArrowDragged ? dragDx : 0;
-    const aDy = isArrowDragged ? dragDy : 0;
-
     const sourcePlayer = arrow.sourcePlayerId
       ? resolvedPlayersMap.get(arrow.sourcePlayerId)
       : undefined;
@@ -97,11 +89,7 @@ export function compileArrows(
       startRawPx = screenNormToStagePixel(sourcePlayer.screenNormPos, viewport);
     } else {
       const basePt = arrow.points[0] ?? { x: 0, y: 0 };
-      const rawStartNorm = toScreenNormPoint(
-        basePt.x + aDx,
-        basePt.y + aDy,
-        false,
-      );
+      const rawStartNorm = toScreenNormPoint(basePt.x, basePt.y, false);
       startRawPx = screenNormToStagePixel(rawStartNorm, viewport);
     }
 
@@ -113,19 +101,15 @@ export function compileArrows(
         x: 100,
         y: 100,
       };
-      const rawEndNorm = toScreenNormPoint(
-        basePt.x + aDx,
-        basePt.y + aDy,
-        false,
-      );
+      const rawEndNorm = toScreenNormPoint(basePt.x, basePt.y, false);
       endRawPx = screenNormToStagePixel(rawEndNorm, viewport);
     }
 
     let cpRawPx: StagePixelPoint | undefined;
     if (arrow.controlPoint) {
       const cpNorm = toScreenNormPoint(
-        arrow.controlPoint.x + aDx,
-        arrow.controlPoint.y + aDy,
+        arrow.controlPoint.x,
+        arrow.controlPoint.y,
         false,
       );
       cpRawPx = screenNormToStagePixel(cpNorm, viewport);
@@ -249,6 +233,8 @@ export function compileArrows(
       pointerLengthPx: dims.pointerLength,
       pointerWidthPx: dims.pointerWidth,
       dotRadiusPx: dims.dotRadius,
+      sourceRadiusPx: sourceRadius,
+      targetRadiusPx: targetRadius,
       endAngleRad,
       selected: selectedIds.has(arrow.id),
     };

@@ -1,4 +1,4 @@
-import type { EphemeralSessionState } from '@/lib/tactical/compiler/scene-graph-dto';
+import type { DrawingPreviewInput } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
   toScreenNormCoord,
   toScreenNormPoint,
@@ -10,9 +10,7 @@ import type {
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
 
-export type DrawingPreview = NonNullable<
-  EphemeralSessionState['drawingPreview']
->;
+export type DrawingPreview = DrawingPreviewInput;
 
 export type PreviewShapeKind =
   | 'line'

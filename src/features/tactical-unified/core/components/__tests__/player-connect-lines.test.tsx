@@ -1,5 +1,5 @@
 import { act, render, renderHook } from '@testing-library/react';
-import type Konva from 'konva';
+import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { createRef, type ReactNode } from 'react';
 import { Layer, Stage } from 'react-konva';
@@ -20,6 +20,7 @@ import {
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { PlayerConnectLines } from '../PlayerConnectLines';
 import { useMarkerDragHandlers } from '../use-marker-drag-handlers';
 
@@ -223,7 +224,7 @@ describe('compileConnectLines', () => {
 });
 
 describe('useMarkerDragHandlers', () => {
-  it('ドラッグ移動中に sessionStore.activeDragDelta を更新し、ドラッグ終了時に null にリセットする', () => {
+  it('ドラッグ移動中に connectLineNodes / trajectoryArrowNodes を直接更新し、dragend で updateMarker を呼ぶ', () => {
     const p1 = {
       ...createDefaultPlayer('home', 20, 30, '#034694'),
       id: 'p1',
@@ -232,6 +233,35 @@ describe('useMarkerDragHandlers', () => {
       y: toScreenNormCoord(30),
       trajectory: undefined,
     };
+    const p2 = {
+      ...createDefaultPlayer('home', 50, 60, '#034694'),
+      id: 'p2',
+      area: 'pitch' as const,
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(60),
+      trajectory: undefined,
+    };
+
+    const registry = createCanvasNodesRegistry();
+    registry.playerNodes.set('p2', new Konva.Group({ x: 500, y: 300 }));
+    const coreLine = new Konva.Line({ points: [200, 150, 500, 300] });
+    registry.connectLineNodes.set('cl-1', {
+      coreNode: coreLine,
+      fromPlayerId: 'p1',
+      toPlayerId: 'p2',
+    });
+
+    const trajectoryGroup = new Konva.Group({ visible: false });
+    const trajectoryArrow = new Konva.Arrow({ points: [200, 150, 200, 150] });
+    registry.trajectoryArrowNodes.set('p1', {
+      groupNode: trajectoryGroup,
+      arrowNode: trajectoryArrow,
+      startPx: { x: 200, y: 150 },
+      startPos: { x: 20, y: 30 },
+    });
+
+    const nodesRegistryRef = { current: registry };
+    const updateMarker = vi.fn();
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <TacticalStoreProvider>{children}</TacticalStoreProvider>
@@ -242,14 +272,15 @@ describe('useMarkerDragHandlers', () => {
         const stores = useTacticalStoresContext();
         const handlers = useMarkerDragHandlers({
           pitchRect: { x: 0, y: 0, width: 1000, height: 500 },
-          visibleMarkers: [p1],
+          visibleMarkers: [p1, p2],
           arrows: [],
           selectedIds: ['p1'],
           selectObject: vi.fn(),
-          updateMarker: vi.fn(),
+          updateMarker,
           updateMarkers: vi.fn(),
           setIsDragging: vi.fn(),
           setIsHudOpen: vi.fn(),
+          nodesRegistryRef,
         });
         return { stores, handlers };
       },
@@ -278,27 +309,25 @@ describe('useMarkerDragHandlers', () => {
 
     act(() => {
       result.current.handlers.handleDragStart(createDragEvent(200, 150), 'p1');
-      // Move from (200, 150) [20%, 30%] to (350, 200) [35%, 40%] -> delta (+15%, +10%)
+      // Move from (200, 150) [20%, 30%] to (350, 200) [35%, 40%]
       result.current.handlers.handleMarkerDragMove(
         createDragEvent(350, 200),
         'p1',
       );
     });
 
-    const deltaDuringDrag =
-      result.current.stores.sessionStore.getState().activeDragDelta;
-    expect(deltaDuringDrag).toEqual({
-      entityIds: ['p1'],
-      deltaScreenNormX: 15,
-      deltaScreenNormY: 10,
-    });
+    expect(coreLine.points()).toEqual([350, 200, 500, 300]);
+    expect(trajectoryGroup.visible()).toBe(true);
+    expect(trajectoryArrow.points().slice(-2)).toEqual([350, 200]);
 
     act(() => {
       result.current.handlers.handleDragEnd(createDragEvent(350, 200), p1);
     });
 
-    expect(
-      result.current.stores.sessionStore.getState().activeDragDelta,
-    ).toBeNull();
+    expect(updateMarker).toHaveBeenCalledTimes(1);
+    expect(updateMarker).toHaveBeenCalledWith('p1', {
+      x: 35,
+      y: 40,
+    });
   });
 });

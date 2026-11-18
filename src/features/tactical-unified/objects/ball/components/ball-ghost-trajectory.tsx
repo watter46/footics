@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import type Konva from 'konva';
+import React, { useRef } from 'react';
 import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
@@ -43,27 +44,32 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
   nodesRegistryRef,
   onUpdateTrajectory,
 }: BallGhostTrajectoryProps) {
+  const ghostGroupRef = useRef<Konva.Group>(null);
+
   if (cleanRender) {
     return null;
   }
   if (!isSelected && !isDragging) {
     return null;
   }
-  if (!hasPrevBall || !prevBall || !isBallMoved) {
+  if (!hasPrevBall || !prevBall) {
     return null;
   }
 
   return (
     <Group>
-      <BallGhost
-        prevPxX={prevPxX}
-        prevPxY={prevPxY}
-        radius={radius}
-        ballImage={ballImage}
-      />
+      <Group ref={ghostGroupRef} visible={Boolean(isBallMoved)}>
+        <BallGhost
+          prevPxX={prevPxX}
+          prevPxY={prevPxY}
+          radius={radius}
+          ballImage={ballImage}
+        />
+      </Group>
       <GhostTrajectoryArrow
         playerId="ball"
         nodesRegistryRef={nodesRegistryRef}
+        ghostGroupRef={ghostGroupRef}
         startPos={{ x: prevBall.x, y: prevBall.y }}
         endPos={{ x: ball.x, y: ball.y }}
         trajectory={ball.trajectory}

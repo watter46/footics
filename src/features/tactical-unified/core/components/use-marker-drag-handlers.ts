@@ -1,8 +1,6 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
-import { useCallback, useContext, useEffect, useRef } from 'react';
-import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { EphemeralDragDelta } from '@/lib/tactical/compiler/scene-graph-dto';
+import { useCallback, useRef } from 'react';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type {
   DomainArrowAnnotation,
@@ -12,6 +10,7 @@ import type {
 import type { CanvasCapabilities, SelectedObject } from '../types';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
+import { syncPlayerDragKonvaNodes } from '../utils/drag-konva-sync';
 import { resolveBenchDrop } from './player-bench-drop';
 
 export interface UseMarkerDragHandlersParams {
@@ -47,8 +46,6 @@ export function useMarkerDragHandlers({
   moveMarkerToBench,
   nodesRegistryRef,
 }: UseMarkerDragHandlersParams) {
-  const tacticalStores = useContext(TacticalStoresContext);
-
   const dragStartNormRef = useRef<{
     markerId: string;
     normX: number;
@@ -63,40 +60,6 @@ export function useMarkerDragHandlers({
       { normX: number; normY: number; pxX: number; pxY: number }
     >;
   } | null>(null);
-
-  const pendingDeltaRef = useRef<EphemeralDragDelta | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-
-  const cancelPendingDragDelta = useCallback(() => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current);
-    }
-    rafIdRef.current = null;
-    pendingDeltaRef.current = null;
-  }, []);
-
-  const scheduleDragDelta = useCallback(
-    (delta: EphemeralDragDelta) => {
-      pendingDeltaRef.current = delta;
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          rafIdRef.current = null;
-          const pending = pendingDeltaRef.current;
-          pendingDeltaRef.current = null;
-          if (pending) {
-            tacticalStores?.sessionStore.getState().setActiveDragDelta(pending);
-          }
-        });
-      }
-    },
-    [tacticalStores],
-  );
-
-  useEffect(() => {
-    return () => {
-      cancelPendingDragDelta();
-    };
-  }, [cancelPendingDragDelta]);
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
@@ -160,59 +123,39 @@ export function useMarkerDragHandlers({
 
   const handleMarkerDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      const reg = nodesRegistryRef?.current;
+      if (!reg || pitchRect.width <= 0 || pitchRect.height <= 0) return;
+
       const curX = e.target.x();
       const curY = e.target.y();
+      const movedPlayers = new Map<string, { xPx: number; yPx: number }>();
 
       const multi = dragMultiStateRef.current;
       if (multi && multi.draggedMarkerId === markerId) {
         const deltaX = curX - multi.startPx.x;
         const deltaY = curY - multi.startPx.y;
-
-        if (tacticalStores && pitchRect.width > 0 && pitchRect.height > 0) {
-          scheduleDragDelta({
-            entityIds: Array.from(multi.markers.keys()),
-            deltaScreenNormX: (deltaX / pitchRect.width) * 100,
-            deltaScreenNormY: (deltaY / pitchRect.height) * 100,
+        for (const [id, initial] of multi.markers) {
+          movedPlayers.set(id, {
+            xPx: initial.pxX + deltaX,
+            yPx: initial.pxY + deltaY,
           });
         }
-      } else if (
-        tacticalStores &&
-        pitchRect.width > 0 &&
-        pitchRect.height > 0
-      ) {
-        const startNorm =
-          dragStartNormRef.current?.markerId === markerId
-            ? dragStartNormRef.current
-            : (() => {
-                const found = visibleMarkers.find((p) => p.id === markerId);
-                return found
-                  ? { markerId, normX: found.x, normY: found.y }
-                  : null;
-              })();
-        if (startNorm) {
-          const curNormX = (curX / pitchRect.width) * 100;
-          const curNormY = (curY / pitchRect.height) * 100;
-          scheduleDragDelta({
-            entityIds: [markerId],
-            deltaScreenNormX: curNormX - startNorm.normX,
-            deltaScreenNormY: curNormY - startNorm.normY,
-          });
-        }
+      } else {
+        movedPlayers.set(markerId, { xPx: curX, yPx: curY });
       }
+
+      syncPlayerDragKonvaNodes({
+        registry: reg,
+        movedPlayers,
+        primaryPlayerId: markerId,
+        stageSize: { width: pitchRect.width, height: pitchRect.height },
+      });
     },
-    [
-      visibleMarkers,
-      pitchRect.width,
-      pitchRect.height,
-      tacticalStores,
-      scheduleDragDelta,
-    ],
+    [nodesRegistryRef, pitchRect.width, pitchRect.height],
   );
 
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => {
-      cancelPendingDragDelta();
-      tacticalStores?.sessionStore.getState().setActiveDragDelta(null);
       dragStartNormRef.current = null;
       setIsDragging(false);
 
@@ -283,8 +226,6 @@ export function useMarkerDragHandlers({
       setIsHudOpen,
       capabilities?.hasBench,
       moveMarkerToBench,
-      tacticalStores,
-      cancelPendingDragDelta,
     ],
   );
 

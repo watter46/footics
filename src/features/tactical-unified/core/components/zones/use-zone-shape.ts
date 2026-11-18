@@ -48,6 +48,17 @@ export function useZoneShape({
   const effectivePxH = resolvedHeightPx ?? pxH;
 
   useEffect(() => {
+    const registry = nodesRegistryRef?.current;
+    const transformer = transformerRef.current;
+    if (registry?.zoneTransformers && transformer) {
+      registry.zoneTransformers.set(zone.id, transformer);
+    }
+    return () => {
+      registry?.zoneTransformers?.delete(zone.id);
+    };
+  }, [nodesRegistryRef, zone.id]);
+
+  useEffect(() => {
     if (!transformerRef.current) return;
     if (isSelected && shapeNodeRef.current) {
       transformerRef.current.nodes([shapeNodeRef.current]);

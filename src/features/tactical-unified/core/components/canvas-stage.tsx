@@ -118,7 +118,6 @@ function CanvasStageInner({
           pitchRect={vRect}
           selectionBox={interaction?.selectionBox ?? null}
           cleanRender={cleanRender}
-          sceneGraph={sceneGraph}
         />
       </Stage>
 

@@ -4,8 +4,6 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { Group } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
-import { resolveEffectiveScreenNormPos } from '@/lib/tactical/compiler/effective-coordinates';
-import type { EphemeralDragDelta } from '@/lib/tactical/compiler/scene-graph-dto';
 import type {
   DomainPlayer,
   DomainPlayerTrajectory,
@@ -19,11 +17,10 @@ export interface PitchGroundGhostsProps {
   visibleMarkers: readonly DomainPitchPlayer[];
   prevPlayers: readonly DomainPitchPlayer[];
   selectedIds: readonly string[];
-  activeDragDelta: EphemeralDragDelta | null | undefined;
   stageSize: { width: number; height: number };
   activeSlideId: string;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  aspectRatio: AspectRatio;
+  aspectRatio?: AspectRatio;
   onUpdateTrajectory: (
     slideId: string,
     playerId: string,
@@ -35,7 +32,6 @@ export function PitchGroundGhosts({
   visibleMarkers,
   prevPlayers,
   selectedIds,
-  activeDragDelta,
   stageSize,
   activeSlideId,
   nodesRegistryRef,
@@ -43,25 +39,15 @@ export function PitchGroundGhosts({
   onUpdateTrajectory,
 }: PitchGroundGhostsProps): ReactNode {
   return visibleMarkers.map((marker) => {
-    const effPos = resolveEffectiveScreenNormPos(
-      marker,
-      marker.id,
-      activeDragDelta,
-    );
-    const isDragged = Boolean(activeDragDelta?.entityIds.includes(marker.id));
-    if (!selectedIds.includes(marker.id) && !isDragged) return null;
+    if (!selectedIds.includes(marker.id)) return null;
     const prevPlayer = prevPlayers.find((p) => p.id === marker.id);
-    if (
-      !prevPlayer ||
-      Math.hypot(effPos.x - prevPlayer.x, effPos.y - prevPlayer.y) < 1.0
-    ) {
+    if (!prevPlayer) {
       return null;
     }
-    const effMarker = { ...marker, x: effPos.x, y: effPos.y };
     return (
       <Group key={`ghost-${marker.id}`} id={`ghost-trajectory-${marker.id}`}>
         <PlayerGhostTrajectory
-          player={effMarker}
+          player={marker}
           prevPlayer={prevPlayer}
           stageSize={stageSize}
           activeSlideId={activeSlideId}

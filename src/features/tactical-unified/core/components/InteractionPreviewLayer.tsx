@@ -7,10 +7,10 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { compileDrawingPreview } from '@/lib/tactical/compiler/compile-zones';
 import type {
   ResolvedArrowPrimitive,
   ResolvedDrawingPreview,
-  ResolvedSceneGraphDTO,
   ResolvedZonePrimitive,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { SelectionBox } from '../hooks/use-canvas-selection-box';
@@ -25,18 +25,11 @@ export type DrawingPreviewDTO =
   | ResolvedZonePrimitive
   | ResolvedDrawingPreview;
 
-export type PreviewSceneGraph =
-  | (Omit<ResolvedSceneGraphDTO, 'drawingPreview'> & {
-      readonly drawingPreview?: DrawingPreviewDTO | null;
-    })
-  | ResolvedSceneGraphDTO;
-
 export interface InteractionPreviewLayerProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
   selectionBox?: SelectionBox | null;
   cleanRender?: boolean;
-  sceneGraph: PreviewSceneGraph;
 }
 
 function isZonePrimitive(
@@ -152,12 +145,12 @@ export function InteractionPreviewLayer({
   pitchRect,
   selectionBox,
   cleanRender,
-  sceneGraph,
 }: InteractionPreviewLayerProps): ReactNode {
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const drawingPreview = useSessionStore((s) => s.drawingPreview);
   const activeSlide = useDocumentStore((s) =>
     selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
@@ -179,6 +172,9 @@ export function InteractionPreviewLayer({
   const pw = pitchRect.width;
   const ph = pitchRect.height;
   const baseDim = Math.min(pw, ph);
+  const resolvedPreview = drawingPreview
+    ? compileDrawingPreview(drawingPreview, { width: pw, height: ph })
+    : null;
 
   return (
     <Layer id="interaction-preview-layer" listening={false}>
@@ -216,8 +212,8 @@ export function InteractionPreviewLayer({
           />
         )}
 
-        {sceneGraph.drawingPreview != null
-          ? renderSceneGraphDrawingPreview(sceneGraph.drawingPreview)
+        {resolvedPreview != null
+          ? renderSceneGraphDrawingPreview(resolvedPreview)
           : null}
       </Group>
     </Layer>

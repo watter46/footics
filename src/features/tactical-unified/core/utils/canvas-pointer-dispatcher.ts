@@ -7,12 +7,14 @@ import type {
 import type { DrawingPreviewState, DrawingTool } from '../types';
 import type { PitchTransformState } from './canvas-coordinates';
 import { commitDrawingShape } from './canvas-drawing-factory';
+import type { CanvasNodesRegistry } from './canvas-registry';
 import type { SelectionBox } from './canvas-selection-helpers';
 import { getPointerCoordinates } from './geometry';
 
 export interface UseCanvasPointerInteractionOptions {
   vRect: { width: number; height: number };
   containerRef?: React.RefObject<HTMLDivElement | null>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onStartEditText?: (textId: string) => void;
 }
 

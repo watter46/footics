@@ -6,6 +6,7 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   checkAndStartRotation,
   checkCornerRotateZone,
@@ -16,6 +17,7 @@ import { pointerToNormalizedCoord } from '../utils/geometry';
 export interface UseCanvasZoneRotationOptions {
   vRect: { x?: number; y?: number; width: number; height: number };
   containerRef?: React.RefObject<HTMLDivElement | null>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   isDrawing: boolean;
   isPanning: boolean;
 }
@@ -23,6 +25,7 @@ export interface UseCanvasZoneRotationOptions {
 export function useCanvasZoneRotation({
   vRect,
   containerRef,
+  nodesRegistryRef,
   isDrawing,
   isPanning,
 }: UseCanvasZoneRotationOptions) {
@@ -32,7 +35,6 @@ export function useCanvasZoneRotation({
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const setIsDragging = useSessionStore((s) => s.setIsDragging);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
-  const setActiveZoneRotation = useSessionStore((s) => s.setActiveZoneRotation);
 
   const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
@@ -140,7 +142,14 @@ export function useCanvasZoneRotation({
           ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
         const newRot = (startShapeRotationRef.current + diffDeg + 360) % 360;
         currentRotationRef.current = newRot;
-        setActiveZoneRotation({ zoneId: selectedZone.id, rotationDeg: newRot });
+        const node = nodesRegistryRef?.current?.zoneNodes.get(selectedZone.id);
+        if (node) {
+          node.rotation(newRot);
+          nodesRegistryRef?.current?.zoneTransformers
+            ?.get(selectedZone.id)
+            ?.forceUpdate();
+          node.getLayer()?.batchDraw();
+        }
         return true;
       }
 
@@ -177,7 +186,7 @@ export function useCanvasZoneRotation({
       vRect.width,
       vRect.height,
       containerRef,
-      setActiveZoneRotation,
+      nodesRegistryRef,
     ],
   );
 
@@ -186,7 +195,6 @@ export function useCanvasZoneRotation({
       isRotatingRef.current = false;
       const finalRot = currentRotationRef.current;
       currentRotationRef.current = null;
-      setActiveZoneRotation(null);
       if (finalRot !== null && selectedZone) {
         dispatchSlide(activePhaseId, activeSlideId, {
           type: 'UPDATE_ZONE',
@@ -210,7 +218,6 @@ export function useCanvasZoneRotation({
     activePhaseId,
     activeSlideId,
     dispatchSlide,
-    setActiveZoneRotation,
     setIsDragging,
     setIsHudOpen,
   ]);

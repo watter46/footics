@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
+import { compileDrawingPreview } from '@/lib/tactical/compiler/compile-zones';
 import {
   generateWavyLinePoints,
   subdivideQuadraticBezier,
@@ -142,7 +143,7 @@ describe('compileSceneGraph', () => {
     expect(a1.flatPointsPx[a1.flatPointsPx.length - 2]).toBeLessThan(900);
   });
 
-  it('applies activeDragDelta without mutating input frame', () => {
+  it('reflects selectedIds without mutating input frame', () => {
     const slide = createMockSlide();
     const frame = evaluateStaticSlideFrame(slide);
 
@@ -150,26 +151,15 @@ describe('compileSceneGraph', () => {
       activePhaseId: 'phase-1',
       activeSlideId: 'slide-1',
       selectedIds: ['p1'],
-      activeDragDelta: {
-        entityIds: ['p1'],
-        deltaScreenNormX: 20,
-        deltaScreenNormY: 10,
-      },
     };
 
     const scene = compileSceneGraph(frame, session, viewport);
 
-    // p1 moved from (10, 50) to (30, 60) -> in px: (300, 300)
     const p1Item = scene.billboardItems.find(
       (item) => item.kind === 'player' && item.id === 'p1',
     );
     expect(p1Item).toBeDefined();
-    expect(p1Item?.positionPx).toEqual({ x: 300, y: 300 });
-
-    // a1 start point tracked p1 new position (300, 300)
-    const a1 = scene.arrows[0];
-    expect(a1.startPointPx.x).toBeGreaterThan(300); // offset towards p2 (900, 250)
-    expect(a1.startPointPx.y).toBeLessThan(300); // sloping up towards y=250
+    expect(p1Item?.positionPx).toEqual({ x: 100, y: 250 });
 
     // Original frame must remain unchanged
     expect(frame.slide.players[0].x).toBe(10);
@@ -226,11 +216,6 @@ describe('compileSceneGraph', () => {
       activePhaseId: 'phase-1',
       activeSlideId: 'slide-1',
       selectedIds: ['z1'],
-      drawingPreview: {
-        tool: 'rect',
-        startPoint: toScreenNormPoint(10, 10),
-        currentPoint: toScreenNormPoint(25, 25),
-      },
     };
 
     const frame = evaluateStaticSlideFrame(slideWithZones);
@@ -244,10 +229,24 @@ describe('compileSceneGraph', () => {
     expect(scene.connectLines).toHaveLength(1);
     expect(scene.connectLines[0].fromPlayerId).toBe('p1');
     expect(scene.connectLines[0].toPlayerId).toBe('p2');
+  });
 
-    expect(scene.drawingPreview).toBeDefined();
-    expect(scene.drawingPreview?.startPointPx).toEqual({ x: 100, y: 50 });
-    expect(scene.drawingPreview?.currentPointPx).toEqual({ x: 250, y: 125 });
+  it('compiles drawingPreview directly and returns null for null input', () => {
+    const viewport = { width: 1000, height: 500 };
+
+    const preview = compileDrawingPreview(
+      {
+        tool: 'pass',
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(25, 25),
+      },
+      viewport,
+    );
+    expect(preview).toBeDefined();
+    expect(preview?.startPointPx).toEqual({ x: 100, y: 50 });
+    expect(preview?.currentPointPx).toEqual({ x: 250, y: 125 });
+
+    expect(compileDrawingPreview(null, viewport)).toBeNull();
   });
 
   it('subdivides quadratic bezier and generates wavy lines', () => {

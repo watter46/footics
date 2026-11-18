@@ -98,10 +98,9 @@ function BillboardObjectLayerWithSceneGraph(
 }
 
 function InteractionPreviewLayerWithSceneGraph(
-  props: Omit<InteractionPreviewLayerProps, 'sceneGraph'>,
+  props: InteractionPreviewLayerProps,
 ) {
-  const sceneGraph = useResolvedSceneGraph(props.stageSize);
-  return <InteractionPreviewLayer {...props} sceneGraph={sceneGraph} />;
+  return <InteractionPreviewLayer {...props} />;
 }
 
 describe('compileSceneGraph 深度ソート', () => {

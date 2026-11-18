@@ -632,11 +632,7 @@ function KonvaThreeLayersWithSceneGraph({
         pitchRect={pitchRect}
         sceneGraph={sceneGraph}
       />
-      <InteractionPreviewLayer
-        stageSize={stageSize}
-        pitchRect={pitchRect}
-        sceneGraph={sceneGraph}
-      />
+      <InteractionPreviewLayer stageSize={stageSize} pitchRect={pitchRect} />
     </Stage>
   );
 }

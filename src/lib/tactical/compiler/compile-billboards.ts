@@ -11,10 +11,10 @@ import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-eval
 import {
   type ScreenNormPoint,
   type StagePixelPoint,
+  toScreenNormPoint,
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
-import { resolveEffectiveScreenNormPos } from './effective-coordinates';
 import {
   computeBallRadiusPx,
   computePlayerRadiusPx,
@@ -52,8 +52,6 @@ export function compileBillboardItems(
   readonly resolvedPlayersMap: ReadonlyMap<string, ResolvedPlayerInternal>;
   readonly billboardPlayers: readonly ResolvedBillboardPlayerItem[];
 } {
-  const activeDrag = session?.activeDragDelta;
-
   const selectedIds = new Set(session?.selectedIds ?? []);
   const pitchTransform = frame.slide.pitchTransform;
   const tiltDeg = pitchTransform?.tilt ?? 0;
@@ -67,11 +65,7 @@ export function compileBillboardItems(
     if (player.area !== 'pitch') continue;
     const pitchPlayer = player as PitchPlayer;
 
-    const screenNormPos = resolveEffectiveScreenNormPos(
-      player,
-      player.id,
-      activeDrag,
-    );
+    const screenNormPos = toScreenNormPoint(player.x, player.y, false);
     const rawPosPx = screenNormToStagePixel(screenNormPos, viewport);
     const projectedPos = projectStagePixelWithPitchTransform(
       rawPosPx,
@@ -166,7 +160,7 @@ export function compileBillboardItems(
 
   // Ball
   const rawBallPos = screenNormToStagePixel(
-    resolveEffectiveScreenNormPos(frame.slide.ball, 'ball', activeDrag),
+    toScreenNormPoint(frame.slide.ball.x, frame.slide.ball.y, false),
     viewport,
   );
   const projectedBall = projectStagePixelWithPitchTransform(
@@ -195,7 +189,7 @@ export function compileBillboardItems(
   const billboardTexts: ResolvedBillboardItem[] = frame.slide.texts.map(
     (text) => {
       const rawTextPos = screenNormToStagePixel(
-        resolveEffectiveScreenNormPos(text, text.id, activeDrag),
+        toScreenNormPoint(text.x, text.y, false),
         viewport,
       );
       const projectedText = projectStagePixelWithPitchTransform(

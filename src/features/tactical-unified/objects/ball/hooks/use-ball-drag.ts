@@ -2,26 +2,28 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { pxToNorm } from '@/features/tactical-unified/core';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import { syncBallDragKonvaNodes } from '@/features/tactical-unified/core/utils/drag-konva-sync';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { EphemeralDragDelta } from '@/lib/tactical/compiler/scene-graph-dto';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 
 interface UseBallDragProps {
   stageSize: { width: number; height: number };
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
-export function useBallDrag({ stageSize }: UseBallDragProps) {
+export function useBallDrag({ stageSize, nodesRegistryRef }: UseBallDragProps) {
   const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const setActiveDragDelta = useSessionStore((s) => s.setActiveDragDelta);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
   const activeSlide = selectDomainActiveSlide(
@@ -32,39 +34,6 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
 
   const [isDragging, setIsDragging] = useState(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
-  const pendingDeltaRef = useRef<EphemeralDragDelta | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-
-  const cancelPendingDragDelta = useCallback(() => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current);
-    }
-    rafIdRef.current = null;
-    pendingDeltaRef.current = null;
-  }, []);
-
-  const scheduleDragDelta = useCallback(
-    (delta: EphemeralDragDelta) => {
-      pendingDeltaRef.current = delta;
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          rafIdRef.current = null;
-          const pending = pendingDeltaRef.current;
-          pendingDeltaRef.current = null;
-          if (pending) {
-            setActiveDragDelta(pending);
-          }
-        });
-      }
-    },
-    [setActiveDragDelta],
-  );
-
-  useEffect(() => {
-    return () => {
-      cancelPendingDragDelta();
-    };
-  }, [cancelPendingDragDelta]);
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
@@ -85,20 +54,17 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
 
   const handleDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
-      const startPos = startPosRef.current;
-      if (!startPos) return;
+      const registry = nodesRegistryRef?.current;
+      if (!registry) return;
 
       const node = e.currentTarget as Konva.Group;
-      const currX = pxToNorm(node.x(), stageSize.width);
-      const currY = pxToNorm(node.y(), stageSize.height);
-
-      scheduleDragDelta({
-        entityIds: ['ball'],
-        deltaScreenNormX: currX - startPos.x,
-        deltaScreenNormY: currY - startPos.y,
+      syncBallDragKonvaNodes({
+        registry,
+        ballPx: { x: node.x(), y: node.y() },
+        stageSize,
       });
     },
-    [stageSize.width, stageSize.height, scheduleDragDelta],
+    [nodesRegistryRef, stageSize],
   );
 
   const dragBoundFunc = useCallback(
@@ -123,9 +89,7 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
 
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
-      cancelPendingDragDelta();
       setIsDragging(false);
-      setActiveDragDelta(null);
       startPosRef.current = null;
 
       const node = e.currentTarget as Konva.Group;
@@ -145,8 +109,6 @@ export function useBallDrag({ stageSize }: UseBallDragProps) {
       activePhaseId,
       activeSlideId,
       dispatchSlide,
-      setActiveDragDelta,
-      cancelPendingDragDelta,
       stageSize.width,
       stageSize.height,
     ],

@@ -1,5 +1,6 @@
 import type Konva from 'konva';
 import { useEffect, useRef } from 'react';
+import { syncTrajectoryEntryKonva } from '@/features/tactical-unified/core/utils/drag-konva-sync';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
 import {
   toScreenNormCoord,
@@ -10,7 +11,9 @@ import type { GhostTrajectoryArrowProps } from '../types';
 export interface UseGhostTrajectoryArrowParams {
   playerId?: string;
   nodesRegistryRef?: GhostTrajectoryArrowProps['nodesRegistryRef'];
+  ghostGroupRef?: GhostTrajectoryArrowProps['ghostGroupRef'];
   startPos: { x: number; y: number };
+  endPos: { x: number; y: number };
   sPxX: number;
   sPxY: number;
   ePxX: number;
@@ -24,7 +27,9 @@ export interface UseGhostTrajectoryArrowParams {
 export function useGhostTrajectoryArrow({
   playerId,
   nodesRegistryRef,
+  ghostGroupRef,
   startPos,
+  endPos,
   sPxX,
   sPxY,
   ePxX,
@@ -41,18 +46,48 @@ export function useGhostTrajectoryArrow({
   // CanvasNodesRegistry に登録してドラッグ中の直接命令更新を可能にする
   useEffect(() => {
     if (!nodesRegistryRef?.current || !playerId) return;
-    nodesRegistryRef.current.trajectoryArrowNodes.set(playerId, {
+    const entry = {
       groupNode: groupRef.current,
+      ghostGroupNode: ghostGroupRef?.current ?? null,
       arrowNode: arrowRef.current,
       controlHandleNode: controlHandleRef.current,
       startPx: { x: sPxX, y: sPxY },
       startPos,
+      endPos,
       trajectory,
-    });
+    };
+    nodesRegistryRef.current.trajectoryArrowNodes.set(playerId, entry);
+
+    const targetNode =
+      playerId === 'ball'
+        ? nodesRegistryRef.current.ballNode
+        : nodesRegistryRef.current.playerNodes.get(playerId);
+    if (targetNode) {
+      const currentPos = targetNode.position();
+      if (
+        Math.abs(currentPos.x - ePxX) > 0.01 ||
+        Math.abs(currentPos.y - ePxY) > 0.01
+      ) {
+        syncTrajectoryEntryKonva(entry, currentPos, stageSize);
+      }
+    }
+
     return () => {
       nodesRegistryRef.current?.trajectoryArrowNodes.delete(playerId);
     };
-  }, [nodesRegistryRef, playerId, sPxX, sPxY, startPos, trajectory]);
+  }, [
+    nodesRegistryRef,
+    ghostGroupRef,
+    playerId,
+    sPxX,
+    sPxY,
+    ePxX,
+    ePxY,
+    startPos,
+    endPos,
+    trajectory,
+    stageSize,
+  ]);
 
   // コンポーネント更新時に Konva ノード座標を厳密に同期
   useEffect(() => {

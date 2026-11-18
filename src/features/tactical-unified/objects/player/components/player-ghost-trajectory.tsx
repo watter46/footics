@@ -1,6 +1,8 @@
 'use client';
 
+import type Konva from 'konva';
 import type React from 'react';
+import { useRef } from 'react';
 import { Circle, Group, Text } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
@@ -45,11 +47,22 @@ export function PlayerGhostTrajectory({
 
   const sPxX = normX(prevPlayer.x, width);
   const sPxY = normY(prevPlayer.y, height);
+  const ePxX = normX(player.x, width);
+  const ePxY = normY(player.y, height);
+  const isMoved = Math.hypot(ePxX - sPxX, ePxY - sPxY) >= 4;
+  const ghostGroupRef = useRef<Konva.Group>(null);
 
   return (
     <Group>
       {/* ── 1つ前のスライドの位置（ゴーストマーカー） ── */}
-      <Group x={sPxX} y={sPxY} opacity={0.45} listening={false}>
+      <Group
+        ref={ghostGroupRef}
+        x={sPxX}
+        y={sPxY}
+        visible={isMoved}
+        opacity={0.45}
+        listening={false}
+      >
         <Circle
           radius={radius}
           fill={prevPlayer.style.color}
@@ -93,6 +106,7 @@ export function PlayerGhostTrajectory({
       <GhostTrajectoryArrow
         playerId={player.id}
         nodesRegistryRef={nodesRegistryRef}
+        ghostGroupRef={ghostGroupRef}
         startPos={{ x: prevPlayer.x, y: prevPlayer.y }}
         endPos={{ x: player.x, y: player.y }}
         trajectory={player.trajectory}

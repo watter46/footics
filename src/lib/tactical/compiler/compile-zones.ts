@@ -9,6 +9,7 @@ import {
   toScreenNormPoint,
 } from '@/lib/types/tactical/branded';
 import type {
+  DrawingPreviewInput,
   EphemeralSessionState,
   ResolvedDrawingPreview,
   ResolvedZonePrimitive,
@@ -19,18 +20,11 @@ export function compileZones(
   session: EphemeralSessionState | null,
   viewport: StageViewport,
 ): readonly ResolvedZonePrimitive[] {
-  const activeDrag = session?.activeDragDelta;
-  const draggedIds = new Set(activeDrag?.entityIds ?? []);
-  const dragDx = activeDrag?.deltaScreenNormX ?? 0;
-  const dragDy = activeDrag?.deltaScreenNormY ?? 0;
   const selectedIds = new Set(session?.selectedIds ?? []);
   const scale = viewport.width > 0 ? viewport.width / 1200 : 1;
   const pitchTransform = frame.slide.pitchTransform;
 
   return frame.slide.zones.map((zone) => {
-    const isDragged = draggedIds.has(zone.id);
-    const zDx = isDragged ? dragDx : 0;
-    const zDy = isDragged ? dragDy : 0;
     const zoneOpacity = frame.zoneOpacityMap[zone.id] ?? {
       opacity: zone.opacity,
       visible: zone.opacity > 0,
@@ -41,7 +35,7 @@ export function compileZones(
     if (zone.shapeType === 'polygon') {
       const flatPointsPx = zone.points.flatMap((pt) => {
         const rawPx = screenNormToStagePixel(
-          toScreenNormPoint(pt.x + zDx, pt.y + zDy, false),
+          toScreenNormPoint(pt.x, pt.y, false),
           viewport,
         );
         const px = projectStagePixelWithPitchTransform(
@@ -67,15 +61,11 @@ export function compileZones(
     }
 
     const rawTopLeft = screenNormToStagePixel(
-      toScreenNormPoint(zone.x + zDx, zone.y + zDy, false),
+      toScreenNormPoint(zone.x, zone.y, false),
       viewport,
     );
     const rawBottomRight = screenNormToStagePixel(
-      toScreenNormPoint(
-        zone.x + zDx + zone.width,
-        zone.y + zDy + zone.height,
-        false,
-      ),
+      toScreenNormPoint(zone.x + zone.width, zone.y + zone.height, false),
       viewport,
     );
     const topLeft = projectStagePixelWithPitchTransform(
@@ -98,10 +88,7 @@ export function compileZones(
       yPx: topLeft.y as StagePixel,
       widthPx,
       heightPx,
-      rotationDeg:
-        session?.activeZoneRotation?.zoneId === zone.id
-          ? session.activeZoneRotation.rotationDeg
-          : (zone.rotation ?? 0),
+      rotationDeg: zone.rotation ?? 0,
       color: zone.color,
       opacity: zoneOpacity.opacity,
       strokeColor: zone.strokeColor ?? zone.color,
@@ -114,11 +101,11 @@ export function compileZones(
 }
 
 export function compileDrawingPreview(
-  session: EphemeralSessionState | null,
+  drawingPreview: DrawingPreviewInput | null | undefined,
   viewport: StageViewport,
 ): ResolvedDrawingPreview | null {
-  if (!session?.drawingPreview) return null;
-  const dp = session.drawingPreview;
+  if (!drawingPreview) return null;
+  const dp = drawingPreview;
   const startPointPx = screenNormToStagePixel(dp.startPoint, viewport);
   const currentPointPx = screenNormToStagePixel(dp.currentPoint, viewport);
   const flatPolygonPointsPx = dp.polygonPoints

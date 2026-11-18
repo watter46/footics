@@ -1,9 +1,5 @@
 import { createStore, type StoreApi } from 'zustand';
-import type {
-  EphemeralDragDelta,
-  EphemeralSessionState,
-  EphemeralZoneRotation,
-} from '@/lib/tactical/compiler/scene-graph-dto';
+import type { DrawingPreviewInput } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
   DEFAULT_SESSION_UI_STATE,
   type DomainTacticalClipboard,
@@ -29,17 +25,11 @@ import {
 export interface SessionStoreState extends SessionUiState {
   readonly activePhaseId: string;
   readonly activeSlideId: string;
-  readonly activeDragDelta: EphemeralDragDelta | null;
-  readonly activeZoneRotation: EphemeralZoneRotation | null;
-  readonly drawingPreview: EphemeralSessionState['drawingPreview'] | null;
+  readonly drawingPreview: DrawingPreviewInput | null;
 
   readonly setActivePhaseId: (phaseId: string) => void;
   readonly setActiveSlideId: (slideId: string) => void;
-  readonly setActiveDragDelta: (delta: EphemeralDragDelta | null) => void;
-  readonly setActiveZoneRotation: (rot: EphemeralZoneRotation | null) => void;
-  readonly setDrawingPreview: (
-    preview: EphemeralSessionState['drawingPreview'] | null,
-  ) => void;
+  readonly setDrawingPreview: (preview: DrawingPreviewInput | null) => void;
   readonly resetSession: (init?: Partial<SessionStoreState>) => void;
 
   readonly setActiveTool: (tool: DrawingTool) => void;
@@ -89,46 +79,29 @@ export type SessionStore = StoreApi<SessionStoreState>;
 export type CreateSessionStoreOptions = Partial<SessionUiState> & {
   activePhaseId?: string;
   activeSlideId?: string;
-  activeDragDelta?: EphemeralDragDelta | null;
-  activeZoneRotation?: EphemeralZoneRotation | null;
-  drawingPreview?: EphemeralSessionState['drawingPreview'] | null;
+  drawingPreview?: DrawingPreviewInput | null;
 };
 
 export function createSessionStore(
   initial?: CreateSessionStoreOptions,
 ): SessionStore {
-  const {
-    activePhaseId,
-    activeSlideId,
-    activeDragDelta,
-    activeZoneRotation,
-    drawingPreview,
-    ...initialUi
-  } = initial ?? {};
+  const { activePhaseId, activeSlideId, drawingPreview, ...initialUi } =
+    initial ?? {};
 
   return createStore<SessionStoreState>((set) => ({
     ...DEFAULT_SESSION_UI_STATE,
     ...initialUi,
     activePhaseId: activePhaseId ?? '',
     activeSlideId: activeSlideId ?? '',
-    activeDragDelta: activeDragDelta ?? null,
-    activeZoneRotation: activeZoneRotation ?? null,
     drawingPreview: drawingPreview ?? null,
 
     setActivePhaseId: (phaseId: string) => set({ activePhaseId: phaseId }),
     setActiveSlideId: (slideId: string) => set({ activeSlideId: slideId }),
-    setActiveDragDelta: (delta: EphemeralDragDelta | null) =>
-      set({ activeDragDelta: delta }),
-    setActiveZoneRotation: (rot: EphemeralZoneRotation | null) =>
-      set({ activeZoneRotation: rot }),
-    setDrawingPreview: (
-      preview: EphemeralSessionState['drawingPreview'] | null,
-    ) => set({ drawingPreview: preview }),
+    setDrawingPreview: (preview: DrawingPreviewInput | null) =>
+      set({ drawingPreview: preview }),
     resetSession: (init?: Partial<SessionStoreState>) =>
       set((state) => ({
         ...state,
-        activeDragDelta: null,
-        activeZoneRotation: null,
         drawingPreview: null,
         ...init,
       })),

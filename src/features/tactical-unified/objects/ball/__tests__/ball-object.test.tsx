@@ -1,7 +1,8 @@
 import { render } from '@testing-library/react';
-import type Konva from 'konva';
+import Konva from 'konva';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it } from 'vitest';
+import { createCanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
@@ -60,7 +61,7 @@ describe('BallObject 3-frequency store integration', () => {
       activePhaseId: project.phases[0].id,
       activeSlideId: project.phases[0].slides[0].id,
     });
-    const registryRef = createNodesRegistry();
+    const registryRef = { current: createCanvasNodesRegistry() };
 
     render(
       <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
@@ -87,7 +88,7 @@ describe('BallObject 3-frequency store integration', () => {
       activePhaseId: project.phases[0].id,
       activeSlideId: project.phases[0].slides[0].id,
     });
-    const registryRef = createNodesRegistry();
+    const registryRef = { current: createCanvasNodesRegistry() };
 
     render(
       <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
@@ -114,14 +115,22 @@ describe('BallObject 3-frequency store integration', () => {
     ]);
   });
 
-  it('updates sessionStore.activeDragDelta during dragmove without polluting documentStore.past', () => {
+  it('syncs ghost trajectory Konva nodes during dragmove without updating documentStore.past', () => {
     const project = createDefaultTacticalProject();
     const documentStore = createDocumentStore(project);
     const sessionStore = createSessionStore({
       activePhaseId: project.phases[0].id,
       activeSlideId: project.phases[0].slides[0].id,
     });
-    const registryRef = createNodesRegistry();
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const ghostGroup = new Konva.Group({ visible: false });
+    const ghostArrow = new Konva.Arrow({ points: [400, 500, 400, 500] });
+    registryRef.current.trajectoryArrowNodes.set('ball', {
+      groupNode: ghostGroup,
+      arrowNode: ghostArrow,
+      startPx: { x: 400, y: 500 },
+      startPos: { x: 50, y: 50 },
+    });
 
     render(
       <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
@@ -143,22 +152,21 @@ describe('BallObject 3-frequency store integration', () => {
     ballNode.position({ x: 480, y: 600 });
     ballNode.fire('dragmove', {});
 
-    const dragDelta = sessionStore.getState().activeDragDelta;
-    expect(dragDelta).not.toBeNull();
-    expect(dragDelta?.entityIds).toEqual(['ball']);
-    expect(dragDelta?.deltaScreenNormX).toBeCloseTo(10, 5);
-    expect(dragDelta?.deltaScreenNormY).toBeCloseTo(10, 5);
     expect(documentStore.getState().past).toHaveLength(0);
+    expect(ghostGroup.visible()).toBe(true);
+    const pts = ghostArrow.points();
+    expect(pts[pts.length - 2]).toBeCloseTo(480, 0);
+    expect(pts[pts.length - 1]).toBeCloseTo(600, 0);
   });
 
-  it('clears activeDragDelta and updates documentStore ball coordinates with past.length === 1 on dragend', () => {
+  it('updates documentStore ball coordinates with past.length === 1 on dragend', () => {
     const project = createDefaultTacticalProject();
     const documentStore = createDocumentStore(project);
     const sessionStore = createSessionStore({
       activePhaseId: project.phases[0].id,
       activeSlideId: project.phases[0].slides[0].id,
     });
-    const registryRef = createNodesRegistry();
+    const registryRef = { current: createCanvasNodesRegistry() };
 
     render(
       <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
@@ -180,7 +188,6 @@ describe('BallObject 3-frequency store integration', () => {
     ballNode.position({ x: 560, y: 700 });
     ballNode.fire('dragend', {});
 
-    expect(sessionStore.getState().activeDragDelta).toBeNull();
     expect(documentStore.getState().past).toHaveLength(1);
     const updatedBall =
       documentStore.getState().project.phases[0].slides[0].ball;

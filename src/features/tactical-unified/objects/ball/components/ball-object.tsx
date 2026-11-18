@@ -17,7 +17,6 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { resolveEffectiveScreenNormPos } from '@/lib/tactical/compiler/effective-coordinates';
 import { screenNormToStagePixel } from '@/lib/tactical/engine/coordinates';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainBallState } from '@/lib/types/tactical/domain-entities';
@@ -37,7 +36,6 @@ function useBallObjectState({
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
   const selectObject = useSessionStore((s) => s.selectObject);
   const isSelected = useSessionStore((s) =>
     s.selectedObjects.some((o) => o.kind === 'ball'),
@@ -55,7 +53,7 @@ function useBallObjectState({
   );
 
   const ballImage = useBallImage();
-  const drag = useBallDrag({ stageSize });
+  const drag = useBallDrag({ stageSize, nodesRegistryRef });
 
   const radius = resolvedBall.radiusPx;
   const px = resolvedBall.positionPx.x;
@@ -125,16 +123,7 @@ function useBallObjectState({
       : undefined,
   };
 
-  const effBallPos = resolveEffectiveScreenNormPos(
-    baseBall,
-    'ball',
-    activeDragDelta,
-  );
-  const domainBall: DomainBallState = {
-    ...baseBall,
-    x: effBallPos.x,
-    y: effBallPos.y,
-  };
+  const domainBall: DomainBallState = baseBall;
 
   const prevBall = prevSlide?.ball;
   const hasPrevBall =
@@ -148,10 +137,9 @@ function useBallObjectState({
       )
     : { x: 0, y: 0 };
   const isBallMoved = prevBall
-    ? Math.hypot(effBallPos.x - prevBall.x, effBallPos.y - prevBall.y) >= 1.0
+    ? Math.hypot(domainBall.x - prevBall.x, domainBall.y - prevBall.y) >= 1.0
     : false;
-  const isBallDragging =
-    drag.isDragging || Boolean(activeDragDelta?.entityIds.includes('ball'));
+  const isBallDragging = drag.isDragging;
 
   return {
     domainBall,

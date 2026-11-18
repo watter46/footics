@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +18,7 @@ import {
   TacticalStoreProvider,
 } from '../../../stores/tactical-store-provider';
 import type { DrawingTool } from '../../types';
+import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { useCanvasPointerInteraction } from '../use-canvas-pointer-interaction';
 
 function createMockKonvaPointerEvent(
@@ -311,11 +313,26 @@ describe('useCanvasPointerInteraction', () => {
 
     const stageContainer = document.createElement('div');
     const containerRef = { current: document.createElement('div') };
+    const zoneNode = new Konva.Rect({
+      x: 200,
+      y: 200,
+      width: 200,
+      height: 200,
+      rotation: 0,
+    });
+    const transformer = new Konva.Transformer();
+    const registry = createCanvasNodesRegistry();
+    registry.zoneNodes.set('zone-rot-1', zoneNode);
+    registry.zoneTransformers?.set('zone-rot-1', transformer);
+    const nodesRegistryRef = { current: registry };
+    const initialPastLength = documentStore.getState().past.length;
+
     const { result } = renderHook(
       () =>
         useCanvasPointerInteraction({
           vRect: { width: 1000, height: 1000 },
           containerRef,
+          nodesRegistryRef,
         }),
       { wrapper: createWrapper() },
     );
@@ -344,7 +361,7 @@ describe('useCanvasPointerInteraction', () => {
       result.current.handlePointerMove(makeEvent({ x: 395, y: 205 }));
       result.current.handlePointerDown(makeEvent({ x: 395, y: 205 }));
     });
-    expect(sessionStore.getState().activeZoneRotation).toBeNull();
+    expect(zoneNode.rotation()).toBe(0);
 
     // isAnchor = true (_anchor): 四隅外側でも回転開始しない
     act(() => {
@@ -355,7 +372,7 @@ describe('useCanvasPointerInteraction', () => {
         makeEvent({ x: 410, y: 190 }, { anchorName: 'top-right _anchor' }),
       );
     });
-    expect(sessionStore.getState().activeZoneRotation).toBeNull();
+    expect(zoneNode.rotation()).toBe(0);
 
     // 四隅外側 (410, 190): ホバーでカーソル設定、押下で回転開始
     act(() => {
@@ -368,24 +385,24 @@ describe('useCanvasPointerInteraction', () => {
       result.current.handlePointerMove(makeEvent({ x: 410, y: 300 }));
     });
 
-    // ドラッグ中は Hot State のみ更新され、DocumentStore は未変更
-    const hotRot = sessionStore.getState().activeZoneRotation;
-    expect(hotRot?.zoneId).toBe('zone-rot-1');
-    expect(hotRot?.rotationDeg).toBeGreaterThan(0);
+    // ドラッグ中は Konva ノードのみ直接回転し、DocumentStore・履歴は未変更
+    const dragRot = zoneNode.rotation();
+    expect(dragRot).toBeGreaterThan(0);
+    expect(documentStore.getState().past.length).toBe(initialPastLength);
     const zoneBeforeUp = getActiveSlide()?.zones[0];
     expect(
       zoneBeforeUp?.shapeType === 'rect' ? zoneBeforeUp.rotation : -1,
     ).toBe(0);
 
-    // pointerUp で Hot State クリア & DocumentStore 確定
+    // pointerUp で DocumentStore 確定 & Undo 履歴に1回積まれる
     act(() => {
       result.current.handlePointerUp();
     });
-    expect(sessionStore.getState().activeZoneRotation).toBeNull();
+    expect(documentStore.getState().past.length).toBe(initialPastLength + 1);
     const zoneAfterUp = getActiveSlide()?.zones[0];
     expect(
       zoneAfterUp?.shapeType === 'rect' ? zoneAfterUp.rotation : -1,
-    ).toBeCloseTo(hotRot?.rotationDeg ?? 0, 5);
+    ).toBeCloseTo(dragRot, 5);
   });
 
   it('vRect に { x: 40, y: 20 } オフセットがある場合も四隅外側判定と回転中心が一致すること', () => {
@@ -421,6 +438,19 @@ describe('useCanvasPointerInteraction', () => {
     });
 
     const stageContainer = document.createElement('div');
+    const zoneNode = new Konva.Rect({
+      x: 240,
+      y: 220,
+      width: 200,
+      height: 200,
+      rotation: 0,
+    });
+    const transformer = new Konva.Transformer();
+    const registry = createCanvasNodesRegistry();
+    registry.zoneNodes.set('zone-rot-offset', zoneNode);
+    registry.zoneTransformers?.set('zone-rot-offset', transformer);
+    const nodesRegistryRef = { current: registry };
+
     const { result } = renderHook(
       () =>
         useCanvasPointerInteraction({
@@ -428,6 +458,7 @@ describe('useCanvasPointerInteraction', () => {
             width: number;
             height: number;
           },
+          nodesRegistryRef,
         }),
       { wrapper: createWrapper() },
     );
@@ -455,12 +486,7 @@ describe('useCanvasPointerInteraction', () => {
       result.current.handlePointerMove(makeEvent({ x: 450, y: 320 }));
     });
 
-    expect(sessionStore.getState().activeZoneRotation?.zoneId).toBe(
-      'zone-rot-offset',
-    );
-    expect(
-      sessionStore.getState().activeZoneRotation?.rotationDeg,
-    ).toBeGreaterThan(0);
+    expect(zoneNode.rotation()).toBeGreaterThan(0);
 
     act(() => {
       result.current.handlePointerUp();

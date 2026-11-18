@@ -174,7 +174,7 @@ describe('compileArrows 3D Pitch Plane Projection', () => {
     expect(arrow?.endAngleRad).toBeCloseTo(expectedEndAngle, 6);
   });
 
-  it('case 3: sourcePlayerId arrow tracks dragged player projected start while keeping fixed end under tilt', () => {
+  it('case 3: sourcePlayerId arrow tracks moved player projected start while keeping fixed end under tilt', () => {
     const endNorm = toScreenNormPoint(70, 50, false);
     const slide = createBaseSlide({
       pitchTransform,
@@ -195,39 +195,37 @@ describe('compileArrows 3D Pitch Plane Projection', () => {
       ],
     });
 
-    const session: EphemeralSessionState = {
-      activePhaseId: 'phase-1',
-      activeSlideId: 'slide-1',
-      selectedIds: ['p1'],
-      activeDragDelta: {
-        entityIds: ['p1'],
-        deltaScreenNormX: 10,
-        deltaScreenNormY: -10,
-      },
+    const movedPos = toScreenNormPoint(30, 40, false);
+    const movedSlide = {
+      ...slide,
+      players: slide.players.map((p) =>
+        p.id === 'p1' ? { ...p, x: movedPos.x, y: movedPos.y } : p,
+      ),
     };
 
-    const frame = evaluateStaticSlideFrame(slide);
-    const baseScene = compileSceneGraph(frame, null, viewport);
-    const draggedScene = compileSceneGraph(frame, session, viewport);
+    const baseFrame = evaluateStaticSlideFrame(slide);
+    const movedFrame = evaluateStaticSlideFrame(movedSlide);
+    const baseScene = compileSceneGraph(baseFrame, null, viewport);
+    const movedScene = compileSceneGraph(movedFrame, null, viewport);
 
     const baseArrow = baseScene.arrows.find((a) => a.id === 'arr-player');
-    const draggedArrow = draggedScene.arrows.find((a) => a.id === 'arr-player');
+    const movedArrow = movedScene.arrows.find((a) => a.id === 'arr-player');
     expect(baseArrow).toBeDefined();
-    expect(draggedArrow).toBeDefined();
+    expect(movedArrow).toBeDefined();
 
-    expect(draggedArrow?.startPointPx.x).not.toBeCloseTo(
+    expect(movedArrow?.startPointPx.x).not.toBeCloseTo(
       baseArrow?.startPointPx.x ?? 0,
       2,
     );
-    expect(draggedArrow?.startPointPx.y).not.toBeCloseTo(
+    expect(movedArrow?.startPointPx.y).not.toBeCloseTo(
       baseArrow?.startPointPx.y ?? 0,
       2,
     );
-    expect(draggedArrow?.endPointPx.x).toBeCloseTo(
+    expect(movedArrow?.endPointPx.x).toBeCloseTo(
       baseArrow?.endPointPx.x ?? 0,
       5,
     );
-    expect(draggedArrow?.endPointPx.y).toBeCloseTo(
+    expect(movedArrow?.endPointPx.y).toBeCloseTo(
       baseArrow?.endPointPx.y ?? 0,
       5,
     );

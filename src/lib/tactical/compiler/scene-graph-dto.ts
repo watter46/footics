@@ -6,29 +6,17 @@ import type {
 } from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 
-export interface EphemeralDragDelta {
-  readonly entityIds: readonly string[];
-  readonly deltaScreenNormX: number;
-  readonly deltaScreenNormY: number;
-}
-
-export interface EphemeralZoneRotation {
-  readonly zoneId: string;
-  readonly rotationDeg: number;
+export interface DrawingPreviewInput {
+  readonly tool: string;
+  readonly startPoint: ScreenNormPoint;
+  readonly currentPoint: ScreenNormPoint;
+  readonly polygonPoints?: readonly ScreenNormPoint[];
 }
 
 export interface EphemeralSessionState {
   readonly activePhaseId: string;
   readonly activeSlideId: string;
   readonly selectedIds: readonly string[];
-  readonly activeDragDelta?: EphemeralDragDelta | null;
-  readonly activeZoneRotation?: EphemeralZoneRotation | null;
-  readonly drawingPreview?: {
-    readonly tool: string;
-    readonly startPoint: ScreenNormPoint;
-    readonly currentPoint: ScreenNormPoint;
-    readonly polygonPoints?: readonly ScreenNormPoint[];
-  } | null;
 }
 
 export interface ResolvedArrowPrimitive {
@@ -48,6 +36,8 @@ export interface ResolvedArrowPrimitive {
   readonly pointerLengthPx: number;
   readonly pointerWidthPx: number;
   readonly dotRadiusPx: number;
+  readonly sourceRadiusPx?: number;
+  readonly targetRadiusPx?: number;
   readonly endAngleRad: number;
   readonly selected: boolean;
 }
@@ -170,5 +160,4 @@ export interface ResolvedSceneGraphDTO {
   readonly trajectories: readonly ResolvedTrajectoryPrimitive[];
   readonly arrows: readonly ResolvedArrowPrimitive[];
   readonly billboardItems: readonly ResolvedBillboardItem[];
-  readonly drawingPreview?: ResolvedDrawingPreview | null;
 }

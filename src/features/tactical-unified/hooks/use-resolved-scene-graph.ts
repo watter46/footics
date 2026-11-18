@@ -110,9 +110,6 @@ export function useResolvedSceneGraph(
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
-  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
-  const activeZoneRotation = useSessionStore((s) => s.activeZoneRotation);
-  const drawingPreview = useSessionStore((s) => s.drawingPreview);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const timeMs = usePlaybackStore((s) => s.timeMs);
 
@@ -126,18 +123,8 @@ export function useResolvedSceneGraph(
       activePhaseId,
       activeSlideId,
       selectedIds,
-      activeDragDelta,
-      activeZoneRotation,
-      drawingPreview,
     }),
-    [
-      activePhaseId,
-      activeSlideId,
-      selectedIds,
-      activeDragDelta,
-      activeZoneRotation,
-      drawingPreview,
-    ],
+    [activePhaseId, activeSlideId, selectedIds],
   );
 
   return useMemo(

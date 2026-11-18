@@ -72,6 +72,11 @@ export function CanvasStageContainer({
   const canUndoState = useDocumentStore((s) => s.past.length > 0);
   const canRedoState = useDocumentStore((s) => s.future.length > 0);
 
+  const internalRegistryRef = useRef<CanvasNodesRegistry>(
+    createCanvasNodesRegistry(),
+  );
+  const nodesRegistryRef = injectedRegistryRef ?? internalRegistryRef;
+
   const {
     selectionBox,
     activePolygonId,
@@ -83,6 +88,7 @@ export function CanvasStageContainer({
   } = useCanvasPointerInteraction({
     vRect,
     containerRef,
+    nodesRegistryRef,
     onStartEditText: (textId) => setEditingTextId(textId),
   });
 
@@ -104,11 +110,6 @@ export function CanvasStageContainer({
     }),
     [exportPng, copyToClipboard, undo, redo, canUndoState, canRedoState],
   );
-
-  const internalRegistryRef = useRef<CanvasNodesRegistry>(
-    createCanvasNodesRegistry(),
-  );
-  const nodesRegistryRef = injectedRegistryRef ?? internalRegistryRef;
 
   const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
     id: 'tactical-pitch-droppable',

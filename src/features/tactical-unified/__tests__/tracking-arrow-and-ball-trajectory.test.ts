@@ -1,7 +1,12 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
+import type Konva from 'konva';
 import React from 'react';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it } from 'vitest';
+import {
+  type CanvasNodesRegistry,
+  createCanvasNodesRegistry,
+} from '@/features/tactical-unified/core/utils/canvas-registry';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
@@ -277,36 +282,38 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
       const sessionStore = createSessionStore({
         activePhaseId: phaseId,
         activeSlideId: slide2.id,
+        selectedObjects: [{ kind: 'ball', id: 'ball' }],
       });
       return { documentStore, sessionStore, slide2 };
     }
 
-    it('前スライドと同一座標のボールに対し activeDragDelta dx=12 を設定すると BallGhostTrajectory が描画され終点が実効座標になる', () => {
+    it('前スライドと同一座標のボールを選択し dx=+12% 相当移動して dragmove 発火すると trajectoryArrowNodes の groupNode が表示され終点が移動先ピクセル座標に一致する', () => {
       const { documentStore, sessionStore, slide2 } =
         setupTwoSlidesBallStores();
-      sessionStore.getState().setActiveDragDelta({
-        entityIds: ['ball'],
-        deltaScreenNormX: 12,
-        deltaScreenNormY: 0,
-      });
 
       const stageSize = { width: 1000, height: 600 };
-      const { container } = render(
+      const stageRef = React.createRef<Konva.Stage>();
+      const nodesRegistryRef: React.MutableRefObject<CanvasNodesRegistry> = {
+        current: createCanvasNodesRegistry(),
+      };
+
+      render(
         React.createElement(
           TacticalStoreProvider,
           { stores: { documentStore, sessionStore } },
           React.createElement(
             Stage,
-            { width: stageSize.width, height: stageSize.height },
+            { ref: stageRef, width: stageSize.width, height: stageSize.height },
             React.createElement(
               Layer,
               null,
               React.createElement(BallObject, {
                 stageSize,
                 ball: slide2.ball,
+                nodesRegistryRef,
                 resolvedBall: {
                   kind: 'ball',
-                  positionPx: { x: toStagePixel(620), y: toStagePixel(300) },
+                  positionPx: { x: toStagePixel(500), y: toStagePixel(300) },
                   radiusPx: 12,
                   visible: true,
                   depthSortKey: 0,
@@ -318,41 +325,52 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
         ),
       );
 
-      expect(container.querySelectorAll('canvas').length).toBeGreaterThan(0);
-      // GhostTrajectoryArrow は konva-arrow-ball などの name/id を持つか、
-      // あるいは BallGhostTrajectory が null を返さないことで Konva Group が増える
-      // ここではエラーなく描画され、activeDragDelta が適用されていることを確認
-      expect(sessionStore.getState().activeDragDelta?.deltaScreenNormX).toBe(
-        12,
-      );
+      const ballNode = nodesRegistryRef.current.ballNode;
+      expect(ballNode).not.toBeNull();
+
+      act(() => {
+        ballNode?.fire('dragstart', { target: ballNode });
+      });
+      act(() => {
+        ballNode?.position({ x: 620, y: 300 });
+        ballNode?.fire('dragmove', { target: ballNode });
+      });
+
+      const entry = nodesRegistryRef.current.trajectoryArrowNodes.get('ball');
+      expect(entry?.groupNode?.visible()).toBe(true);
+      const points = entry?.arrowNode?.points();
+      expect(points).toBeDefined();
+      expect(points?.[points.length - 2]).toBeCloseTo(620);
+      expect(points?.[points.length - 1]).toBeCloseTo(300);
     });
 
-    it('移動距離 < 1.0 のときは BallGhostTrajectory が描画されない', () => {
+    it('移動距離 < 4px のときは trajectoryArrowNodes.get("ball").groupNode.visible() が false のままである', () => {
       const { documentStore, sessionStore, slide2 } =
         setupTwoSlidesBallStores();
-      sessionStore.getState().setActiveDragDelta({
-        entityIds: ['ball'],
-        deltaScreenNormX: 0.5,
-        deltaScreenNormY: 0,
-      });
 
       const stageSize = { width: 1000, height: 600 };
-      const { container } = render(
+      const stageRef = React.createRef<Konva.Stage>();
+      const nodesRegistryRef: React.MutableRefObject<CanvasNodesRegistry> = {
+        current: createCanvasNodesRegistry(),
+      };
+
+      render(
         React.createElement(
           TacticalStoreProvider,
           { stores: { documentStore, sessionStore } },
           React.createElement(
             Stage,
-            { width: stageSize.width, height: stageSize.height },
+            { ref: stageRef, width: stageSize.width, height: stageSize.height },
             React.createElement(
               Layer,
               null,
               React.createElement(BallObject, {
                 stageSize,
                 ball: slide2.ball,
+                nodesRegistryRef,
                 resolvedBall: {
                   kind: 'ball',
-                  positionPx: { x: toStagePixel(505), y: toStagePixel(300) },
+                  positionPx: { x: toStagePixel(500), y: toStagePixel(300) },
                   radiusPx: 12,
                   visible: true,
                   depthSortKey: 0,
@@ -364,7 +382,17 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
         ),
       );
 
-      expect(container.querySelectorAll('canvas').length).toBeGreaterThan(0);
+      const ballNode = nodesRegistryRef.current.ballNode;
+      expect(ballNode).not.toBeNull();
+
+      act(() => {
+        ballNode?.fire('dragstart', {});
+        ballNode?.position({ x: 502, y: 300 });
+        ballNode?.fire('dragmove', {});
+      });
+
+      const entry = nodesRegistryRef.current.trajectoryArrowNodes.get('ball');
+      expect(entry?.groupNode?.visible()).toBe(false);
     });
   });
 });

@@ -161,8 +161,6 @@ describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
         activePhaseId: 'phase-1',
         activeSlideId: 'slide-1',
         selectedIds: [],
-        activeDragDelta: null,
-        drawingPreview: null,
       };
 
       const sceneGraph = resolveSceneGraphFromState({
@@ -192,8 +190,6 @@ describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
         activePhaseId: 'phase-1',
         activeSlideId: 'slide-1',
         selectedIds: [],
-        activeDragDelta: null,
-        drawingPreview: null,
       };
 
       // slide 1: pauseMs: 500, transitionDurationMs: 1000.

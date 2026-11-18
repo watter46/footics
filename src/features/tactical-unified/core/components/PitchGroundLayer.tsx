@@ -1,7 +1,6 @@
 'use client';
 
 import type Konva from 'konva';
-import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -31,6 +30,10 @@ import { ArrowObject } from './annotations/ArrowObject';
 import { PitchBackgroundImage } from './BackgroundImageLayer';
 import { PlayerConnectLines } from './PlayerConnectLines';
 import { PitchGroundGhosts } from './pitch-ground-ghosts';
+import {
+  buildSelectHandlerMap,
+  sortBySelectedIds,
+} from './pitch-ground-helpers';
 import { ZoneObject } from './zones/ZoneObject';
 
 export interface PitchGroundLayerProps {
@@ -40,19 +43,6 @@ export interface PitchGroundLayerProps {
   cleanRender?: boolean;
   listening?: boolean;
   sceneGraph: ResolvedSceneGraphDTO;
-}
-
-type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
-
-function sortBySelectedIds<T extends { id: string }>(
-  items: readonly T[],
-  selectedIds: readonly string[],
-): readonly T[] {
-  if (selectedIds.length === 0) return items;
-  return [...items].sort(
-    (a, b) =>
-      Number(selectedIds.includes(a.id)) - Number(selectedIds.includes(b.id)),
-  );
 }
 
 export const PitchGroundLayer = memo(function PitchGroundLayer({
@@ -70,7 +60,6 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
   const activeTool = useSessionStore((s) => s.activeTool);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
-  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
   const selectObject = useSessionStore((s) => s.selectObject);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
@@ -97,17 +86,13 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
     activeSlide?.pitchTransform,
   );
 
-  const { pitchMarkers, visibleMarkers } = useMemo(() => {
+  const visibleMarkers = useMemo(() => {
     const pitch = (activeSlide?.players ?? []).filter(
       (m) => m.area === 'pitch',
     );
-    const visible =
-      teamVisibility === 'both'
-        ? pitch
-        : pitch.filter(
-            (m) => m.team === teamVisibility || m.team === 'neutral',
-          );
-    return { pitchMarkers: pitch, visibleMarkers: visible };
+    return teamVisibility === 'both'
+      ? pitch
+      : pitch.filter((m) => m.team === teamVisibility || m.team === 'neutral');
   }, [activeSlide?.players, teamVisibility]);
 
   const isInteractive = activeTool === 'select';
@@ -151,13 +136,44 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
     }
   }, [nodesRegistryRef]);
 
-  const makeSelectHandler = useCallback(
-    (id: string, kind: 'arrow' | 'zone') => (e: KonvaClickEvent) => {
-      e.cancelBubble = true;
-      selectObject({ id, kind }, (e.evt as MouseEvent)?.shiftKey ?? false);
+  const pitchStageSize = useMemo(
+    () => ({ width: pitchRect.width, height: pitchRect.height }),
+    [pitchRect.width, pitchRect.height],
+  );
+  const sortedZones = useMemo(
+    () => sortBySelectedIds(sceneGraph.zones, selectedIds),
+    [sceneGraph.zones, selectedIds],
+  );
+  const sortedArrows = useMemo(
+    () => sortBySelectedIds(sceneGraph.arrows, selectedIds),
+    [sceneGraph.arrows, selectedIds],
+  );
+  const prevPitchPlayers = useMemo(
+    () =>
+      (prevSlide?.players ?? []).filter(
+        (p): p is (typeof visibleMarkers)[number] => p.area === 'pitch',
+      ),
+    [prevSlide?.players],
+  );
+
+  const handleSelectConnectLine = useCallback(
+    (id: string, parentPlayerId: string) => {
+      selectObject({ id, kind: 'connect-line', parentPlayerId });
       setIsHudOpen(true);
     },
     [selectObject, setIsHudOpen],
+  );
+
+  const zoneSelectHandlers = useMemo(
+    () =>
+      buildSelectHandlerMap(sortedZones, 'zone', selectObject, setIsHudOpen),
+    [sortedZones, selectObject, setIsHudOpen],
+  );
+
+  const arrowSelectHandlers = useMemo(
+    () =>
+      buildSelectHandlerMap(sortedArrows, 'arrow', selectObject, setIsHudOpen),
+    [sortedArrows, selectObject, setIsHudOpen],
   );
 
   return (
@@ -182,62 +198,55 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         />
 
         {/* ゾーンオブジェクト群 */}
-        {sortBySelectedIds(sceneGraph.zones, selectedIds).map(
-          (resolvedZone) => {
-            const zone = activeSlide?.zones.find(
-              (z) => z.id === resolvedZone.id,
-            );
-            if (!zone) return null;
-            return (
-              <ZoneObject
-                key={zone.id}
-                zone={
-                  ('points' in zone ? zone : { ...zone, points: [] }) as never
-                }
-                stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-                isSelected={!cleanRender && selectedIds.includes(zone.id)}
-                isInteractive={!cleanRender && isInteractive}
-                onSelect={makeSelectHandler(zone.id, 'zone')}
-                updateZone={updateZone as never}
-                nodesRegistryRef={nodesRegistryRef}
-                resolvedZone={resolvedZone}
-              />
-            );
-          },
-        )}
+        {sortedZones.map((resolvedZone) => {
+          const zone = activeSlide?.zones.find((z) => z.id === resolvedZone.id);
+          const onSelect = zoneSelectHandlers.get(resolvedZone.id);
+          if (!zone || !onSelect) return null;
+          return (
+            <ZoneObject
+              key={zone.id}
+              zone={
+                ('points' in zone ? zone : { ...zone, points: [] }) as never
+              }
+              stageSize={pitchStageSize}
+              isSelected={!cleanRender && selectedIds.includes(zone.id)}
+              isInteractive={!cleanRender && isInteractive}
+              onSelect={onSelect}
+              updateZone={updateZone as never}
+              nodesRegistryRef={nodesRegistryRef}
+              resolvedZone={resolvedZone}
+            />
+          );
+        })}
 
         {/* 矢印オブジェクト群 */}
-        {sortBySelectedIds(sceneGraph.arrows, selectedIds).map(
-          (resolvedArrow) => {
-            const arrow = activeSlide?.arrows.find(
-              (a) => a.id === resolvedArrow.id,
-            );
-            if (!arrow) return null;
-            return (
-              <ArrowObject
-                key={arrow.id}
-                arrow={arrow}
-                stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-                isSelected={!cleanRender && selectedIds.includes(arrow.id)}
-                isInteractive={!cleanRender && isInteractive}
-                onSelect={makeSelectHandler(arrow.id, 'arrow')}
-                updateArrow={updateArrow as never}
-                nodesRegistryRef={nodesRegistryRef}
-                resolvedArrow={resolvedArrow}
-              />
-            );
-          },
-        )}
+        {sortedArrows.map((resolvedArrow) => {
+          const arrow = activeSlide?.arrows.find(
+            (a) => a.id === resolvedArrow.id,
+          );
+          const onSelect = arrowSelectHandlers.get(resolvedArrow.id);
+          if (!arrow || !onSelect) return null;
+          return (
+            <ArrowObject
+              key={arrow.id}
+              arrow={arrow}
+              stageSize={pitchStageSize}
+              isSelected={!cleanRender && selectedIds.includes(arrow.id)}
+              isInteractive={!cleanRender && isInteractive}
+              onSelect={onSelect}
+              updateArrow={updateArrow as never}
+              nodesRegistryRef={nodesRegistryRef}
+              resolvedArrow={resolvedArrow}
+            />
+          );
+        })}
 
         {/* 選手間コネクトライン */}
         <PlayerConnectLines
           selectedIds={cleanRender ? [] : selectedIds}
           isInteractive={!cleanRender && isInteractive}
           connectLineNodesRef={connectLineNodesRef}
-          onSelectConnectLine={(id, parentPlayerId) => {
-            selectObject({ id, kind: 'connect-line', parentPlayerId });
-            setIsHudOpen(true);
-          }}
+          onSelectConnectLine={handleSelectConnectLine}
           resolvedConnectLines={sceneGraph.connectLines}
         />
 
@@ -263,15 +272,9 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         {!cleanRender && (
           <PitchGroundGhosts
             visibleMarkers={visibleMarkers}
-            prevPlayers={(prevSlide?.players ?? []).filter(
-              (p): p is (typeof visibleMarkers)[number] => p.area === 'pitch',
-            )}
+            prevPlayers={prevPitchPlayers}
             selectedIds={selectedIds}
-            activeDragDelta={activeDragDelta}
-            stageSize={{
-              width: pitchRect.width,
-              height: pitchRect.height,
-            }}
+            stageSize={pitchStageSize}
             activeSlideId={activeSlideId}
             nodesRegistryRef={nodesRegistryRef}
             aspectRatio={aspectRatio}

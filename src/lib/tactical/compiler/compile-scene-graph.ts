@@ -18,8 +18,7 @@ import {
   compileBillboardItems,
   type ResolvedPlayerInternal,
 } from './compile-billboards';
-import { compileDrawingPreview, compileZones } from './compile-zones';
-import { resolveEffectiveScreenNormPos } from './effective-coordinates';
+import { compileZones } from './compile-zones';
 import { subdivideQuadraticBezier } from './geometry-primitives';
 import type {
   EphemeralSessionState,
@@ -162,11 +161,7 @@ export function compileTrajectories(
     if (prevSlide.ball) {
       const prevBall = prevSlide.ball;
       const currBall = frame.slide.ball;
-      const effBallPos = resolveEffectiveScreenNormPos(
-        currBall,
-        'ball',
-        session?.activeDragDelta,
-      );
+      const effBallPos = toScreenNormPoint(currBall.x, currBall.y, false);
       const ballDist = Math.hypot(
         effBallPos.x - prevBall.x,
         effBallPos.y - prevBall.y,
@@ -222,9 +217,8 @@ export function compileSceneGraph(
   const { billboardItems, resolvedPlayersMap, billboardPlayers } =
     compileBillboardItems(frame, session, viewport);
 
-  // 2. Compile Zones & Drawing Preview
+  // 2. Compile Zones
   const zones = compileZones(frame, session, viewport);
-  const drawingPreview = compileDrawingPreview(session, viewport);
 
   // 3. Compile Connect Lines & Arrows
   const connectLines = compileConnectLines(
@@ -250,6 +244,5 @@ export function compileSceneGraph(
     trajectories,
     arrows,
     billboardItems,
-    drawingPreview,
   };
 }

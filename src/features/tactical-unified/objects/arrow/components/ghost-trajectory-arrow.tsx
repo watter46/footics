@@ -26,6 +26,7 @@ function normY(v: number, h: number) {
 export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
   playerId,
   nodesRegistryRef,
+  ghostGroupRef,
   startPos,
   endPos,
   trajectory,
@@ -74,7 +75,9 @@ export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
   } = useGhostTrajectoryArrow({
     playerId,
     nodesRegistryRef,
+    ghostGroupRef,
     startPos,
+    endPos,
     sPxX,
     sPxY,
     ePxX,

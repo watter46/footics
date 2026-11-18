@@ -116,14 +116,14 @@ describe('Scene Compiler Phase 1 Tests', () => {
     }
   });
 
-  it('3. applies activeDragDelta to ball and text', () => {
+  it('3. compiles updated ball and text coordinates into billboardItems', () => {
     const slide = createBaseSlide({
       texts: [
         {
           id: 'txt-1',
           annotationType: 'text',
-          x: toScreenNormCoord(20),
-          y: toScreenNormCoord(30),
+          x: toScreenNormCoord(30),
+          y: toScreenNormCoord(25),
           content: 'Label',
           fontSize: 16,
           color: '#ffffff',
@@ -132,8 +132,8 @@ describe('Scene Compiler Phase 1 Tests', () => {
         },
       ],
       ball: {
-        x: toScreenNormCoord(50),
-        y: toScreenNormCoord(50),
+        x: toScreenNormCoord(60),
+        y: toScreenNormCoord(45),
         visible: true,
       },
     });
@@ -142,11 +142,6 @@ describe('Scene Compiler Phase 1 Tests', () => {
       activePhaseId: 'phase-1',
       activeSlideId: 'slide-1',
       selectedIds: ['ball', 'txt-1'],
-      activeDragDelta: {
-        entityIds: ['ball', 'txt-1'],
-        deltaScreenNormX: 10,
-        deltaScreenNormY: -5,
-      },
     };
 
     const frame = evaluateStaticSlideFrame(slide);
@@ -356,7 +351,7 @@ describe('Scene Compiler Phase 1 Tests', () => {
     );
   });
 
-  it('8. keeps controlHandlePx on the curve when activeDragDelta moves the arrow', () => {
+  it('8. keeps controlHandlePx on the curve for translated arrow coordinates', () => {
     const slide = createBaseSlide({
       arrows: [
         {
@@ -365,10 +360,10 @@ describe('Scene Compiler Phase 1 Tests', () => {
           arrowType: 'pass',
           curveType: 'curved',
           points: [
-            toScreenNormPoint(20, 50, false),
-            toScreenNormPoint(80, 50, false),
+            toScreenNormPoint(30, 55, false),
+            toScreenNormPoint(90, 55, false),
           ],
-          controlPoint: toScreenNormPoint(50, 20, false),
+          controlPoint: toScreenNormPoint(60, 25, false),
           color: '#ffffff',
           strokeWidth: 3,
           dashArray: [],
@@ -385,11 +380,6 @@ describe('Scene Compiler Phase 1 Tests', () => {
         activePhaseId: 'phase-1',
         activeSlideId: 'slide-1',
         selectedIds: ['a-drag'],
-        activeDragDelta: {
-          entityIds: ['a-drag'],
-          deltaScreenNormX: 10,
-          deltaScreenNormY: 5,
-        },
       },
       viewport,
     );

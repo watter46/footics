@@ -30,6 +30,7 @@ export type {
 export function useCanvasPointerInteraction({
   vRect,
   containerRef,
+  nodesRegistryRef,
   onStartEditText,
 }: UseCanvasPointerInteractionOptions): CanvasPointerInteractionResult {
   const s = useCanvasPointerStore();
@@ -47,6 +48,7 @@ export function useCanvasPointerInteraction({
   const zoneRotation = useCanvasZoneRotation({
     vRect,
     containerRef,
+    nodesRegistryRef,
     isDrawing: Boolean(s.drawingPreview?.isDrawing),
     isPanning: zoomPan.isPanning,
   });

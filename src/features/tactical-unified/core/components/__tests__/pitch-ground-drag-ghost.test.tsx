@@ -1,16 +1,15 @@
 // @vitest-environment jsdom
 import { act, render } from '@testing-library/react';
 import type Konva from 'konva';
-import { useEffect } from 'react';
 import { Stage } from 'react-konva';
 import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
-  useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
-import type { EphemeralDragDelta } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
 import { evaluateTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import {
@@ -18,6 +17,11 @@ import {
   toScreenNormCoord,
 } from '@/lib/types/tactical/branded';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
+import {
+  type CanvasNodesRegistry,
+  createCanvasNodesRegistry,
+} from '../../utils/canvas-registry';
+import { syncPlayerDragKonvaNodes } from '../../utils/drag-konva-sync';
 import { PitchGroundLayer } from '../PitchGroundLayer';
 
 function createTwoSlideProjectWithPlayer(
@@ -68,14 +72,6 @@ function createTwoSlideProjectWithPlayer(
   };
 }
 
-function DragDeltaSetter({ delta }: { delta: EphemeralDragDelta | null }) {
-  const setActiveDragDelta = useSessionStore((s) => s.setActiveDragDelta);
-  useEffect(() => {
-    setActiveDragDelta(delta);
-  }, [delta, setActiveDragDelta]);
-  return null;
-}
-
 describe('PitchGroundLayer drag ghost trajectory', () => {
   const stageSize = { width: 1000, height: 600 };
   const pitchRect = { x: 0, y: 0, width: 1000, height: 600 };
@@ -84,17 +80,14 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
     height: stageSize.height,
   };
 
-  it('case 1: renders ghost-trajectory-<id> during drag when effective distance >= 1.0 even before drop', () => {
+  it('case 1: pre-mounts ghost-trajectory-<id> for selected player at same position with groupNode.visible() === false', () => {
     const project = createTwoSlideProjectWithPlayer('p-1', 50, 50);
     const phase = project.phases[0];
     const slide1 = phase.slides[0];
     const slide2 = phase.slides[1];
     const stageRef: { current: Konva.Stage | null } = { current: null };
-
-    const activeDragDelta: EphemeralDragDelta = {
-      entityIds: ['p-1'],
-      deltaScreenNormX: 15,
-      deltaScreenNormY: 0,
+    const nodesRegistryRef: { current: CanvasNodesRegistry } = {
+      current: createCanvasNodesRegistry(),
     };
 
     const frame = evaluateTimelineFrame(phase, toMilliseconds(2000));
@@ -103,23 +96,22 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
       {
         activePhaseId: phase.id,
         activeSlideId: slide2.id,
-        selectedIds: [],
-        activeDragDelta,
+        selectedIds: ['p-1'],
       },
       viewport,
       slide1,
     );
 
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: phase.id,
+      activeSlideId: slide2.id,
+    });
+    sessionStore.getState().selectObject({ kind: 'player', id: 'p-1' });
+
     act(() => {
       render(
-        <TacticalStoreProvider
-          initialProject={project}
-          initialSession={{
-            activePhaseId: phase.id,
-            activeSlideId: slide2.id,
-          }}
-        >
-          <DragDeltaSetter delta={activeDragDelta} />
+        <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
           <Stage
             width={stageSize.width}
             height={stageSize.height}
@@ -131,6 +123,7 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
               stageSize={stageSize}
               pitchRect={pitchRect}
               sceneGraph={sceneGraph}
+              nodesRegistryRef={nodesRegistryRef}
             />
           </Stage>
         </TacticalStoreProvider>,
@@ -143,28 +136,19 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
     );
     expect(ghostGroup).toBeDefined();
 
-    // 矢印の終点が (65, 50) 相当 (x = 650, y = 300) であることを確認
-    const lines = ghostGroup?.find<Konva.Line>('Line, Arrow') ?? [];
-    const arrowLine = lines.find((line) => (line.points()?.length ?? 0) >= 4);
-    expect(arrowLine).toBeDefined();
-    const pts = arrowLine?.points() ?? [];
-    const endX = pts[pts.length - 2];
-    const endY = pts[pts.length - 1];
-    expect(endX).toBeCloseTo(650, 0);
-    expect(endY).toBeCloseTo(300, 0);
+    const entry = nodesRegistryRef.current.trajectoryArrowNodes.get('p-1');
+    expect(entry).toBeDefined();
+    expect(entry?.groupNode?.visible()).toBe(false);
   });
 
-  it('case 2: does not render ghost-trajectory-<id> when drag distance < 1.0', () => {
+  it('case 2: syncPlayerDragKonvaNodes shows ghost-trajectory-<id> and updates arrowNode.points() when distance >= 4px', () => {
     const project = createTwoSlideProjectWithPlayer('p-1', 50, 50);
     const phase = project.phases[0];
     const slide1 = phase.slides[0];
     const slide2 = phase.slides[1];
     const stageRef: { current: Konva.Stage | null } = { current: null };
-
-    const activeDragDelta: EphemeralDragDelta = {
-      entityIds: ['p-1'],
-      deltaScreenNormX: 0.5,
-      deltaScreenNormY: 0,
+    const nodesRegistryRef: { current: CanvasNodesRegistry } = {
+      current: createCanvasNodesRegistry(),
     };
 
     const frame = evaluateTimelineFrame(phase, toMilliseconds(2000));
@@ -173,23 +157,22 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
       {
         activePhaseId: phase.id,
         activeSlideId: slide2.id,
-        selectedIds: [],
-        activeDragDelta,
+        selectedIds: ['p-1'],
       },
       viewport,
       slide1,
     );
 
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: phase.id,
+      activeSlideId: slide2.id,
+    });
+    sessionStore.getState().selectObject({ kind: 'player', id: 'p-1' });
+
     act(() => {
       render(
-        <TacticalStoreProvider
-          initialProject={project}
-          initialSession={{
-            activePhaseId: phase.id,
-            activeSlideId: slide2.id,
-          }}
-        >
-          <DragDeltaSetter delta={activeDragDelta} />
+        <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
           <Stage
             width={stageSize.width}
             height={stageSize.height}
@@ -201,13 +184,28 @@ describe('PitchGroundLayer drag ghost trajectory', () => {
               stageSize={stageSize}
               pitchRect={pitchRect}
               sceneGraph={sceneGraph}
+              nodesRegistryRef={nodesRegistryRef}
             />
           </Stage>
         </TacticalStoreProvider>,
       );
     });
 
-    expect(stageRef.current).not.toBeNull();
-    expect(stageRef.current?.findOne('#ghost-trajectory-p-1')).toBeUndefined();
+    const entry = nodesRegistryRef.current.trajectoryArrowNodes.get('p-1');
+    expect(entry).toBeDefined();
+    expect(entry?.groupNode?.visible()).toBe(false);
+
+    syncPlayerDragKonvaNodes({
+      registry: nodesRegistryRef.current,
+      movedPlayers: new Map([['p-1', { xPx: 650, yPx: 300 }]]),
+      primaryPlayerId: 'p-1',
+      stageSize,
+    });
+
+    expect(entry?.groupNode?.visible()).toBe(true);
+    const pts = entry?.arrowNode?.points() ?? [];
+    expect(pts.length).toBeGreaterThanOrEqual(4);
+    expect(pts[pts.length - 2]).toBeCloseTo(650, 0);
+    expect(pts[pts.length - 1]).toBeCloseTo(300, 0);
   });
 });

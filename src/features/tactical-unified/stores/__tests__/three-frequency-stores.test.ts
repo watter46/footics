@@ -224,7 +224,7 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
   });
 
   describe('Hot Store (SessionStore)', () => {
-    it('ドラッグデルタや選択状態を高速に更新できること', () => {
+    it('選択状態やツール状態を高速に更新できること', () => {
       const sessionStore = createSessionStore({
         activePhaseId: 'phase-1',
         activeSlideId: 'slide-1',
@@ -233,19 +233,10 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
       expect(sessionStore.getState().activePhaseId).toBe('phase-1');
       expect(sessionStore.getState().activeSlideId).toBe('slide-1');
       expect(sessionStore.getState().selectedObjects).toEqual([]);
-      expect(sessionStore.getState().activeDragDelta).toBeNull();
+      expect(sessionStore.getState().connectingPlayerId).toBeNull();
 
-      sessionStore.getState().setActiveDragDelta({
-        entityIds: ['player-1'],
-        deltaScreenNormX: 5,
-        deltaScreenNormY: 10,
-      });
-
-      expect(sessionStore.getState().activeDragDelta).toEqual({
-        entityIds: ['player-1'],
-        deltaScreenNormX: 5,
-        deltaScreenNormY: 10,
-      });
+      sessionStore.getState().setConnectingPlayerId('player-1');
+      expect(sessionStore.getState().connectingPlayerId).toBe('player-1');
 
       sessionStore.getState().selectObjects([
         { id: 'player-1', kind: 'player' },
@@ -391,7 +382,7 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
   });
 
   describe('3頻度の独立性 & 購読遮断の検証 (CRITICAL INVARIANT)', () => {
-    it('sessionStore.setActiveDragDelta を100回呼んでも documentStore の past.length は 0 かつ isDirty === false のままであること', () => {
+    it('sessionStore.setConnectingPlayerId を100回呼んでも documentStore の past.length は 0 かつ isDirty === false のままであること', () => {
       const documentStore = createDocumentStore(createDummyProject());
       const sessionStore = createSessionStore({
         activePhaseId: 'phase-1',
@@ -399,11 +390,7 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
       });
 
       for (let i = 0; i < 100; i++) {
-        sessionStore.getState().setActiveDragDelta({
-          entityIds: ['player-1'],
-          deltaScreenNormX: i,
-          deltaScreenNormY: i,
-        });
+        sessionStore.getState().setConnectingPlayerId(`player-${i}`);
       }
 
       expect(documentStore.getState().past.length).toBe(0);
@@ -426,13 +413,9 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
       sessionStore.subscribe(sessionListener);
       playbackStore.subscribe(playbackListener);
 
-      // 1. Hot State更新 (60fps drag想定)
+      // 1. Hot State更新 (60fps pointer想定)
       for (let i = 0; i < 60; i++) {
-        sessionStore.getState().setActiveDragDelta({
-          entityIds: ['player-1'],
-          deltaScreenNormX: i,
-          deltaScreenNormY: i,
-        });
+        sessionStore.getState().setConnectingPlayerId(`player-${i}`);
       }
 
       expect(sessionListener).toHaveBeenCalledTimes(60);

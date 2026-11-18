@@ -63,20 +63,23 @@ function createFrame(slide: DomainSlide): EvaluatedTimelineFrame {
   } as unknown as EvaluatedTimelineFrame;
 }
 
-describe('compileTrajectories with activeDragDelta & pitchTransform', () => {
-  it('case 1: 前スライドと同座標の選手・ボールに対し activeDragDelta dx=10 で trajectories を生成し終点が移動先と一致する', () => {
+describe('compileTrajectories with moved slide & pitchTransform', () => {
+  it('case 1: currSlide の選手・ボールを dx=10 移動した状態で trajectories を生成し終点が移動先と一致する', () => {
     const prevSlide = createSlide({ id: 'slide-0' });
-    const currSlide = createSlide({ id: 'slide-1' });
+    const movedPlayerPos = toScreenNormPoint(60, 50, false);
+    const movedBallPos = toScreenNormPoint(60, 60, false);
+    const currSlide = createSlide({
+      id: 'slide-1',
+      players: prevSlide.players.map((p) =>
+        p.id === 'p1' ? { ...p, x: movedPlayerPos.x } : p,
+      ),
+      ball: { ...prevSlide.ball, x: movedBallPos.x },
+    });
     const frame = createFrame(currSlide);
     const session: EphemeralSessionState = {
       activePhaseId: 'phase-1',
       activeSlideId: 'slide-1',
       selectedIds: ['p1', 'ball'],
-      activeDragDelta: {
-        entityIds: ['p1', 'ball'],
-        deltaScreenNormX: 10,
-        deltaScreenNormY: 0,
-      },
     };
 
     const scene = compileSceneGraph(frame, session, VIEWPORT, prevSlide);
