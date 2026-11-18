@@ -7,7 +7,7 @@ import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import * as pitchSvg from '@/lib/tactical/pitch-svg';
+import * as pitchSvg from '@/lib/tactical/shared/pitch-svg';
 import { BackgroundImageLayer } from '../BackgroundImageLayer';
 
 beforeEach(() => {

@@ -301,4 +301,73 @@ describe('syncSceneGraphToKonva', () => {
 
     stage.destroy();
   });
+
+  it('case 3: updates trajectoryEffectLines points to current position for player and ball', () => {
+    const container = document.createElement('div');
+    const stage = new Konva.Stage({ container, width: 1000, height: 600 });
+    const playerLayer = new Konva.Layer();
+    const ballLayer = new Konva.Layer();
+    const effectLayer = new Konva.Layer();
+    stage.add(playerLayer, ballLayer, effectLayer);
+
+    const playerNode = new Konva.Group({ x: 0, y: 0 });
+    const ballNode = new Konva.Group({ x: 0, y: 0 });
+    const playerEffectLine = new Konva.Line({ points: [0, 0, 0, 0] });
+    const ballEffectLine = new Konva.Line({ points: [0, 0, 0, 0] });
+
+    playerLayer.add(playerNode);
+    ballLayer.add(ballNode);
+    effectLayer.add(playerEffectLine, ballEffectLine);
+
+    const effectBatchDrawSpy = vi.spyOn(effectLayer, 'batchDraw');
+
+    const registry = createCanvasNodesRegistry();
+    registry.stage = stage;
+    registry.playerLayer = playerLayer;
+    registry.ballLayer = ballLayer;
+    registry.playerNodes.set('p1', playerNode);
+    registry.ballNode = ballNode;
+    registry.trajectoryEffectLines.set('p1', {
+      lineNode: playerEffectLine,
+      startPx: { x: 100, y: 120 },
+    });
+    registry.trajectoryEffectLines.set('ball', {
+      lineNode: ballEffectLine,
+      startPx: { x: 200, y: 180 },
+    });
+
+    const sceneGraph = createBaseSceneGraph({
+      viewport: { width: 1000, height: 600 },
+      billboardItems: [
+        {
+          kind: 'player',
+          id: 'p1',
+          positionPx: pt(300, 240),
+          radiusPx: 18,
+          depthSortKey: 240,
+          opacity: 1,
+          visible: true,
+          selected: false,
+          player: { id: 'p1' } as PitchPlayer,
+          rippleRingsPx: [],
+        },
+        {
+          kind: 'ball',
+          positionPx: pt(500, 360),
+          radiusPx: 10,
+          depthSortKey: 360,
+          opacity: 1,
+          visible: true,
+        },
+      ],
+    });
+
+    syncSceneGraphToKonva(registry, sceneGraph);
+
+    expect(playerEffectLine.points()).toEqual([100, 120, 300, 240]);
+    expect(ballEffectLine.points()).toEqual([200, 180, 500, 360]);
+    expect(effectBatchDrawSpy).toHaveBeenCalled();
+
+    stage.destroy();
+  });
 });

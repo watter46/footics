@@ -1,6 +1,7 @@
 import type Konva from 'konva';
 import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { CanvasNodesRegistry } from './canvas-registry';
+import { syncTrajectoryEffectLineKonva } from './drag-konva-sync';
 
 function collectLayer(
   node: Konva.Node | null | undefined,
@@ -34,6 +35,21 @@ export function syncSceneGraphToKonva(
     node.opacity(item.opacity);
     node.visible(item.visible);
     collectLayer(node, dirtyLayers);
+
+    if (item.kind === 'player' || item.kind === 'ball') {
+      const effectKey = item.kind === 'player' ? item.id : 'ball';
+      const effectEntry = registry.trajectoryEffectLines?.get(effectKey);
+      if (effectEntry) {
+        const effectLayer = syncTrajectoryEffectLineKonva(
+          effectEntry,
+          item.positionPx,
+          sceneGraph.viewport,
+        );
+        if (effectLayer) {
+          dirtyLayers.add(effectLayer);
+        }
+      }
+    }
   }
 
   for (const arrow of sceneGraph.arrows) {

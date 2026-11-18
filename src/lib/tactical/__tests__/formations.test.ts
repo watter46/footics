@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getScreenPitchBounds } from '@/lib/tactical/shared/pitch-geometry';
 import {
   FORMATION_LIST,
   getFormationActualPos,
@@ -10,7 +11,6 @@ import {
   DEFAULT_442_POSITIONS,
   parseWhoScoredFormationName,
 } from '../formations';
-import { getScreenPitchBounds } from '../pitch-geometry';
 import {
   getPositionGroup,
   getSideScore,
