@@ -1,3 +1,4 @@
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
@@ -6,7 +7,7 @@ import {
   toScreenNormPoint,
 } from '@/lib/types/tactical/branded';
 import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
-import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
+import type { ArrowHandleKind } from './arrow-handles-group';
 import { cpPxToNormX, cpPxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -25,9 +26,11 @@ export interface ArrowControlPointsProps {
   midHandlePxY: number;
   p0: ScreenNormPoint;
   p1: ScreenNormPoint;
+  handleRef?: React.Ref<Konva.Circle>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<DomainArrowAnnotation>) => void;
-  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
+  onHandleDragMove?: (kind: ArrowHandleKind, pxX: number, pxY: number) => void;
+  onHandleDragEnd?: () => void;
 }
 
 export const ArrowControlPoints = React.memo(function ArrowControlPoints({
@@ -44,14 +47,17 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
   midHandlePxY,
   p0,
   p1,
+  handleRef,
   onSelect,
   updateArrow,
-  onPreviewMove,
+  onHandleDragMove,
+  onHandleDragEnd,
 }: ArrowControlPointsProps) {
   const { width, height } = stageSize;
 
   return (
     <Circle
+      ref={handleRef}
       x={midHandlePxX}
       y={midHandlePxY}
       radius={6.5}
@@ -81,7 +87,7 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
       onDragMove={(e) => {
         e.cancelBubble = true;
         const pos = e.target.position();
-        onPreviewMove?.({ kind: 'control', pxX: pos.x, pxY: pos.y });
+        onHandleDragMove?.('control', pos.x, pos.y);
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
@@ -98,7 +104,7 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
         const midPxY = (sPxY + ePxY) / 2;
         const distFromMidPx = Math.hypot(pos.x - midPxX, pos.y - midPxY);
 
-        onPreviewMove?.(null);
+        onHandleDragEnd?.();
 
         if (distFromMidPx < 6.0) {
           updateArrow(arrow.id, {

@@ -3,7 +3,7 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { pxToNorm } from '@/features/tactical-unified/core';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { syncBallDragKonvaNodes } from '@/features/tactical-unified/core/utils/drag-konva-sync';
@@ -17,13 +17,21 @@ import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 interface UseBallDragProps {
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  selectionRingRef?: React.RefObject<Konva.Circle | null>;
+  isSelected?: boolean;
 }
 
-export function useBallDrag({ stageSize, nodesRegistryRef }: UseBallDragProps) {
+export function useBallDrag({
+  stageSize,
+  nodesRegistryRef,
+  selectionRingRef,
+  isSelected,
+}: UseBallDragProps) {
   const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
   const activeSlide = selectDomainActiveSlide(
@@ -32,24 +40,24 @@ export function useBallDrag({ stageSize, nodesRegistryRef }: UseBallDragProps) {
     activeSlideId,
   );
 
-  const [isDragging, setIsDragging] = useState(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
       setIsDragging(true);
       setIsHudOpen(false);
+      selectionRingRef?.current?.visible(false);
       startPosRef.current = activeSlide
         ? { x: activeSlide.ball.x, y: activeSlide.ball.y }
         : null;
 
       const node = e.currentTarget as Konva.Group;
       node.scale({ x: 1.25, y: 1.25 });
-      node.moveToTop();
       const stage = node.getStage();
       if (stage) stage.container().style.cursor = 'grabbing';
     },
-    [activeSlide, setIsHudOpen],
+    [activeSlide, selectionRingRef, setIsDragging, setIsHudOpen],
   );
 
   const handleDragMove = useCallback(
@@ -89,7 +97,9 @@ export function useBallDrag({ stageSize, nodesRegistryRef }: UseBallDragProps) {
 
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
       setIsDragging(false);
+      selectionRingRef?.current?.visible(Boolean(isSelected));
       startPosRef.current = null;
 
       const node = e.currentTarget as Konva.Group;
@@ -109,13 +119,15 @@ export function useBallDrag({ stageSize, nodesRegistryRef }: UseBallDragProps) {
       activePhaseId,
       activeSlideId,
       dispatchSlide,
+      isSelected,
+      selectionRingRef,
+      setIsDragging,
       stageSize.width,
       stageSize.height,
     ],
   );
 
   return {
-    isDragging,
     dragBoundFunc,
     handleDragStart,
     handleDragMove,

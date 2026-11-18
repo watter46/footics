@@ -7,7 +7,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Group } from 'react-konva';
 import {
   selectDomainActiveSlide,
@@ -53,7 +53,13 @@ function useBallObjectState({
   );
 
   const ballImage = useBallImage();
-  const drag = useBallDrag({ stageSize, nodesRegistryRef });
+  const selectionRingRef = useRef<Konva.Circle>(null);
+  const drag = useBallDrag({
+    stageSize,
+    nodesRegistryRef,
+    selectionRingRef,
+    isSelected,
+  });
 
   const radius = resolvedBall.radiusPx;
   const px = resolvedBall.positionPx.x;
@@ -139,12 +145,11 @@ function useBallObjectState({
   const isBallMoved = prevBall
     ? Math.hypot(domainBall.x - prevBall.x, domainBall.y - prevBall.y) >= 1.0
     : false;
-  const isBallDragging = drag.isDragging;
 
   return {
     domainBall,
     isSelected,
-    isBallDragging,
+    selectionRingRef,
     ballImage,
     drag,
     radius,
@@ -174,7 +179,7 @@ export const BallObject = React.memo(function BallObject(
   const {
     domainBall,
     isSelected,
-    isBallDragging,
+    selectionRingRef,
     ballImage,
     drag,
     radius,
@@ -189,10 +194,9 @@ export const BallObject = React.memo(function BallObject(
   return (
     <>
       {/* ── スライド間ゴーストボール & 追跡矢印 & ベジェハンドル ── */}
-      {!cleanRender && (isSelected || isBallDragging) && (
+      {!cleanRender && prevInfo.hasPrevBall && prevInfo.prevBall && (
         <BallGhostTrajectory
           isSelected={isSelected}
-          isDragging={isBallDragging}
           cleanRender={cleanRender}
           hasPrevBall={prevInfo.hasPrevBall}
           prevBall={prevInfo.prevBall}
@@ -223,7 +227,8 @@ export const BallObject = React.memo(function BallObject(
         <BallVisual
           radius={radius}
           ballImage={ballImage}
-          isSelected={!cleanRender && isSelected && !drag.isDragging}
+          isSelected={!cleanRender && isSelected}
+          selectionRingRef={selectionRingRef}
         />
       </Group>
     </>

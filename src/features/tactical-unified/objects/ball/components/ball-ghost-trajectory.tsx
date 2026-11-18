@@ -49,16 +49,13 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
   if (cleanRender) {
     return null;
   }
-  if (!isSelected && !isDragging) {
-    return null;
-  }
   if (!hasPrevBall || !prevBall) {
     return null;
   }
 
   return (
     <Group>
-      <Group ref={ghostGroupRef} visible={Boolean(isBallMoved)}>
+      <Group ref={ghostGroupRef} visible={Boolean(isSelected && isBallMoved)}>
         <BallGhost
           prevPxX={prevPxX}
           prevPxY={prevPxY}

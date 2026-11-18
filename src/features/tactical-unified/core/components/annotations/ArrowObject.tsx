@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import {
@@ -12,12 +12,9 @@ import {
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
-import {
-  type ArrowHandlePreviewDelta,
-  ArrowHandlesGroup,
-} from './arrow-handles-group';
+import { type ArrowHandleKind, ArrowHandlesGroup } from './arrow-handles-group';
 import { ArrowHeadNode } from './arrow-head-node';
-import { type ArrowBodyDragDelta, ArrowLineNode } from './arrow-line-node';
+import { ArrowLineNode } from './arrow-line-node';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
@@ -45,11 +42,9 @@ export const ArrowObject = React.memo(function ArrowObject({
   const arrowRef = useRef<Konva.Arrow | null>(null);
   const startDotRef = useRef<Konva.Circle | null>(null);
   const endDotRef = useRef<Konva.Circle | null>(null);
-  const [previewHandle, setPreviewHandle] =
-    useState<ArrowHandlePreviewDelta | null>(null);
-  const [bodyDragDelta, setBodyDragDelta] = useState<ArrowBodyDragDelta | null>(
-    null,
-  );
+  const startHandleRef = useRef<Konva.Circle | null>(null);
+  const endHandleRef = useRef<Konva.Circle | null>(null);
+  const controlHandleRef = useRef<Konva.Circle | null>(null);
 
   useEffect(() => {
     const registry = nodesRegistryRef?.current;
@@ -93,54 +88,102 @@ export const ArrowObject = React.memo(function ArrowObject({
     nodesRegistryRef,
   ]);
 
-  const sPxX =
-    previewHandle?.kind === 'start'
-      ? previewHandle.pxX
-      : resolvedArrow.startPointPx.x;
-  const sPxY =
-    previewHandle?.kind === 'start'
-      ? previewHandle.pxY
-      : resolvedArrow.startPointPx.y;
-  const ePxX =
-    previewHandle?.kind === 'end'
-      ? previewHandle.pxX
-      : resolvedArrow.endPointPx.x;
-  const ePxY =
-    previewHandle?.kind === 'end'
-      ? previewHandle.pxY
-      : resolvedArrow.endPointPx.y;
+  const sPxX = resolvedArrow.startPointPx.x;
+  const sPxY = resolvedArrow.startPointPx.y;
+  const ePxX = resolvedArrow.endPointPx.x;
+  const ePxY = resolvedArrow.endPointPx.y;
   const isWavy = arrow.arrowType === 'dribble';
 
-  let midHandlePxX = resolvedArrow.controlHandlePx?.x ?? (sPxX + ePxX) / 2;
-  let midHandlePxY = resolvedArrow.controlHandlePx?.y ?? (sPxY + ePxY) / 2;
-  let renderPoints: number[];
+  const midHandlePxX = resolvedArrow.controlHandlePx?.x ?? (sPxX + ePxX) / 2;
+  const midHandlePxY = resolvedArrow.controlHandlePx?.y ?? (sPxY + ePxY) / 2;
+  const renderPoints = [...resolvedArrow.flatPointsPx];
 
-  if (previewHandle === null) {
-    renderPoints = [...resolvedArrow.flatPointsPx];
-  } else if (isWavy) {
-    midHandlePxX = (sPxX + ePxX) / 2;
-    midHandlePxY = (sPxY + ePxY) / 2;
-    renderPoints = generateWavyLinePoints(sPxX, sPxY, ePxX, ePxY);
-  } else if (previewHandle.kind === 'control') {
-    midHandlePxX = previewHandle.pxX;
-    midHandlePxY = previewHandle.pxY;
-    const cpX = 2 * midHandlePxX - 0.5 * (sPxX + ePxX);
-    const cpY = 2 * midHandlePxY - 0.5 * (sPxY + ePxY);
-    renderPoints = subdivideQuadraticBezier(sPxX, sPxY, cpX, cpY, ePxX, ePxY);
-  } else if (resolvedArrow.controlHandlePx) {
-    const origS = resolvedArrow.startPointPx;
-    const origE = resolvedArrow.endPointPx;
-    const origM = resolvedArrow.controlHandlePx;
-    const cpX = 2 * origM.x - 0.5 * (origS.x + origE.x);
-    const cpY = 2 * origM.y - 0.5 * (origS.y + origE.y);
-    midHandlePxX = 0.25 * sPxX + 0.5 * cpX + 0.25 * ePxX;
-    midHandlePxY = 0.25 * sPxY + 0.5 * cpY + 0.25 * ePxY;
-    renderPoints = subdivideQuadraticBezier(sPxX, sPxY, cpX, cpY, ePxX, ePxY);
-  } else {
-    midHandlePxX = (sPxX + ePxX) / 2;
-    midHandlePxY = (sPxY + ePxY) / 2;
-    renderPoints = [sPxX, sPxY, ePxX, ePxY];
-  }
+  const handleHandleDragMove = useCallback(
+    (kind: ArrowHandleKind, pxX: number, pxY: number) => {
+      const sX =
+        kind === 'start'
+          ? pxX
+          : (startHandleRef.current?.x() ?? resolvedArrow.startPointPx.x);
+      const sY =
+        kind === 'start'
+          ? pxY
+          : (startHandleRef.current?.y() ?? resolvedArrow.startPointPx.y);
+      const eX =
+        kind === 'end'
+          ? pxX
+          : (endHandleRef.current?.x() ?? resolvedArrow.endPointPx.x);
+      const eY =
+        kind === 'end'
+          ? pxY
+          : (endHandleRef.current?.y() ?? resolvedArrow.endPointPx.y);
+
+      let nextMidX: number;
+      let nextMidY: number;
+      let nextPoints: number[];
+
+      if (isWavy) {
+        nextMidX = (sX + eX) / 2;
+        nextMidY = (sY + eY) / 2;
+        nextPoints = generateWavyLinePoints(sX, sY, eX, eY);
+      } else if (kind === 'control') {
+        nextMidX = pxX;
+        nextMidY = pxY;
+        const cpX = 2 * nextMidX - 0.5 * (sX + eX);
+        const cpY = 2 * nextMidY - 0.5 * (sY + eY);
+        nextPoints = subdivideQuadraticBezier(sX, sY, cpX, cpY, eX, eY);
+      } else if (resolvedArrow.controlHandlePx) {
+        const origS = resolvedArrow.startPointPx;
+        const origE = resolvedArrow.endPointPx;
+        const origM = resolvedArrow.controlHandlePx;
+        const cpX = 2 * origM.x - 0.5 * (origS.x + origE.x);
+        const cpY = 2 * origM.y - 0.5 * (origS.y + origE.y);
+        nextMidX = 0.25 * sX + 0.5 * cpX + 0.25 * eX;
+        nextMidY = 0.25 * sY + 0.5 * cpY + 0.25 * eY;
+        nextPoints = subdivideQuadraticBezier(sX, sY, cpX, cpY, eX, eY);
+      } else {
+        nextMidX = (sX + eX) / 2;
+        nextMidY = (sY + eY) / 2;
+        nextPoints = [sX, sY, eX, eY];
+      }
+
+      arrowRef.current?.points(nextPoints);
+      startDotRef.current?.position({ x: sX, y: sY });
+      endDotRef.current?.position({ x: eX, y: eY });
+      if (kind !== 'control') {
+        controlHandleRef.current?.position({ x: nextMidX, y: nextMidY });
+      }
+      arrowRef.current?.getLayer()?.batchDraw();
+    },
+    [isWavy, resolvedArrow],
+  );
+
+  const handleHandleDragEnd = useCallback(() => {
+    arrowRef.current?.getLayer()?.batchDraw();
+  }, []);
+
+  const handleBodyDragMove = useCallback(
+    (dxPx: number, dyPx: number) => {
+      const baseS = resolvedArrow.startPointPx;
+      const baseE = resolvedArrow.endPointPx;
+      const baseM = resolvedArrow.controlHandlePx ?? {
+        x: (baseS.x + baseE.x) / 2,
+        y: (baseS.y + baseE.y) / 2,
+      };
+      startDotRef.current?.position({ x: baseS.x + dxPx, y: baseS.y + dyPx });
+      endDotRef.current?.position({ x: baseE.x + dxPx, y: baseE.y + dyPx });
+      startHandleRef.current?.position({
+        x: baseS.x + dxPx,
+        y: baseS.y + dyPx,
+      });
+      endHandleRef.current?.position({ x: baseE.x + dxPx, y: baseE.y + dyPx });
+      controlHandleRef.current?.position({
+        x: baseM.x + dxPx,
+        y: baseM.y + dyPx,
+      });
+      arrowRef.current?.getLayer()?.batchDraw();
+    },
+    [resolvedArrow],
+  );
 
   const p0 = arrow.points[0] ?? toScreenNormPoint(0, 0);
   const p1 = arrow.points[1] ?? toScreenNormPoint(0, 0);
@@ -149,28 +192,20 @@ export const ArrowObject = React.memo(function ArrowObject({
   );
   const isDotEnd = resolvedArrow.endMarker === 'dot';
 
-  const dx = bodyDragDelta?.dxPx ?? 0;
-  const dy = bodyDragDelta?.dyPx ?? 0;
-  const displaySPxX = sPxX + dx;
-  const displaySPxY = sPxY + dy;
-  const displayEPxX = ePxX + dx;
-  const displayEPxY = ePxY + dy;
-  const displayMidPxX = midHandlePxX + dx;
-  const displayMidPxY = midHandlePxY + dy;
-
   const commonProps = {
     arrow,
     stageSize,
     isSelected,
     isInteractive,
     isAttachedToPlayer,
-    sPxX: displaySPxX,
-    sPxY: displaySPxY,
-    ePxX: displayEPxX,
-    ePxY: displayEPxY,
+    sPxX,
+    sPxY,
+    ePxX,
+    ePxY,
     onSelect,
     updateArrow,
-    onPreviewMove: setPreviewHandle,
+    onHandleDragMove: handleHandleDragMove,
+    onHandleDragEnd: handleHandleDragEnd,
   };
 
   return (
@@ -188,16 +223,16 @@ export const ArrowObject = React.memo(function ArrowObject({
         arrowRef={arrowRef}
         onSelect={onSelect}
         updateArrow={updateArrow}
-        onBodyDragMove={setBodyDragDelta}
+        onBodyDragMove={handleBodyDragMove}
       />
       <ArrowHeadNode
         isDotEnd={isDotEnd}
         startDotRef={startDotRef}
         endDotRef={endDotRef}
-        sPxX={displaySPxX}
-        sPxY={displaySPxY}
-        ePxX={displayEPxX}
-        ePxY={displayEPxY}
+        sPxX={sPxX}
+        sPxY={sPxY}
+        ePxX={ePxX}
+        ePxY={ePxY}
         color={resolvedArrow.color}
         strokeWidth={resolvedArrow.strokeWidthPx}
         dotRadius={resolvedArrow.dotRadiusPx}
@@ -207,8 +242,11 @@ export const ArrowObject = React.memo(function ArrowObject({
         p0={p0}
         p1={p1}
         isWavy={isWavy}
-        midHandlePxX={displayMidPxX}
-        midHandlePxY={displayMidPxY}
+        midHandlePxX={midHandlePxX}
+        midHandlePxY={midHandlePxY}
+        startHandleRef={startHandleRef}
+        endHandleRef={endHandleRef}
+        controlHandleRef={controlHandleRef}
       />
     </Group>
   );

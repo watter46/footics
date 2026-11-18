@@ -8,11 +8,6 @@ import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
-export interface ArrowBodyDragDelta {
-  readonly dxPx: number;
-  readonly dyPx: number;
-}
-
 export interface ArrowLineNodeProps {
   arrow: DomainArrowAnnotation;
   resolvedArrow: ResolvedArrowPrimitive;
@@ -26,7 +21,7 @@ export interface ArrowLineNodeProps {
   arrowRef: React.RefObject<Konva.Arrow | null>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<DomainArrowAnnotation>) => void;
-  onBodyDragMove?: (delta: ArrowBodyDragDelta | null) => void;
+  onBodyDragMove?: (dxPx: number, dyPx: number) => void;
 }
 
 export const ArrowLineNode = React.memo(function ArrowLineNode({
@@ -98,7 +93,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         if (isAttachedToPlayer) return;
         e.cancelBubble = true;
         const node = e.target;
-        onBodyDragMove?.({ dxPx: node.x(), dyPx: node.y() });
+        onBodyDragMove?.(node.x(), node.y());
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
@@ -108,7 +103,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         const dxNorm = (dx / width) * 100;
         const dyNorm = (dy / height) * 100;
         node.position({ x: 0, y: 0 });
-        onBodyDragMove?.(null);
+        onBodyDragMove?.(0, 0);
 
         const stage = node.getStage();
         if (stage) stage.container().style.cursor = 'default';

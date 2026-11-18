@@ -1,6 +1,6 @@
 # TASK-206c: 矢印・ボール・ゾーン・ステージの残存ドラッグ再レンダリング完全排除
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): eliminate remaining React re-renders and duplicate handlers during arrow, ball, and zone drag`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3 (parallel)

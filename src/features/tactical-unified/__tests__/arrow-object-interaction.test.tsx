@@ -131,18 +131,21 @@ describe('ArrowObject interaction', () => {
     const stageRef = React.createRef<Konva.Stage>();
     const arrow = makeArrow();
     const resolvedArrow = makeResolvedCurvedArrow();
+    const onRender = vi.fn();
 
     render(
       <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
         <Layer>
-          <ArrowObject
-            arrow={arrow}
-            stageSize={STAGE_SIZE}
-            isSelected={true}
-            onSelect={vi.fn()}
-            updateArrow={vi.fn()}
-            resolvedArrow={resolvedArrow}
-          />
+          <React.Profiler id="arrow-control-drag" onRender={onRender}>
+            <ArrowObject
+              arrow={arrow}
+              stageSize={STAGE_SIZE}
+              isSelected={true}
+              onSelect={vi.fn()}
+              updateArrow={vi.fn()}
+              resolvedArrow={resolvedArrow}
+            />
+          </React.Profiler>
         </Layer>
       </Stage>,
     );
@@ -152,12 +155,14 @@ describe('ArrowObject interaction', () => {
     const controlCircle = circles[2];
     const arrowNode = stage?.findOne('Arrow') as Konva.Arrow | undefined;
     expect(arrowNode).toBeDefined();
+    const renderCountBeforeDrag = onRender.mock.calls.length;
 
     act(() => {
       controlCircle.position({ x: 300, y: 120 });
       controlCircle.fire('dragmove', { target: controlCircle });
     });
 
+    expect(onRender.mock.calls.length).toBe(renderCountBeforeDrag);
     const pts = arrowNode?.points() ?? [];
     expect(pts.length).toBeGreaterThan(6);
     const midIdx = Math.floor(pts.length / 4) * 2;
@@ -174,18 +179,21 @@ describe('ArrowObject interaction', () => {
       controlPoint: undefined,
     });
     const resolvedArrow = makeResolvedWavyArrow();
+    const onRender = vi.fn();
 
     render(
       <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
         <Layer>
-          <ArrowObject
-            arrow={arrow}
-            stageSize={STAGE_SIZE}
-            isSelected={true}
-            onSelect={vi.fn()}
-            updateArrow={vi.fn()}
-            resolvedArrow={resolvedArrow}
-          />
+          <React.Profiler id="arrow-wavy-drag" onRender={onRender}>
+            <ArrowObject
+              arrow={arrow}
+              stageSize={STAGE_SIZE}
+              isSelected={true}
+              onSelect={vi.fn()}
+              updateArrow={vi.fn()}
+              resolvedArrow={resolvedArrow}
+            />
+          </React.Profiler>
         </Layer>
       </Stage>,
     );
@@ -195,12 +203,14 @@ describe('ArrowObject interaction', () => {
     const endCircle = circles[1];
     const arrowNode = stage?.findOne('Arrow') as Konva.Arrow | undefined;
     expect(arrowNode).toBeDefined();
+    const renderCountBeforeDrag = onRender.mock.calls.length;
 
     act(() => {
       endCircle.position({ x: 520, y: 300 });
       endCircle.fire('dragmove', { target: endCircle });
     });
 
+    expect(onRender.mock.calls.length).toBe(renderCountBeforeDrag);
     const pts = arrowNode?.points() ?? [];
     expect(pts.length).toBeGreaterThan(4);
   });
@@ -209,18 +219,21 @@ describe('ArrowObject interaction', () => {
     const stageRef = React.createRef<Konva.Stage>();
     const arrow = makeArrow();
     const resolvedArrow = makeResolvedCurvedArrow();
+    const onRender = vi.fn();
 
     render(
       <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
         <Layer>
-          <ArrowObject
-            arrow={arrow}
-            stageSize={STAGE_SIZE}
-            isSelected={true}
-            onSelect={vi.fn()}
-            updateArrow={vi.fn()}
-            resolvedArrow={resolvedArrow}
-          />
+          <React.Profiler id="arrow-body-drag" onRender={onRender}>
+            <ArrowObject
+              arrow={arrow}
+              stageSize={STAGE_SIZE}
+              isSelected={true}
+              onSelect={vi.fn()}
+              updateArrow={vi.fn()}
+              resolvedArrow={resolvedArrow}
+            />
+          </React.Profiler>
         </Layer>
       </Stage>,
     );
@@ -232,11 +245,14 @@ describe('ArrowObject interaction', () => {
     const endCircle = circles[1];
     const controlCircle = circles[2];
     expect(arrowNode).toBeDefined();
+    const renderCountBeforeDrag = onRender.mock.calls.length;
 
     act(() => {
       arrowNode?.position({ x: 25, y: -15 });
       arrowNode?.fire('dragmove', { target: arrowNode });
     });
+
+    expect(onRender.mock.calls.length).toBe(renderCountBeforeDrag);
 
     expect(startCircle.x()).toBeCloseTo(resolvedArrow.startPointPx.x + 25, 5);
     expect(startCircle.y()).toBeCloseTo(resolvedArrow.startPointPx.y - 15, 5);

@@ -1,3 +1,4 @@
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
@@ -6,7 +7,7 @@ import {
   toScreenNormPoint,
 } from '@/lib/types/tactical/branded';
 import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
-import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
+import type { ArrowHandleKind } from './arrow-handles-group';
 import { pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -20,9 +21,11 @@ export interface ArrowStartHandleProps {
   sPxX: number;
   sPxY: number;
   p1: ScreenNormPoint;
+  handleRef?: React.Ref<Konva.Circle>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (id: string, p: Partial<DomainArrowAnnotation>) => void;
-  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
+  onHandleDragMove?: (kind: ArrowHandleKind, pxX: number, pxY: number) => void;
+  onHandleDragEnd?: () => void;
 }
 
 const handleStyle = {
@@ -52,20 +55,23 @@ export const ArrowStartHandle = React.memo(function ArrowStartHandle({
   sPxX,
   sPxY,
   p1,
+  handleRef,
   onSelect,
   updateArrow,
-  onPreviewMove,
+  onHandleDragMove,
+  onHandleDragEnd,
 }: ArrowStartHandleProps) {
   const { width, height } = stageSize;
 
   const onDragMove = (e: KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
     const pos = e.target.position();
-    onPreviewMove?.({ kind: 'start', pxX: pos.x, pxY: pos.y });
+    onHandleDragMove?.('start', pos.x, pos.y);
   };
 
   return (
     <Circle
+      ref={handleRef}
       x={sPxX}
       y={sPxY}
       {...handleStyle}
@@ -86,7 +92,7 @@ export const ArrowStartHandle = React.memo(function ArrowStartHandle({
         e.cancelBubble = true;
         const pos = e.target.position();
         setCursor(e, 'default');
-        onPreviewMove?.(null);
+        onHandleDragEnd?.();
         updateArrow(arrow.id, {
           points: [
             toScreenNormPoint(

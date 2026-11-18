@@ -1,5 +1,6 @@
 'use client';
 
+import type Konva from 'konva';
 import React from 'react';
 import { Circle, Image as KonvaImage } from 'react-konva';
 
@@ -7,12 +8,14 @@ interface BallVisualProps {
   radius: number;
   ballImage: HTMLImageElement | null;
   isSelected: boolean;
+  selectionRingRef?: React.Ref<Konva.Circle>;
 }
 
 export const BallVisual = React.memo(function BallVisual({
   radius,
   ballImage,
   isSelected,
+  selectionRingRef,
 }: BallVisualProps) {
   return (
     <>
@@ -25,19 +28,19 @@ export const BallVisual = React.memo(function BallVisual({
       />
 
       {/* 選択中のハイライトリング */}
-      {isSelected && (
-        <Circle
-          radius={radius + 3.5}
-          stroke="#38bdf8"
-          strokeWidth={1.5}
-          dash={[3, 2]}
-          shadowColor="#38bdf8"
-          shadowBlur={4}
-          shadowOpacity={0.6}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
+      <Circle
+        ref={selectionRingRef}
+        visible={isSelected}
+        radius={radius + 3.5}
+        stroke="#38bdf8"
+        strokeWidth={1.5}
+        dash={[3, 2]}
+        shadowColor="#38bdf8"
+        shadowBlur={4}
+        shadowOpacity={0.6}
+        listening={false}
+        perfectDrawEnabled={false}
+      />
 
       {/* リアルなサッカーボール画像 (SVG) */}
       {ballImage ? (

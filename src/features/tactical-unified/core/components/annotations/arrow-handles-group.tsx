@@ -1,3 +1,4 @@
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import type { ScreenNormPoint } from '@/lib/types/tactical/branded';
@@ -6,11 +7,7 @@ import { ArrowControlPoints } from './arrow-control-points';
 import { ArrowEndHandle } from './arrow-end-handle';
 import { ArrowStartHandle } from './arrow-start-handle';
 
-export interface ArrowHandlePreviewDelta {
-  readonly kind: 'start' | 'end' | 'control';
-  readonly pxX: number;
-  readonly pxY: number;
-}
+export type ArrowHandleKind = 'start' | 'end' | 'control';
 
 export interface ArrowHandleCommonProps {
   arrow: DomainArrowAnnotation;
@@ -24,7 +21,8 @@ export interface ArrowHandleCommonProps {
   ePxY: number;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
   updateArrow: (id: string, p: Partial<DomainArrowAnnotation>) => void;
-  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
+  onHandleDragMove?: (kind: ArrowHandleKind, pxX: number, pxY: number) => void;
+  onHandleDragEnd?: () => void;
 }
 
 export interface ArrowHandlesGroupProps {
@@ -34,6 +32,9 @@ export interface ArrowHandlesGroupProps {
   isWavy: boolean;
   midHandlePxX: number;
   midHandlePxY: number;
+  startHandleRef?: React.Ref<Konva.Circle>;
+  endHandleRef?: React.Ref<Konva.Circle>;
+  controlHandleRef?: React.Ref<Konva.Circle>;
 }
 
 export const ArrowHandlesGroup = React.memo(function ArrowHandlesGroup({
@@ -43,11 +44,14 @@ export const ArrowHandlesGroup = React.memo(function ArrowHandlesGroup({
   isWavy,
   midHandlePxX,
   midHandlePxY,
+  startHandleRef,
+  endHandleRef,
+  controlHandleRef,
 }: ArrowHandlesGroupProps) {
   return (
     <>
-      <ArrowStartHandle {...commonProps} p1={p1} />
-      <ArrowEndHandle {...commonProps} p0={p0} />
+      <ArrowStartHandle {...commonProps} p1={p1} handleRef={startHandleRef} />
+      <ArrowEndHandle {...commonProps} p0={p0} handleRef={endHandleRef} />
       <ArrowControlPoints
         {...commonProps}
         p0={p0}
@@ -55,6 +59,7 @@ export const ArrowHandlesGroup = React.memo(function ArrowHandlesGroup({
         isWavy={isWavy}
         midHandlePxX={midHandlePxX}
         midHandlePxY={midHandlePxY}
+        handleRef={controlHandleRef}
       />
     </>
   );
