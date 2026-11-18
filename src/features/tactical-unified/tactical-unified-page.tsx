@@ -12,7 +12,7 @@
 
 import { DndContext, type DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import dynamic from 'next/dynamic';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import { handleTacticalDndEnd } from '@/features/tactical-unified/core/utils/dnd-coordinates';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
@@ -155,6 +155,70 @@ function TacticalUnifiedPageContent({
     });
   };
 
+  const handleToggleFocusMode = useCallback(() => {
+    setIsFocusMode((prev) => !prev);
+  }, []);
+
+  const handleSelectScene = useCallback(
+    (phaseId: string, slideId: string) => {
+      setActivePhaseId(phaseId);
+      setActiveSlideId(slideId);
+    },
+    [setActivePhaseId, setActiveSlideId],
+  );
+
+  const handleAddPhase = useCallback(() => {
+    const newPhaseId = crypto.randomUUID();
+    const newSlideId = crypto.randomUUID();
+    dispatch({
+      type: 'ADD_PHASE',
+      name: `Phase ${phases.length + 1}`,
+      newPhaseId,
+      newSlideId,
+    });
+    setActivePhaseId(newPhaseId);
+    setActiveSlideId(newSlideId);
+  }, [dispatch, phases.length, setActivePhaseId, setActiveSlideId]);
+
+  const handleDeletePhase = useCallback(
+    (phaseId: string) => {
+      const remaining = phases.filter((p) => p.id !== phaseId);
+      dispatch({ type: 'DELETE_PHASE', phaseId });
+      if (phaseId === activePhaseId && remaining.length > 0) {
+        const fallback = remaining[0];
+        setActivePhaseId(fallback.id);
+        setActiveSlideId(fallback.slides[0]?.id ?? '');
+      }
+    },
+    [activePhaseId, dispatch, phases, setActivePhaseId, setActiveSlideId],
+  );
+
+  const handleRenamePhase = useCallback(
+    (phaseId: string, name: string) => {
+      dispatch({
+        type: 'UPDATE_PHASE',
+        phaseId,
+        patch: { name },
+      });
+    },
+    [dispatch],
+  );
+
+  const handleAddSlideToPhase = useCallback(
+    (phaseId: string) => {
+      const newSlideId = crypto.randomUUID();
+      dispatch({
+        type: 'ADD_SLIDE',
+        phaseId,
+        mode: 'full',
+        newSlideId,
+      });
+      setActivePhaseId(phaseId);
+      setActiveSlideId(newSlideId);
+    },
+    [dispatch, setActivePhaseId, setActiveSlideId],
+  );
+
   return (
     <DndContext onDragEnd={handleDndEnd} collisionDetection={pointerWithin}>
       <div
@@ -168,7 +232,7 @@ function TacticalUnifiedPageContent({
         <TopBar
           canvasRef={canvasRef}
           isFocusMode={isFocusMode}
-          onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
+          onToggleFocusMode={handleToggleFocusMode}
         />
 
         {/* Main Area (3-Pane Workspace or Director View) */}
@@ -180,49 +244,11 @@ function TacticalUnifiedPageContent({
               activePhaseId={activePhaseId}
               activeSlideId={activeSlideId}
               pitchAppearance={pitchAppearance}
-              onSelectScene={(phaseId, slideId) => {
-                setActivePhaseId(phaseId);
-                setActiveSlideId(slideId);
-              }}
-              onAddPhase={() => {
-                const newPhaseId = crypto.randomUUID();
-                const newSlideId = crypto.randomUUID();
-                dispatch({
-                  type: 'ADD_PHASE',
-                  name: `Phase ${phases.length + 1}`,
-                  newPhaseId,
-                  newSlideId,
-                });
-                setActivePhaseId(newPhaseId);
-                setActiveSlideId(newSlideId);
-              }}
-              onDeletePhase={(phaseId) => {
-                const remaining = phases.filter((p) => p.id !== phaseId);
-                dispatch({ type: 'DELETE_PHASE', phaseId });
-                if (phaseId === activePhaseId && remaining.length > 0) {
-                  const fallback = remaining[0];
-                  setActivePhaseId(fallback.id);
-                  setActiveSlideId(fallback.slides[0]?.id ?? '');
-                }
-              }}
-              onRenamePhase={(phaseId, name) => {
-                dispatch({
-                  type: 'UPDATE_PHASE',
-                  phaseId,
-                  patch: { name },
-                });
-              }}
-              onAddSlideToPhase={(phaseId) => {
-                const newSlideId = crypto.randomUUID();
-                dispatch({
-                  type: 'ADD_SLIDE',
-                  phaseId,
-                  mode: 'full',
-                  newSlideId,
-                });
-                setActivePhaseId(phaseId);
-                setActiveSlideId(newSlideId);
-              }}
+              onSelectScene={handleSelectScene}
+              onAddPhase={handleAddPhase}
+              onDeletePhase={handleDeletePhase}
+              onRenamePhase={handleRenamePhase}
+              onAddSlideToPhase={handleAddSlideToPhase}
             />
           )}
 

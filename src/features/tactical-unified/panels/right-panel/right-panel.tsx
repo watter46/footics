@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
+import { memo, useCallback } from 'react';
 import { IconButton } from '@/components/ui/icon-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import type { RightPanelTab } from '@/features/tactical-unified/stores/session-ui-state';
@@ -48,7 +49,7 @@ const DIRECTOR_TABS = [
   { id: 'screen' as const, label: 'Screen', icon: Monitor },
 ];
 
-export function RightPanel() {
+export const RightPanel = memo(function RightPanel() {
   const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const rightPanelTab = useSessionStore((s) => s.panels.rightPanelTab);
   const setRightPanelTab = useSessionStore((s) => s.setRightPanelTab);
@@ -59,12 +60,15 @@ export function RightPanel() {
     (s) => s.project.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
   );
   const dispatch = useDocumentStore((s) => s.dispatch);
-  const updatePitchAppearance = (patch: Partial<PitchAppearanceConfig>) => {
-    dispatch({
-      type: 'UPDATE_PROJECT_META',
-      patch: { pitchAppearance: { ...pitchAppearance, ...patch } },
-    });
-  };
+  const updatePitchAppearance = useCallback(
+    (patch: Partial<PitchAppearanceConfig>) => {
+      dispatch({
+        type: 'UPDATE_PROJECT_META',
+        patch: { pitchAppearance: { ...pitchAppearance, ...patch } },
+      });
+    },
+    [dispatch, pitchAppearance],
+  );
 
   const tabs = workspaceMode === 'director' ? DIRECTOR_TABS : BOARD_TABS;
 
@@ -77,7 +81,7 @@ export function RightPanel() {
 
   return (
     <aside
-      className={`h-full bg-[#121214] border-l border-white/[0.08] flex flex-col shrink-0 z-30 overflow-hidden transition-[width] duration-200 ease-in-out ${
+      className={`h-full bg-[#121214] border-l border-white/[0.08] flex flex-col shrink-0 z-30 overflow-hidden ${
         isRightPanelOpen ? 'w-[400px] min-w-[400px]' : 'w-12 min-w-[48px]'
       }`}
     >
@@ -163,4 +167,4 @@ export function RightPanel() {
       )}
     </aside>
   );
-}
+});

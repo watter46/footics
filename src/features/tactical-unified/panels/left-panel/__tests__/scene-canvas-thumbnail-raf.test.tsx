@@ -105,4 +105,80 @@ describe('SceneCanvasThumbnail rAF scheduling', () => {
     unmount();
     expect(cancelSpy).toHaveBeenCalledWith(2);
   });
+
+  it('batches multiple thumbnails to at most 2 renders per animation frame', () => {
+    const rafCallbacks = new Map<number, FrameRequestCallback>();
+    let nextRafId = 1;
+
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb) => {
+        const id = nextRafId++;
+        rafCallbacks.set(id, cb);
+        return id;
+      });
+
+    const saveSpies: ReturnType<typeof vi.fn>[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => {
+        const saveSpy = vi.fn();
+        saveSpies.push(saveSpy);
+        return new Proxy(
+          { save: saveSpy },
+          {
+            get(target, prop) {
+              if (prop === 'save') return target.save;
+              return vi.fn();
+            },
+          },
+        ) as unknown as CanvasRenderingContext2D;
+      },
+    );
+
+    const { container, unmount } = render(
+      <>
+        <SceneCanvasThumbnail slide={createMinimalSlide('s1')} />
+        <SceneCanvasThumbnail slide={createMinimalSlide('s2')} />
+        <SceneCanvasThumbnail slide={createMinimalSlide('s3')} />
+        <SceneCanvasThumbnail slide={createMinimalSlide('s4')} />
+      </>,
+    );
+
+    const canvases = Array.from(container.querySelectorAll('canvas'));
+    expect(canvases).toHaveLength(4);
+    expect(saveSpies).toHaveLength(4);
+
+    // 初回は1つの rAF のみスケジュールされる
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    expect(rafCallbacks.size).toBe(1);
+
+    // 1回目の rAF 発火で先頭2件のみ描画され、残り2件用に次の rAF が予約される
+    act(() => {
+      const cb = rafCallbacks.get(1);
+      rafCallbacks.delete(1);
+      cb?.(16);
+    });
+
+    const renderedAfterFirstFrame = saveSpies
+      .slice(0, 4)
+      .filter((spy) => spy.mock.calls.length > 0).length;
+    expect(renderedAfterFirstFrame).toBe(2);
+    expect(rafSpy).toHaveBeenCalledTimes(2);
+    expect(rafCallbacks.size).toBe(1);
+
+    // 2回目の rAF 発火で残り2件が描画される
+    act(() => {
+      const cb = rafCallbacks.get(2);
+      rafCallbacks.delete(2);
+      cb?.(32);
+    });
+
+    const renderedAfterSecondFrame = saveSpies
+      .slice(0, 4)
+      .filter((spy) => spy.mock.calls.length > 0).length;
+    expect(renderedAfterSecondFrame).toBe(4);
+    expect(rafCallbacks.size).toBe(0);
+
+    unmount();
+  });
 });

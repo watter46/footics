@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, FolderPlus, Layers, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import { PhaseSection } from './phase-section';
@@ -18,7 +18,7 @@ export interface LeftPanelProps {
   onAddSlideToPhase?: (phaseId: string) => void;
 }
 
-export function LeftPanel({
+export const LeftPanel = memo(function LeftPanel({
   phases = [],
   activePhaseId = '',
   activeSlideId = '',
@@ -37,37 +37,52 @@ export function LeftPanel({
     null,
   );
 
-  const handleToggleExpand = (phaseId: string) => {
-    setExpandedMap((prev) => {
-      const current = prev[phaseId] ?? phaseId === activePhaseId;
-      return { ...prev, [phaseId]: !current };
-    });
-  };
+  const handleToggleExpand = useCallback(
+    (phaseId: string) => {
+      setExpandedMap((prev) => {
+        const current = prev[phaseId] ?? phaseId === activePhaseId;
+        return { ...prev, [phaseId]: !current };
+      });
+    },
+    [activePhaseId],
+  );
 
-  const handleSelectScene = (phaseId: string, slideId: string) => {
-    onSelectScene?.(phaseId, slideId);
-  };
+  const handleSelectScene = useCallback(
+    (phaseId: string, slideId: string) => {
+      onSelectScene?.(phaseId, slideId);
+    },
+    [onSelectScene],
+  );
 
-  const handleAddPhase = () => {
+  const handleAddPhase = useCallback(() => {
     if (onAddPhase) {
       onAddPhase();
     }
-  };
+  }, [onAddPhase]);
 
-  const handleRenamePhase = (phaseId: string, name: string) => {
-    if (onRenamePhase) {
-      onRenamePhase(phaseId, name);
-    }
-  };
+  const handleRenamePhase = useCallback(
+    (phaseId: string, name: string) => {
+      if (onRenamePhase) {
+        onRenamePhase(phaseId, name);
+      }
+    },
+    [onRenamePhase],
+  );
 
-  const handleAddSlideToPhase = (phaseId: string) => {
-    onAddSlideToPhase?.(phaseId);
-  };
+  const handleAddSlideToPhase = useCallback(
+    (phaseId: string) => {
+      onAddSlideToPhase?.(phaseId);
+    },
+    [onAddSlideToPhase],
+  );
 
-  const handleDeleteRequest = (phaseId: string) => {
-    if (phases.length <= 1) return;
-    setDeleteCandidateId(phaseId);
-  };
+  const handleDeleteRequest = useCallback(
+    (phaseId: string) => {
+      if (phases.length <= 1) return;
+      setDeleteCandidateId(phaseId);
+    },
+    [phases.length],
+  );
 
   const handleConfirmDelete = () => {
     if (!deleteCandidateId) return;
@@ -198,4 +213,4 @@ export function LeftPanel({
       )}
     </aside>
   );
-}
+});

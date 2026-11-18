@@ -26,6 +26,53 @@ export interface SceneCanvasThumbnailProps {
   className?: string;
 }
 
+const MAX_THUMBNAILS_PER_FRAME = 2;
+
+interface ThumbnailRenderTask {
+  run: () => void;
+  cancelled: boolean;
+}
+
+let thumbnailQueue: ThumbnailRenderTask[] = [];
+let scheduledRafId: number | null = null;
+
+function flushThumbnailQueue(): void {
+  scheduledRafId = null;
+  let processed = 0;
+
+  while (thumbnailQueue.length > 0 && processed < MAX_THUMBNAILS_PER_FRAME) {
+    const task = thumbnailQueue.shift();
+    if (!task || task.cancelled) continue;
+    task.run();
+    processed += 1;
+  }
+
+  if (thumbnailQueue.length > 0) {
+    scheduledRafId = requestAnimationFrame(flushThumbnailQueue);
+  }
+}
+
+function enqueueThumbnailRender(run: () => void): () => void {
+  const task: ThumbnailRenderTask = { run, cancelled: false };
+  thumbnailQueue.push(task);
+
+  if (scheduledRafId === null) {
+    scheduledRafId = requestAnimationFrame(flushThumbnailQueue);
+  }
+  const boundRafId = scheduledRafId;
+
+  return () => {
+    task.cancelled = true;
+    thumbnailQueue = thumbnailQueue.filter((item) => item !== task);
+    if (thumbnailQueue.length === 0 && scheduledRafId !== null) {
+      cancelAnimationFrame(scheduledRafId);
+      scheduledRafId = null;
+    } else if (thumbnailQueue.length === 0) {
+      cancelAnimationFrame(boundRafId);
+    }
+  };
+}
+
 function calculateDimensions(
   width = 120,
   height?: number,
@@ -84,7 +131,7 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rafId = requestAnimationFrame(() => {
+    const cancelQueuedRender = enqueueThumbnailRender(() => {
       ctx.save();
       ctx.scale(dpr, dpr);
       renderTacticalPhaseFrameToCanvas({
@@ -100,7 +147,7 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
     });
 
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelQueuedRender();
     };
   }, [phase, dims.width, dims.height, pitchAppearance]);
 

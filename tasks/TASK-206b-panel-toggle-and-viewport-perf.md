@@ -1,6 +1,6 @@
 # TASK-206b: 左右パネル開閉遅延とリサイズ連鎖負荷の解消
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): eliminate panel toggle lag by removing width transition and coalescing resize/cache updates`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3, Phase 4 (parallel)

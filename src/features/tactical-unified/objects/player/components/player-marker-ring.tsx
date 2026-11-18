@@ -26,36 +26,51 @@ export function PlayerMarkerRing({
   shapeRef,
 }: PlayerMarkerRingProps) {
   const visualGroupRef = useRef<Konva.Group>(null);
+  const cacheRadius = Math.round(radius);
 
   useEffect(() => {
     const node = visualGroupRef.current;
     if (!node || typeof node.cache !== 'function') return;
 
-    const pad = 24;
-    const maxR = radius * 1.15 + pad;
-    const pixelRatio =
-      typeof window !== 'undefined'
-        ? Math.min(window.devicePixelRatio || 1, 2)
-        : 1;
+    const applyCache = () => {
+      const pad = 24;
+      const maxR = cacheRadius * 1.15 + pad;
+      const pixelRatio =
+        typeof window !== 'undefined'
+          ? Math.min(window.devicePixelRatio || 1, 2)
+          : 1;
 
-    try {
-      node.cache({
-        x: -maxR,
-        y: -maxR,
-        width: maxR * 2,
-        height: maxR * 2,
-        pixelRatio,
-      });
-    } catch {
-      // Canvas 未実装のテスト環境でのクラッシュ防止
+      try {
+        node.cache({
+          x: -maxR,
+          y: -maxR,
+          width: maxR * 2,
+          height: maxR * 2,
+          pixelRatio,
+        });
+        node.getLayer()?.batchDraw();
+      } catch {
+        // Canvas 未実装のテスト環境でのクラッシュ防止
+      }
+    };
+
+    const rafId =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame(applyCache)
+        : null;
+    if (rafId === null) {
+      applyCache();
     }
 
     return () => {
+      if (rafId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(rafId);
+      }
       if (typeof node.clearCache === 'function') {
         node.clearCache();
       }
     };
-  }, [player.style.color, radius, isSelected]);
+  }, [player.style.color, cacheRadius, isSelected]);
 
   return (
     <Group ref={shapeRef}>

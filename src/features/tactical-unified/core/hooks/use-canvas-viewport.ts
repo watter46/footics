@@ -26,26 +26,55 @@ export function useCanvasViewport({
     width: number;
     height: number;
   }>({ width: 0, height: 0 });
+  const hasInitializedSizeRef = useRef(false);
+  const pendingSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
+    const applySize = (nextWidth: number, nextHeight: number) => {
+      setContainerSize((prev) => {
+        if (prev.width === nextWidth && prev.height === nextHeight) {
+          return prev;
+        }
+        return { width: nextWidth, height: nextHeight };
+      });
+    };
+
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) {
-        const nextWidth = Math.floor(entry.contentRect.width);
-        const nextHeight = Math.floor(entry.contentRect.height);
-        setContainerSize((prev) => {
-          if (prev.width === nextWidth && prev.height === nextHeight) {
-            return prev;
-          }
-          return { width: nextWidth, height: nextHeight };
-        });
+      if (!entry) return;
+      const nextWidth = Math.floor(entry.contentRect.width);
+      const nextHeight = Math.floor(entry.contentRect.height);
+
+      if (!hasInitializedSizeRef.current && nextWidth > 0 && nextHeight > 0) {
+        hasInitializedSizeRef.current = true;
+        applySize(nextWidth, nextHeight);
+        return;
       }
+
+      pendingSizeRef.current = { width: nextWidth, height: nextHeight };
+      if (rafIdRef.current !== null) return;
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        const next = pendingSizeRef.current;
+        pendingSizeRef.current = null;
+        if (!next) return;
+        applySize(next.width, next.height);
+      });
     });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      pendingSizeRef.current = null;
+    };
   }, []);
 
   const effectiveAspect = imageAspect ?? 16 / 9;

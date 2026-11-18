@@ -43,32 +43,47 @@ export function PlayerFocusSpotlight({
   const glowThickness = Math.max(4, Math.min(12, (focus.radius ?? 3) * 1.7));
   const centerRadius = radius + glowThickness * 0.45;
   const outerRadius = radius + glowThickness;
+  const cacheRadius = Math.round(outerRadius);
 
   useEffect(() => {
     if (!focus.enabled || isRing) return;
     const node = visualGroupRef.current;
     if (!node || typeof node.cache !== 'function') return;
 
-    const pad = 24;
-    const maxR = outerRadius + pad;
-    const pixelRatio =
-      typeof window !== 'undefined'
-        ? Math.min(window.devicePixelRatio || 1, 2)
-        : 1;
+    const applyCache = () => {
+      const pad = 24;
+      const maxR = cacheRadius + pad;
+      const pixelRatio =
+        typeof window !== 'undefined'
+          ? Math.min(window.devicePixelRatio || 1, 2)
+          : 1;
 
-    try {
-      node.cache({
-        x: -maxR,
-        y: -maxR,
-        width: maxR * 2,
-        height: maxR * 2,
-        pixelRatio,
-      });
-    } catch {
-      // Canvas 未実装のテスト環境でのクラッシュ防止
+      try {
+        node.cache({
+          x: -maxR,
+          y: -maxR,
+          width: maxR * 2,
+          height: maxR * 2,
+          pixelRatio,
+        });
+        node.getLayer()?.batchDraw();
+      } catch {
+        // Canvas 未実装のテスト環境でのクラッシュ防止
+      }
+    };
+
+    const rafId =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame(applyCache)
+        : null;
+    if (rafId === null) {
+      applyCache();
     }
 
     return () => {
+      if (rafId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(rafId);
+      }
       if (typeof node.clearCache === 'function') {
         node.clearCache();
       }
@@ -78,10 +93,7 @@ export function PlayerFocusSpotlight({
     isRing,
     focusColor,
     focusOpacity,
-    outerRadius,
-    centerRadius,
-    glowThickness,
-    radius,
+    cacheRadius,
     isSelected,
   ]);
 

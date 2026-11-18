@@ -39,35 +39,53 @@ export function PlayerMarkerRingFade({
   const ry = radius * 1.1;
   const ringDepth = Math.max(3, radius * 0.24);
   const visualGroupRef = useRef<Konva.Group>(null);
+  const cacheRadius = Math.round(radius);
 
   useEffect(() => {
     const node = visualGroupRef.current;
     if (!node || typeof node.cache !== 'function') return;
 
-    const pad = Math.ceil(glowBlur * 1.5 + 16);
-    const pixelRatio =
-      typeof window !== 'undefined'
-        ? Math.min(window.devicePixelRatio || 1, 2)
-        : 1;
+    const applyCache = () => {
+      const cachedRx = cacheRadius * 2.3;
+      const cachedRy = cacheRadius * 1.1;
+      const cachedRingDepth = Math.max(3, cacheRadius * 0.24);
+      const pad = Math.ceil(glowBlur * 1.5 + 16);
+      const pixelRatio =
+        typeof window !== 'undefined'
+          ? Math.min(window.devicePixelRatio || 1, 2)
+          : 1;
 
-    try {
-      node.cache({
-        x: -(rx + pad),
-        y: -(ry + pad),
-        width: (rx + pad) * 2,
-        height: (ry + pad) * 2 + ringDepth,
-        pixelRatio,
-      });
-    } catch {
-      // Canvas 未実装のテスト環境でのクラッシュ防止
+      try {
+        node.cache({
+          x: -(cachedRx + pad),
+          y: -(cachedRy + pad),
+          width: (cachedRx + pad) * 2,
+          height: (cachedRy + pad) * 2 + cachedRingDepth,
+          pixelRatio,
+        });
+        node.getLayer()?.batchDraw();
+      } catch {
+        // Canvas 未実装のテスト環境でのクラッシュ防止
+      }
+    };
+
+    const rafId =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame(applyCache)
+        : null;
+    if (rafId === null) {
+      applyCache();
     }
 
     return () => {
+      if (rafId !== null && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(rafId);
+      }
       if (typeof node.clearCache === 'function') {
         node.clearCache();
       }
     };
-  }, [color, glowBlur, glowOpacity, rx, ry, ringDepth, isSelected]);
+  }, [color, glowBlur, glowOpacity, cacheRadius, isSelected]);
 
   return (
     <Group ref={shapeRef}>

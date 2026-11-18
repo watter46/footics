@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, memo, useEffect, useRef, useState } from 'react';
 import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ export interface PhaseSectionProps {
   onRenamePhase: (phaseId: string, name: string) => void;
 }
 
-export function PhaseSection({
+export const PhaseSection = memo(function PhaseSection({
   phase,
   isExpanded,
   isActivePhase,
@@ -227,4 +227,4 @@ export function PhaseSection({
       )}
     </div>
   );
-}
+});
