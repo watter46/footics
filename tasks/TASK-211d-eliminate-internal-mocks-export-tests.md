@@ -1,6 +1,6 @@
 # TASK-211d: Eliminate Internal `vi.mock` from Tactical Export Tests
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `test(tactical): replace internal vi.mock in export tests with real canvas and renderer integration`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3 (parallel)

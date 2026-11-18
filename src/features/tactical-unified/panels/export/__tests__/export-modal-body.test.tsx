@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
@@ -8,37 +8,78 @@ import {
   type ScreenBackgroundConfig,
 } from '@/lib/types/tactical/pitch-config';
 import { ExportModalBody } from '../export-modal-body';
-import { ExportPreviewPlayer } from '../export-preview-player';
 import type { ExportModalState } from '../use-export-modal-state';
 
-vi.mock('../export-preview-player', () => ({
-  ExportPreviewPlayer: vi.fn((props: any) => (
-    <div
-      data-testid="mock-export-preview-player"
-      data-screen-bg-type={props.screenBackground?.type}
-    />
-  )),
-}));
+function createMock2DContext() {
+  const gradientStub = { addColorStop: vi.fn() };
+  return {
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    globalAlpha: 1,
+    font: '10px sans-serif',
+    textAlign: 'start',
+    textBaseline: 'alphabetic',
+    shadowColor: 'rgba(0, 0, 0, 0)',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillRect: vi.fn(),
+    strokeRect: vi.fn(),
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    closePath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    arc: vi.fn(),
+    ellipse: vi.fn(),
+    rect: vi.fn(),
+    clip: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    fillText: vi.fn(),
+    strokeText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 0 })),
+    translate: vi.fn(),
+    scale: vi.fn(),
+    rotate: vi.fn(),
+    setTransform: vi.fn(),
+    resetTransform: vi.fn(),
+    drawImage: vi.fn(),
+    createLinearGradient: vi.fn(() => gradientStub),
+    createRadialGradient: vi.fn(() => gradientStub),
+    setLineDash: vi.fn(),
+    getLineDash: vi.fn(() => []),
+  };
+}
 
 describe('ExportModalBody screenBackground transmission', () => {
+  let mockCtx: ReturnType<typeof createMock2DContext>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCtx = createMock2DContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      mockCtx as unknown as CanvasRenderingContext2D,
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   const mockScreenBackground: ScreenBackgroundConfig = {
     type: 'cinematic',
   };
 
-  const createMockState = (): ExportModalState => ({
-    activeTab: 'image',
-    setActiveTab: vi.fn(),
-    selectedFormat: 'png',
-    setSelectedFormat: vi.fn(),
-    imageScale: 2,
-    setImageScale: vi.fn(),
-    exportError: null,
-    setExportError: vi.fn(),
-    activeSlide: {
+  const createMockState = (): ExportModalState => {
+    const activeSlide = {
       id: 'slide-1',
       index: 0,
       transitionDurationMs: 1000,
@@ -50,23 +91,34 @@ describe('ExportModalBody screenBackground transmission', () => {
       ball: { x: 50, y: 50, visible: true },
       boundaryBox: DEFAULT_BOUNDARY_BOX_4_5,
       pitchTransform: null,
-    } as any,
-    slides: [],
-    aspectRatio: '4:5',
-    boundaryBox: DEFAULT_BOUNDARY_BOX_4_5,
-    pitchAppearance: DEFAULT_PITCH_APPEARANCE,
-    isExporting: false,
-    closeExportModal: vi.fn(),
-    handleExport: vi.fn(),
-    exportJson: vi.fn(),
-    importJson: vi.fn().mockResolvedValue('Untitled'),
-    share: {
-      isCreatingShareLink: false,
-      shareUrl: null,
-      createShareLink: vi.fn().mockResolvedValue(undefined),
-      clearShareLink: vi.fn(),
-    },
-  });
+    } as any;
+    return {
+      activeTab: 'image',
+      setActiveTab: vi.fn(),
+      selectedFormat: 'png',
+      setSelectedFormat: vi.fn(),
+      imageScale: 2,
+      setImageScale: vi.fn(),
+      exportError: null,
+      setExportError: vi.fn(),
+      activeSlide,
+      slides: [activeSlide],
+      aspectRatio: '4:5',
+      boundaryBox: DEFAULT_BOUNDARY_BOX_4_5,
+      pitchAppearance: DEFAULT_PITCH_APPEARANCE,
+      isExporting: false,
+      closeExportModal: vi.fn(),
+      handleExport: vi.fn(),
+      exportJson: vi.fn(),
+      importJson: vi.fn().mockResolvedValue('Untitled'),
+      share: {
+        isCreatingShareLink: false,
+        shareUrl: null,
+        createShareLink: vi.fn().mockResolvedValue(undefined),
+        clearShareLink: vi.fn(),
+      },
+    };
+  };
 
   it('passes project.screenBackground to ExportPreviewPlayer', () => {
     const bundle = normalizeTacticalProject({
@@ -83,7 +135,7 @@ describe('ExportModalBody screenBackground transmission', () => {
       ],
     });
 
-    render(
+    const { container } = render(
       <TacticalStoreProvider
         initialProject={bundle.project}
         initialSession={{
@@ -95,13 +147,9 @@ describe('ExportModalBody screenBackground transmission', () => {
       </TacticalStoreProvider>,
     );
 
-    expect(vi.mocked(ExportPreviewPlayer).mock.calls[0][0]).toEqual(
-      expect.objectContaining({
-        screenBackground: mockScreenBackground,
-      }),
-    );
-
-    const playerEl = screen.getByTestId('mock-export-preview-player');
-    expect(playerEl.getAttribute('data-screen-bg-type')).toBe('cinematic');
+    const canvas = container.querySelector('canvas');
+    expect(canvas).not.toBeNull();
+    expect(mockCtx.createRadialGradient).toHaveBeenCalled();
+    expect(mockCtx.fillRect).toHaveBeenCalled();
   });
 });

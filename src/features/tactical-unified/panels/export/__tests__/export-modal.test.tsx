@@ -7,10 +7,11 @@ import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactic
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { ExportModal } from '../export-modal';
 
-vi.mock('@/features/tactical-unified/hooks/konva-export-helpers', () => ({
-  exportSingleSlidePng: vi.fn().mockResolvedValue(undefined),
-  exportAllSlidesZip: vi.fn().mockResolvedValue(undefined),
-}));
+function createMockGradient(): CanvasGradient {
+  return {
+    addColorStop: vi.fn(),
+  } as unknown as CanvasGradient;
+}
 
 function createMock2DContext(): Partial<CanvasRenderingContext2D> {
   return {
@@ -23,10 +24,13 @@ function createMock2DContext(): Partial<CanvasRenderingContext2D> {
     strokeRect: vi.fn(),
     fillRect: vi.fn(),
     clearRect: vi.fn(),
+    rect: vi.fn(),
     arc: vi.fn(),
     ellipse: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
     fillText: vi.fn(),
     strokeText: vi.fn(),
     measureText: vi.fn().mockReturnValue({ width: 50 }),
@@ -39,6 +43,8 @@ function createMock2DContext(): Partial<CanvasRenderingContext2D> {
     clip: vi.fn(),
     setLineDash: vi.fn(),
     getLineDash: vi.fn().mockReturnValue([]),
+    createLinearGradient: vi.fn(createMockGradient),
+    createRadialGradient: vi.fn(createMockGradient),
   };
 }
 
@@ -49,6 +55,12 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       mockCtx as unknown as CanvasRenderingContext2D,
     );
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((cb) => {
+      cb(new Blob(['png'], { type: 'image/png' }));
+    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-export-url');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   const baseSlide = {
