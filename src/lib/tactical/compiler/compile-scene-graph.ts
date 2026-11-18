@@ -57,7 +57,7 @@ function computeTrajectoryPoints(
     if (dist < 1) {
       rawPoints = [startRawPx.x, startRawPx.y, endRawPx.x, endRawPx.y];
     } else {
-      const offsetFactor = (curveOffsetPercent ?? 15) / 100;
+      const offsetFactor = (curveOffsetPercent ?? 25) / 100;
       const offset = dist * offsetFactor;
       const sign = type === 'arc_left' ? 1 : -1;
       const nx = (dy / dist) * sign;

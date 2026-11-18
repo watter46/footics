@@ -79,6 +79,26 @@ export function getBezierControlPoint(
 }
 
 /**
+ * ピクセル座標系で2次ベジェ曲線の制御点を算出する
+ */
+export function getBezierControlPointPx(
+  p0Px: Point2D,
+  p1Px: Point2D,
+  trajectory: DomainPlayerTrajectory | undefined,
+  stageSize: { width: number; height: number },
+): Point2D {
+  if (trajectory?.type === 'custom' && trajectory.controlPoint) {
+    const w = Math.max(1, stageSize.width);
+    const h = Math.max(1, stageSize.height);
+    return {
+      x: (trajectory.controlPoint.x / 100) * w,
+      y: (trajectory.controlPoint.y / 100) * h,
+    };
+  }
+  return getBezierControlPoint(p0Px, p1Px, trajectory);
+}
+
+/**
  * 2次ベジェ曲線上の点 (Quadratic Bezier Interpolation) を計算
  */
 export function calculateBezierPoint(

@@ -46,16 +46,21 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
 }: BallGhostTrajectoryProps) {
   const ghostGroupRef = useRef<Konva.Group>(null);
 
-  if (cleanRender) {
-    return null;
-  }
-  if (!hasPrevBall || !prevBall) {
+  if (
+    cleanRender ||
+    !hasPrevBall ||
+    !prevBall ||
+    (!isSelected && !isDragging)
+  ) {
     return null;
   }
 
   return (
     <Group>
-      <Group ref={ghostGroupRef} visible={Boolean(isSelected && isBallMoved)}>
+      <Group
+        ref={ghostGroupRef}
+        visible={Boolean((isSelected || isDragging) && isBallMoved)}
+      >
         <BallGhost
           prevPxX={prevPxX}
           prevPxY={prevPxY}

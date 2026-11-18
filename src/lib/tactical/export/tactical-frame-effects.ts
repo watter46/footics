@@ -73,7 +73,10 @@ export function hasActiveFrameEffects(slides: readonly DomainSlide[]): boolean {
     const hasZoneEffect = slide.zones?.some(
       (z) => z.effect?.type && z.effect.type !== 'none',
     );
-    return Boolean(hasPlayerEffect || hasArrowEffect || hasZoneEffect);
+    const hasBallEffect = Boolean(slide.ball?.trajectoryEffect?.enabled);
+    return Boolean(
+      hasPlayerEffect || hasArrowEffect || hasZoneEffect || hasBallEffect,
+    );
   });
 }
 

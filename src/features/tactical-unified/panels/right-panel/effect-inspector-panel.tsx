@@ -192,5 +192,45 @@ export function EffectInspectorPanel(): React.ReactElement | null {
     );
   }
 
+  if (selected.kind === 'ball') {
+    const ball = slide.ball;
+    if (!ball) return null;
+
+    return (
+      <div
+        data-testid="ball-effect-inspector"
+        className="border-b border-white/[0.08] bg-[#16161a]"
+      >
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#FF8100]" />
+            <span>エフェクト設定 (ボールエフェクト)</span>
+          </div>
+          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        {isExpanded && (
+          <div className="p-3 pt-1 space-y-4">
+            <PlayerTrajectoryEffectSection
+              player={ball}
+              onUpdate={(patch) =>
+                dispatch({
+                  type: 'APPLY_SLIDE_COMMAND',
+                  phaseId: activePhaseId,
+                  slideId: activeSlideId,
+                  command: { type: 'UPDATE_BALL', patch },
+                })
+              }
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return null;
 }

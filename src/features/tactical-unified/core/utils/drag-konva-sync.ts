@@ -5,7 +5,7 @@ import {
   subdivideQuadraticBezier,
 } from '@/lib/tactical/compiler/geometry-primitives';
 import {
-  getBezierControlPoint,
+  getBezierControlPointPx,
   getBezierMidpoint,
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
@@ -19,7 +19,7 @@ const TRAJECTORY_VISIBILITY_THRESHOLD_PX = 4;
 export function syncTrajectoryEntryKonva(
   entry: TrajectoryArrowNodeEntry,
   endPx: { x: number; y: number },
-  _stageSize: { width: number; height: number },
+  stageSize: { width: number; height: number },
 ): Konva.Layer | null {
   const dist = Math.hypot(endPx.x - entry.startPx.x, endPx.y - entry.startPx.y);
   const visible = dist >= TRAJECTORY_VISIBILITY_THRESHOLD_PX;
@@ -32,7 +32,12 @@ export function syncTrajectoryEntryKonva(
       entry.trajectory !== undefined && entry.trajectory.type !== 'straight';
 
     if (isCurved) {
-      const cp = getBezierControlPoint(entry.startPx, endPx, entry.trajectory);
+      const cp = getBezierControlPointPx(
+        entry.startPx,
+        endPx,
+        entry.trajectory,
+        stageSize,
+      );
       const points = getQuadraticBezierPoints(
         entry.startPx.x,
         entry.startPx.y,

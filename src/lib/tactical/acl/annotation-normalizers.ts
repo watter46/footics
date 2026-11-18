@@ -1,4 +1,7 @@
-import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import {
+  clampToScreenNorm,
+  toScreenNormCoord,
+} from '@/lib/types/tactical/branded';
 import type {
   DomainBallState,
   DomainTextAnnotation,
@@ -58,6 +61,53 @@ export function normalizeBall(rawBall: unknown): DomainBallState {
   }
 
   const b = rawBall as Record<string, unknown>;
+
+  let trajectory: DomainBallState['trajectory'];
+  if (b.trajectory && typeof b.trajectory === 'object') {
+    const rawTraj = b.trajectory as Record<string, unknown>;
+    const rawCp = rawTraj.controlPoint;
+    const controlPoint =
+      rawCp &&
+      typeof rawCp === 'object' &&
+      typeof (rawCp as Record<string, unknown>).x === 'number' &&
+      typeof (rawCp as Record<string, unknown>).y === 'number'
+        ? {
+            x: toScreenNormCoord(
+              (rawCp as Record<string, unknown>).x as number,
+            ),
+            y: toScreenNormCoord(
+              (rawCp as Record<string, unknown>).y as number,
+            ),
+          }
+        : undefined;
+    trajectory = {
+      type:
+        rawTraj.type === 'arc_left' ||
+        rawTraj.type === 'arc_right' ||
+        rawTraj.type === 'custom'
+          ? rawTraj.type
+          : 'straight',
+      ...(typeof rawTraj.curveOffset === 'number'
+        ? { curveOffset: rawTraj.curveOffset }
+        : {}),
+      ...(controlPoint ? { controlPoint } : {}),
+    };
+  }
+
+  let trajectoryEffect: DomainBallState['trajectoryEffect'];
+  if (b.trajectoryEffect && typeof b.trajectoryEffect === 'object') {
+    const rawTe = b.trajectoryEffect as Record<string, unknown>;
+    trajectoryEffect = {
+      enabled: typeof rawTe.enabled === 'boolean' ? rawTe.enabled : false,
+      lineStyle: rawTe.lineStyle === 'dashed' ? 'dashed' : 'solid',
+      ...(typeof rawTe.color === 'string' &&
+      /^#[0-9a-fA-F]{6}$/.test(rawTe.color)
+        ? { color: rawTe.color }
+        : {}),
+      exitAction: rawTe.exitAction === 'auto-hide' ? 'auto-hide' : 'keep',
+    };
+  }
+
   return {
     x: clampToScreenNorm(typeof b.x === 'number' ? b.x : 50),
     y: clampToScreenNorm(typeof b.y === 'number' ? b.y : 50),
@@ -68,9 +118,7 @@ export function normalizeBall(rawBall: unknown): DomainBallState {
         ? Math.max(0.4, Math.min(2.0, b.sizeScale))
         : undefined,
     locked: typeof b.locked === 'boolean' ? b.locked : undefined,
-    trajectory:
-      b.trajectory && typeof b.trajectory === 'object'
-        ? (b.trajectory as DomainBallState['trajectory'])
-        : undefined,
+    trajectory,
+    trajectoryEffect,
   };
 }

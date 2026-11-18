@@ -1,6 +1,6 @@
 # TASK-208a: ゴースト軌道カーブ統一修正 & ボール軌道エフェクト型・UI追加
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `fix(tactical): fix ghost trajectory curve sync and add ball trajectory effect with color picker`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2 (parallel)

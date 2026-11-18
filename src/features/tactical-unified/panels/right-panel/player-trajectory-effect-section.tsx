@@ -1,11 +1,11 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import type {
   EffectExitAction,
   PlayerTrajectoryEffectConfig,
 } from '@/lib/types/tactical/effect-config';
+import { ColorInput } from './color-input';
 
 export const DEFAULT_PLAYER_TRAJECTORY_EFFECT: PlayerTrajectoryEffectConfig = {
   enabled: false,
@@ -14,7 +14,10 @@ export const DEFAULT_PLAYER_TRAJECTORY_EFFECT: PlayerTrajectoryEffectConfig = {
 };
 
 export interface PlayerTrajectoryEffectSectionProps {
-  player: Pick<PitchPlayer, 'trajectoryEffect'>;
+  player: {
+    readonly trajectoryEffect?: PlayerTrajectoryEffectConfig;
+    readonly defaultColor?: string;
+  };
   onUpdate: (patch: {
     trajectoryEffect?: PlayerTrajectoryEffectConfig;
   }) => void;
@@ -83,6 +86,18 @@ export function PlayerTrajectoryEffectSection({
                 { id: 'dashed', label: '点線 (Dashed)' },
               ]}
               className="w-full [&>button]:flex-1"
+            />
+          </div>
+
+          {/* 軌跡カラー */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] text-white/60 font-medium">
+              軌跡カラー (Color)
+            </span>
+            <ColorInput
+              value={currentConfig.color ?? player.defaultColor ?? '#ffffff'}
+              onChange={(color) => handleConfigChange({ color })}
+              className="w-full"
             />
           </div>
 

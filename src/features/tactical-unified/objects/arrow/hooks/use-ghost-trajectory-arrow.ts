@@ -2,10 +2,7 @@ import type Konva from 'konva';
 import { useEffect, useRef } from 'react';
 import { syncTrajectoryEntryKonva } from '@/features/tactical-unified/core/utils/drag-konva-sync';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
-import {
-  toScreenNormCoord,
-  toScreenNormPoint,
-} from '@/lib/types/tactical/branded';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type { GhostTrajectoryArrowProps } from '../types';
 
 export interface UseGhostTrajectoryArrowParams {
@@ -170,6 +167,7 @@ export function useGhostTrajectoryArrow({
         controlPoint: toScreenNormPoint(
           Math.round(newNormX * 10) / 10,
           Math.round(newNormY * 10) / 10,
+          false,
         ),
       });
     }

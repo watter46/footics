@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   ScreenNormCoordSchema,
   ScreenNormPointSchema,
+  UnclampedScreenNormCoordSchema,
 } from '@/lib/types/tactical/branded';
 import {
   ArrowEffectConfigSchema,
@@ -35,7 +36,12 @@ export const DomainPlayerTrajectorySchema = z.object({
     .enum(['straight', 'arc_left', 'arc_right', 'custom'])
     .default('straight'),
   curveOffset: z.number().optional(),
-  controlPoint: ScreenNormPointSchema.optional(),
+  controlPoint: z
+    .object({
+      x: UnclampedScreenNormCoordSchema,
+      y: UnclampedScreenNormCoordSchema,
+    })
+    .optional(),
 });
 export type DomainPlayerTrajectory = Readonly<
   z.infer<typeof DomainPlayerTrajectorySchema>
@@ -180,6 +186,7 @@ export const DomainBallStateSchema = z.object({
   color: z.string().optional(),
   sizeScale: z.number().min(0.4).max(2.0).optional(),
   trajectory: DomainPlayerTrajectorySchema.optional(),
+  trajectoryEffect: PlayerTrajectoryEffectConfigSchema.optional(),
   locked: z.boolean().optional(),
 });
 export type DomainBallState = Readonly<z.infer<typeof DomainBallStateSchema>>;

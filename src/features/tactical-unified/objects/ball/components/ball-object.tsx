@@ -18,7 +18,10 @@ import {
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { screenNormToStagePixel } from '@/lib/tactical/engine/coordinates';
-import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import {
+  clampToScreenNorm,
+  toScreenNormCoord,
+} from '@/lib/types/tactical/branded';
 import type { DomainBallState } from '@/lib/types/tactical/domain-entities';
 import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
@@ -80,8 +83,8 @@ function useBallObjectState({
             ...traj,
             controlPoint: traj.controlPoint
               ? {
-                  x: clampToScreenNorm(traj.controlPoint.x),
-                  y: clampToScreenNorm(traj.controlPoint.y),
+                  x: toScreenNormCoord(traj.controlPoint.x),
+                  y: toScreenNormCoord(traj.controlPoint.y),
                 }
               : undefined,
           }
@@ -121,8 +124,8 @@ function useBallObjectState({
           ...ball.trajectory,
           controlPoint: ball.trajectory.controlPoint
             ? {
-                x: clampToScreenNorm(ball.trajectory.controlPoint.x),
-                y: clampToScreenNorm(ball.trajectory.controlPoint.y),
+                x: toScreenNormCoord(ball.trajectory.controlPoint.x),
+                y: toScreenNormCoord(ball.trajectory.controlPoint.y),
               }
             : undefined,
         }

@@ -9,7 +9,7 @@
 import React from 'react';
 import { Arrow, Circle, Group } from 'react-konva';
 import {
-  getBezierControlPoint,
+  getBezierControlPointPx,
   getBezierMidpoint,
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
@@ -50,9 +50,14 @@ export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
     trajectory?.type === 'arc_right' ||
     trajectory?.controlPoint !== undefined;
 
-  const cpNorm = getBezierControlPoint(startPos, endPos, trajectory);
-  const cpPxX = normX(cpNorm.x, width);
-  const cpPxY = normY(cpNorm.y, height);
+  const cpPx = getBezierControlPointPx(
+    { x: sPxX, y: sPxY },
+    { x: ePxX, y: ePxY },
+    trajectory,
+    stageSize,
+  );
+  const cpPxX = cpPx.x;
+  const cpPxY = cpPx.y;
 
   // 2次ベジェ曲線の頂点 M (t=0.5: M = 0.25*P0 + 0.5*P_control + 0.25*P1)
   const midHandlePx = isCurved
