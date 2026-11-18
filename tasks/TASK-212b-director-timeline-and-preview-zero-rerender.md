@@ -1,6 +1,6 @@
 # TASK-212b: レイアウト・プレビュー・タイムライン・カメラパネルの 60fps 再レンダー根絶
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): eliminate 60fps playback React rerenders in director timeline, split preview, and camera panel`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3, Phase 4 (parallel: preview hook, split preview, director timeline, camera/timeline/canvas selectors)

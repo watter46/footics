@@ -40,7 +40,6 @@ import { TransitionConnector } from './transition-connector';
 import { useTimelineScroll } from './use-timeline-scroll';
 
 export function TimelineBar() {
-  const project = useDocumentStore((s) => s.project);
   const dispatch = useDocumentStore((s) => s.dispatch);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
@@ -53,7 +52,9 @@ export function TimelineBar() {
   );
   const setPlaybackIndices = usePlaybackStore((s) => s.setPlaybackIndices);
   const seekTo = usePlaybackStore((s) => s.seekTo);
-  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
+  const slides = useDocumentStore((s) =>
+    selectDomainActivePhaseSlides(s.project, activePhaseId),
+  );
 
   const reorderSlides = useCallback(
     (orderedSlideIds: string[]) => {

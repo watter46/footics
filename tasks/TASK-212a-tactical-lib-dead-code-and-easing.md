@@ -1,6 +1,6 @@
 # TASK-212a: 戦術ライブラリ死蔵モジュール削除と easing のエンジン統合
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): remove dead tactical root modules and consolidate easing into engine`
 - **Execution Waves**:
   - Wave 1: Phase 1
@@ -13,7 +13,7 @@
   - `absent: src/lib/tactical/__tests__/coordinates.test.ts`
   - `absent: src/lib/tactical/__tests__/initial-mapping.test.ts`
   - `absent: src/lib/tactical/__tests__/image-utils.test.ts`
-  - `rg: toViewPos|toActualPos|getBenchPos|generateInitialMapping|resizeAndCropImageToBlob`
+  - `rg: toViewPos|toActualPos|\bgetBenchPos\b|generateInitialMapping|resizeAndCropImageToBlob`
   - `rg(src/lib/tactical/effect-geometry.ts): function applyEasing`
 
 ## 1. Architectural Invariants & Design Decisions

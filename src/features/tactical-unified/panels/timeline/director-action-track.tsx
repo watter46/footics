@@ -34,7 +34,8 @@ export interface DirectorActionTrackProps {
   actionCues: ActionCameraCue[];
   selectedCueId: string | null;
   totalDurationMs: number;
-  currentTimeMs: number;
+  playheadRef?: React.Ref<HTMLDivElement>;
+  initialTimeMs?: number;
   onSelectCue: (id: string, startTimeMs: number) => void;
   onUpdateDuration?: (cue: ActionCameraCue, durationMs: number) => void;
   onToggleAutoReturn?: (cue: ActionCameraCue) => void;
@@ -46,7 +47,8 @@ export function DirectorActionTrack({
   actionCues,
   selectedCueId,
   totalDurationMs,
-  currentTimeMs,
+  playheadRef,
+  initialTimeMs = 0,
   onSelectCue,
   onUpdateDuration,
   onDeleteCue,
@@ -132,8 +134,10 @@ export function DirectorActionTrack({
 
         {/* 現在再生ヘッドインジケータ */}
         <div
+          ref={playheadRef}
+          data-testid="director-action-playhead"
           className="absolute top-0 bottom-0 w-px bg-white/40 pointer-events-none z-0"
-          style={{ left: `${(currentTimeMs / totalDurationMs) * 100}%` }}
+          style={{ left: `${(initialTimeMs / totalDurationMs) * 100}%` }}
         />
 
         {displayedLanes.map((lane, laneIdx) => (

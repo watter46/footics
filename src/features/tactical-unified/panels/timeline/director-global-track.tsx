@@ -1,6 +1,7 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
+import type React from 'react';
 import { useState } from 'react';
 import type { GlobalCameraKeyframe } from '@/lib/types/tactical/camera-config';
 
@@ -8,7 +9,8 @@ export interface DirectorGlobalTrackProps {
   globalKeyframes: GlobalCameraKeyframe[];
   selectedGlobalId: string | null;
   totalDurationMs: number;
-  currentTimeMs: number;
+  playheadRef?: React.Ref<HTMLDivElement>;
+  initialTimeMs?: number;
   onSelectKeyframe: (id: string, timeMs: number) => void;
   onDeleteKeyframe?: (id: string) => void;
 }
@@ -17,7 +19,8 @@ export function DirectorGlobalTrack({
   globalKeyframes,
   selectedGlobalId,
   totalDurationMs,
-  currentTimeMs,
+  playheadRef,
+  initialTimeMs = 0,
   onSelectKeyframe,
   onDeleteKeyframe,
 }: DirectorGlobalTrackProps) {
@@ -45,8 +48,10 @@ export function DirectorGlobalTrack({
 
         {/* 現在再生ヘッドインジケータ */}
         <div
+          ref={playheadRef}
+          data-testid="director-global-playhead"
           className="absolute top-0 bottom-0 w-px bg-white/40 pointer-events-none z-0"
-          style={{ left: `${(currentTimeMs / totalDurationMs) * 100}%` }}
+          style={{ left: `${(initialTimeMs / totalDurationMs) * 100}%` }}
         />
 
         {globalKeyframes.map((kf) => {

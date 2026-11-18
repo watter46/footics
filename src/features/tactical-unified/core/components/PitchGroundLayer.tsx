@@ -234,42 +234,43 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         />
 
         {/* ── 6. ゴースト & 移動軌道 (Ghost & Trajectories) ── */}
-        {!cleanRender &&
-          sceneGraph.trajectories.map((traj) => {
-            if (!traj.visible || selectedIds.includes(traj.playerId))
-              return null;
-            const prevObj =
-              traj.playerId === 'ball'
-                ? prevSlide?.ball
-                : prevPitchPlayers.find((p) => p.id === traj.playerId);
-            const startPx = prevObj
-              ? screenNormToStagePixel(
-                  toScreenNormPoint(prevObj.x, prevObj.y),
-                  pitchStageSize,
-                )
-              : {
-                  x: traj.flatPointsPx[0] ?? 0,
-                  y: traj.flatPointsPx[1] ?? 0,
-                };
-            const trajectory =
-              traj.playerId === 'ball'
-                ? activeSlide?.ball?.trajectory
-                : visibleMarkers.find((p) => p.id === traj.playerId)
-                    ?.trajectory;
-            return (
-              <TrajectoryEffectLine
-                key={`traj-dto-${traj.playerId}`}
-                playerId={traj.playerId}
-                flatPointsPx={traj.flatPointsPx}
-                color={traj.color}
-                dashArrayPx={traj.dashArrayPx}
-                startPx={startPx}
-                trajectory={trajectory}
-                stageSize={pitchStageSize}
-                nodesRegistryRef={nodesRegistryRef}
-              />
-            );
-          })}
+        {sceneGraph.trajectories.map((traj) => {
+          if (
+            !traj.visible ||
+            (!cleanRender && selectedIds.includes(traj.playerId))
+          )
+            return null;
+          const prevObj =
+            traj.playerId === 'ball'
+              ? prevSlide?.ball
+              : prevPitchPlayers.find((p) => p.id === traj.playerId);
+          const startPx = prevObj
+            ? screenNormToStagePixel(
+                toScreenNormPoint(prevObj.x, prevObj.y),
+                pitchStageSize,
+              )
+            : {
+                x: traj.flatPointsPx[0] ?? 0,
+                y: traj.flatPointsPx[1] ?? 0,
+              };
+          const trajectory =
+            traj.playerId === 'ball'
+              ? activeSlide?.ball?.trajectory
+              : visibleMarkers.find((p) => p.id === traj.playerId)?.trajectory;
+          return (
+            <TrajectoryEffectLine
+              key={`traj-dto-${traj.playerId}`}
+              playerId={traj.playerId}
+              flatPointsPx={traj.flatPointsPx}
+              color={traj.color}
+              dashArrayPx={traj.dashArrayPx}
+              startPx={startPx}
+              trajectory={trajectory}
+              stageSize={pitchStageSize}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+          );
+        })}
         {!cleanRender && (
           <PitchGroundGhosts
             visibleMarkers={visibleMarkers}

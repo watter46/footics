@@ -16,6 +16,7 @@ import {
 import type {
   ResolvedBillboardBallItem,
   ResolvedBillboardPlayerItem,
+  ResolvedSceneGraphDTO,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
   type ScreenNormCoord,
@@ -25,6 +26,7 @@ import {
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasStageContainer } from '../CanvasStageContainer';
+import { PitchGroundLayer } from '../PitchGroundLayer';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
 
 class MockResizeObserver {
@@ -381,5 +383,52 @@ describe('Clean Render Propagation', () => {
       y: 315,
     });
     tweenSpy.mockRestore();
+  });
+
+  it('PitchGroundLayer: cleanRender=true かつ trajectoryEffect.enabled===true の選手・ボールが存在する場合に TrajectoryEffectLine が描画され、PitchGroundGhosts は描画されないこと', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const sceneGraph: ResolvedSceneGraphDTO = {
+      zones: [],
+      arrows: [],
+      connectLines: [],
+      trajectories: [
+        {
+          playerId: 'p1',
+          flatPointsPx: [100, 100, 200, 200],
+          color: '#ff0000',
+          dashArrayPx: [6, 4],
+          visible: true,
+        },
+        {
+          playerId: 'ball',
+          flatPointsPx: [300, 150, 450, 250],
+          color: '#ffffff',
+          dashArrayPx: [],
+          visible: true,
+        },
+      ],
+    } as unknown as ResolvedSceneGraphDTO;
+
+    renderWithStore(
+      <Stage ref={stageRef} width={800} height={450}>
+        <PitchGroundLayer
+          stageSize={{ width: 800, height: 450 }}
+          pitchRect={{ x: 0, y: 0, width: 800, height: 450 }}
+          nodesRegistryRef={registryRef}
+          cleanRender={true}
+          sceneGraph={sceneGraph}
+        />
+      </Stage>,
+    );
+
+    // TrajectoryEffectLine が選手・ボールともに registry に登録され、Line が描画される
+    expect(registryRef.current.trajectoryEffectLines.has('p1')).toBe(true);
+    expect(registryRef.current.trajectoryEffectLines.has('ball')).toBe(true);
+    expect(stageRef.current?.find('Line')).toHaveLength(2);
+
+    // PitchGroundGhosts は描画されないため Arrow やゴースト用 Circle は存在しない
+    expect(stageRef.current?.find('Arrow')).toHaveLength(0);
+    expect(stageRef.current?.find('Circle')).toHaveLength(0);
   });
 });

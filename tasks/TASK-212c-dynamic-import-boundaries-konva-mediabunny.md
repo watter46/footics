@@ -1,6 +1,6 @@
 # TASK-212c: 重量級クライアントモジュール・モーダル・動画出力エンジンの動的インポート境界最適化
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): lazy-load export modal, split preview, project dialog, and mediabunny engine`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2 (parallel: page dynamic imports & mediabunny lazy import)

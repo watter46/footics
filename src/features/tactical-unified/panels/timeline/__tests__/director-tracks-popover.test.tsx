@@ -20,7 +20,7 @@ describe('Director Tracks Popover and Deletion', () => {
         globalKeyframes={keyframes}
         selectedGlobalId={null}
         totalDurationMs={5000}
-        currentTimeMs={0}
+        initialTimeMs={0}
         onSelectKeyframe={onSelectKeyframe}
         onDeleteKeyframe={onDeleteKeyframe}
       />,
@@ -64,7 +64,7 @@ describe('Director Tracks Popover and Deletion', () => {
         actionCues={actionCues}
         selectedCueId={null}
         totalDurationMs={5000}
-        currentTimeMs={0}
+        initialTimeMs={0}
         onSelectCue={onSelectCue}
         onDeleteCue={onDeleteCue}
       />,

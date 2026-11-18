@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * tactical-unified-page.tsx
- * Figma-like Layout Orchestrator:
- *  - TopBar with action & toggle icons
- *  - Central Canvas (Maximized)
- *  - Always-visible Right Panel (Formation & Sub-members / Inspector)
- *  - Slide Strip
- *  - Clipboard paste & Image drop support
- */
+/** Figma-like Tactical Layout Orchestrator */
 
 import { DndContext, type DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import dynamic from 'next/dynamic';
@@ -28,17 +20,33 @@ import {
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import { TacticalPlayerPhotoProvider } from './objects/player/components/tactical-player-photo-provider';
-import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
-import { ExportModal } from './panels/export/export-modal';
 import { LeftPanel } from './panels/left-panel/left-panel';
 import { RightPanel } from './panels/right-panel/right-panel';
-import { TacticalSplitPreviewPanel } from './panels/split-preview/tactical-split-preview-panel';
 import { TimelineBar } from './panels/timeline/timeline-bar';
 import { TopBar } from './panels/toolbar';
 
 // Canvas はクライアントサイドのみ (Konva)
 const FullTacticalCanvas = dynamic(
   () => import('./views/FullTacticalCanvas').then((m) => m.FullTacticalCanvas),
+  { ssr: false },
+);
+
+const ExportModal = dynamic(
+  () => import('./panels/export/export-modal').then((m) => m.ExportModal),
+  { ssr: false },
+);
+const ProjectManagerModal = dynamic(
+  () =>
+    import('./panels/dialogs/project-manager-modal').then(
+      (m) => m.ProjectManagerModal,
+    ),
+  { ssr: false },
+);
+const TacticalSplitPreviewPanel = dynamic(
+  () =>
+    import('./panels/split-preview/tactical-split-preview-panel').then(
+      (m) => m.TacticalSplitPreviewPanel,
+    ),
   { ssr: false },
 );
 

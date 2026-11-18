@@ -20,6 +20,7 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { TRANSITION_EASING_OPTIONS } from '@/lib/tactical/engine/easing';
 import type { Easing } from '@/lib/types/tactical/camera-config';
 
 export interface BatchTransitionPopoverProps {
@@ -27,13 +28,6 @@ export interface BatchTransitionPopoverProps {
   onClose: () => void;
   referenceElement: HTMLElement | null;
 }
-
-const EASING_OPTIONS: { value: Easing; label: string }[] = [
-  { value: 'ease-in-out', label: '滑らか (Ease In-Out)' },
-  { value: 'linear', label: '等速 (Linear)' },
-  { value: 'ease-in', label: '加速 (Ease In)' },
-  { value: 'ease-out', label: '減速 (Ease Out)' },
-];
 
 export function BatchTransitionPopover({
   isOpen,
@@ -228,7 +222,7 @@ export function BatchTransitionPopover({
               aria-label="一括加減速 (イージング)"
               className="w-full bg-[#121214] border border-white/[0.08] rounded-md px-2 py-1 text-white/90 text-xs focus:outline-none focus:border-[#FF8100]"
             >
-              {EASING_OPTIONS.map((opt) => (
+              {TRANSITION_EASING_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

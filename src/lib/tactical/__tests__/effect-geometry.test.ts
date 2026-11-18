@@ -83,6 +83,19 @@ describe('effect-geometry', () => {
       expect(midGrow.progress).toBeCloseTo(0.5, 4);
       expect(midGrow.opacity).toBeCloseTo(1.0, 4);
 
+      // Easing variants at midpoint and [0, 1] boundaries
+      const easeInOutMid = computeArrowEffectState(900, {
+        ...config,
+        easing: 'ease-in-out',
+      });
+      expect(easeInOutMid.progress).toBeCloseTo(0.5, 4);
+      const easeOutMid = computeArrowEffectState(900, {
+        ...config,
+        easing: 'ease-out',
+      });
+      expect(easeOutMid.progress).toBeGreaterThan(0.5);
+      expect(easeOutMid.progress).toBeLessThan(1.0);
+
       // End of grow / Start of hold (t = 1300ms)
       expect(computeArrowEffectState(1300, config)).toEqual({
         visible: true,
@@ -141,6 +154,42 @@ describe('effect-geometry', () => {
       const result = computeArrowEffectState(500, config);
       // ease-out at 0.5 should have progress > 0.5
       expect(result.progress).toBeGreaterThan(0.5);
+    });
+
+    it('returns different progress curves for ease-in-out vs linear and converges to 0 and 1 at boundaries', () => {
+      const baseConfig: ArrowEffectConfig = {
+        type: 'grow',
+        delay: 0.0,
+        duration: 1.0,
+        holdDuration: 0.0,
+        fadeDuration: 0.0,
+        exitAction: 'keep',
+        easing: 'linear',
+      };
+
+      const linearAt250 = computeArrowEffectState(250, {
+        ...baseConfig,
+        easing: 'linear',
+      });
+      const easeInOutAt250 = computeArrowEffectState(250, {
+        ...baseConfig,
+        easing: 'ease-in-out',
+      });
+      expect(linearAt250.progress).toBeCloseTo(0.25, 4);
+      expect(easeInOutAt250.progress).not.toBeCloseTo(linearAt250.progress, 2);
+
+      expect(
+        computeArrowEffectState(0, { ...baseConfig, easing: 'ease-in-out' })
+          .progress,
+      ).toBe(0);
+      expect(
+        computeArrowEffectState(1000, { ...baseConfig, easing: 'ease-in-out' })
+          .progress,
+      ).toBe(1);
+      expect(
+        computeArrowEffectState(1500, { ...baseConfig, easing: 'linear' })
+          .progress,
+      ).toBe(1);
     });
   });
 

@@ -78,7 +78,6 @@ export function useExportPreviewAnimation({
   );
   const workspaceMode = useStore(sessionStore, (s) => s.workspaceMode);
   const storeTeamVisibility = useStore(sessionStore, (s) => s.teamVisibility);
-  const playbackTimeMs = useStore(playbackStore, (s) => Number(s.timeMs));
   const effectiveTeamVisibility =
     teamVisibility ?? storeTeamVisibility ?? 'both';
   const lastSeekNoticeTimeRef = useRef<number>(-9999);
@@ -251,17 +250,19 @@ export function useExportPreviewAnimation({
 
   useEffect(() => {
     if (!stores) return;
-    if (playbackTimeMs === lastStoreTimeMsRef.current) return;
-    lastStoreTimeMsRef.current = playbackTimeMs;
-    if (
-      lastDispatchedSeekMsRef.current !== null &&
-      Math.abs(playbackTimeMs - lastDispatchedSeekMsRef.current) < 1e-6
-    ) {
-      lastDispatchedSeekMsRef.current = null;
-      return;
-    }
-    seek(playbackTimeMs);
-  }, [stores, playbackTimeMs, seek]);
+    return playbackStore.subscribe((state, prev) => {
+      if (state.timeMs === prev.timeMs) return;
+      const nextMs = Number(state.timeMs);
+      if (nextMs === lastStoreTimeMsRef.current) return;
+      lastStoreTimeMsRef.current = nextMs;
+      const dispatched = lastDispatchedSeekMsRef.current;
+      if (dispatched !== null && Math.abs(nextMs - dispatched) < 1e-6) {
+        lastDispatchedSeekMsRef.current = null;
+        return;
+      }
+      seek(nextMs);
+    });
+  }, [stores, playbackStore, seek]);
 
   const prevPlayingRef = useRef(effectiveIsPlaying);
   useEffect(() => {

@@ -1,6 +1,6 @@
+import { applyEasing } from '@/lib/tactical/engine/easing';
 import type {
   ArrowEffectConfig,
-  EffectEasing,
   MarkerEffectConfig,
   ZoneEffectConfig,
 } from '@/lib/types/tactical/effect-config';
@@ -22,15 +22,6 @@ export interface RippleRing {
   radius: number;
   opacity: number;
   color?: string;
-}
-
-function applyEasing(t: number, easing?: EffectEasing): number {
-  const c = Math.max(0, Math.min(1, t));
-  if (easing === 'linear') return c;
-  if (easing === 'ease-in-out') {
-    return c < 0.5 ? 4 * c * c * c : 1 - (-2 * c + 2) ** 3 / 2;
-  }
-  return 1 - (1 - c) ** 3;
 }
 
 /** 矢印の点線フロー用 dashOffset を算出（先端へ向かって流すため負方向） */
@@ -98,7 +89,7 @@ export function computeArrowEffectState(
   // 1. 伸長フェーズ
   if (timeInSlideMs < delayMs + durationMs) {
     const rawProgress = elapsed / durationMs;
-    const progress = applyEasing(rawProgress, config.easing);
+    const progress = applyEasing(rawProgress, config.easing ?? 'ease-out');
     return {
       visible: progress > 0,
       progress,

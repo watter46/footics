@@ -1,6 +1,12 @@
 'use client';
 
-import { type PointerEvent, useMemo, useRef, useState } from 'react';
+import {
+  type PointerEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -14,6 +20,7 @@ import {
   useDocumentStore,
   usePlaybackStore,
   useSessionStore,
+  useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   hasActiveDirectorCameraTrack,
@@ -27,28 +34,30 @@ import { usePreviewWheelZoom } from './use-preview-wheel-zoom';
 import { useSplitPreviewCommands } from './use-split-preview-commands';
 
 export function TacticalSplitPreviewPanel() {
-  const project = useDocumentStore((s) => s.project);
+  const { playbackStore } = useTacticalStoresContext();
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-  const playbackTimeMs = usePlaybackStore((s) => Number(s.timeMs));
   const togglePlayback = usePlaybackStore((s) => s.togglePlayback);
 
-  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
-  const activeSlide = selectDomainActiveSlide(
-    project,
-    activePhaseId,
-    activeSlideId,
+  const slides = useDocumentStore((s) =>
+    selectDomainActivePhaseSlides(s.project, activePhaseId),
   );
-  const activePhase = selectDomainActivePhase(project, activePhaseId);
-  const aspectRatio = selectDomainActivePhaseAspectRatio(
-    project,
-    activePhaseId,
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const boundaryBox = selectDomainActiveBoundaryBox(project, activePhaseId);
-  const pitchAppearance = project.pitchAppearance;
-  const screenBackground = project.screenBackground;
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
+  );
+  const aspectRatio = useDocumentStore((s) =>
+    selectDomainActivePhaseAspectRatio(s.project, activePhaseId),
+  );
+  const boundaryBox = useDocumentStore((s) =>
+    selectDomainActiveBoundaryBox(s.project, activePhaseId),
+  );
+  const pitchAppearance = useDocumentStore((s) => s.project.pitchAppearance);
+  const screenBackground = useDocumentStore((s) => s.project.screenBackground);
   const targetPhaseId = activePhase?.id ?? activePhaseId;
 
   const {
@@ -74,21 +83,33 @@ export function TacticalSplitPreviewPanel() {
     useState<PitchTransform | null>(null);
   const latestPitchTransformRef = useRef<PitchTransform | null>(null);
 
-  const currentTimeMs = playbackTimeMs;
   const isDirectorCameraActive = hasActiveDirectorCameraTrack(
     activePhase?.directorCamera,
   );
-  const resolvedCamera: PitchTransform | null = isDirectorCameraActive
-    ? resolveSyntheticDirectorCamera(
-        activePhase!.directorCamera!,
-        currentTimeMs,
-        { isEditing: !isPlaying },
-      )
-    : (activeSlide?.pitchTransform ?? null);
-  const activeCue = activePhase?.directorCamera?.actionCues?.find(
-    (c) =>
-      currentTimeMs >= c.startTimeMs &&
-      currentTimeMs <= c.startTimeMs + (c.durationMs ?? 1000),
+  const resolveCameraAtTime = useCallback(
+    (timeMs: number) => {
+      const resolvedCamera: PitchTransform | null = isDirectorCameraActive
+        ? resolveSyntheticDirectorCamera(activePhase!.directorCamera!, timeMs, {
+            isEditing: !isPlaying,
+          })
+        : (activeSlide?.pitchTransform ?? null);
+      const activeCue = activePhase?.directorCamera?.actionCues?.find(
+        (c) =>
+          timeMs >= c.startTimeMs &&
+          timeMs <= c.startTimeMs + (c.durationMs ?? 1000),
+      );
+      return { activeCue, resolvedCamera };
+    },
+    [
+      activePhase,
+      activeSlide?.pitchTransform,
+      isDirectorCameraActive,
+      isPlaying,
+    ],
+  );
+  const getCurrentTimeMs = useCallback(
+    () => Number(playbackStore.getState().timeMs),
+    [playbackStore],
   );
 
   // 境界線の状態
@@ -138,6 +159,7 @@ export function TacticalSplitPreviewPanel() {
     isDraggingRef.current = true;
     dragModeRef.current = e.shiftKey ? 'pan' : 'orbit';
     lastPosRef.current = { x: e.clientX, y: e.clientY };
+    const { resolvedCamera } = resolveCameraAtTime(getCurrentTimeMs());
     const baseCamera = resolvedCamera ?? activeSlide.pitchTransform;
     const initialTransform: PitchTransform = {
       tilt: baseCamera?.tilt ?? 0,
@@ -151,16 +173,14 @@ export function TacticalSplitPreviewPanel() {
     setDragPitchTransform(initialTransform);
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // JSDOM fallback
-    }
+    } catch {}
   };
 
   const handlePointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!isDraggingRef.current || !activeSlide) return;
-    const baseCamera = resolvedCamera ?? activeSlide.pitchTransform;
     const base: PitchTransform = latestPitchTransformRef.current ??
-      baseCamera ?? {
+      resolveCameraAtTime(getCurrentTimeMs()).resolvedCamera ??
+      activeSlide.pitchTransform ?? {
         tilt: 0,
         yaw: 90,
         zoom: 1,
@@ -197,6 +217,7 @@ export function TacticalSplitPreviewPanel() {
       latestPitchTransformRef.current
     ) {
       const latest = latestPitchTransformRef.current;
+      const currentTimeMs = getCurrentTimeMs();
       if (dragModeRef.current === 'pan') {
         upsertActionCameraCue(currentTimeMs, {
           panX: latest.panX,
@@ -218,17 +239,14 @@ export function TacticalSplitPreviewPanel() {
     setDragPitchTransform(null);
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // JSDOM fallback
-    }
+    } catch {}
   };
 
   usePreviewWheelZoom({
     containerRef,
-    activeCue,
-    resolvedCamera,
     activeSlide,
-    currentTimeMs,
+    getCurrentTimeMs,
+    resolveCameraAtTime,
     upsertActionCameraCue,
     updatePitchTransform,
   });

@@ -14,8 +14,6 @@ import {
   calculateBoundaryCrop,
 } from './video-crop-calc';
 import type { VideoExportOptions } from './video-export-types';
-import { exportVideoWithMediaRecorder } from './video-media-recorder-export';
-import { exportVideoWithMediabunny } from './video-mediabunny-export';
 
 export {
   getSupportedH264Codec,
@@ -24,11 +22,31 @@ export {
   getSupportedVP9EncoderConfig,
 } from './video-codec-support';
 export type { BoundaryCropInfo, VideoExportOptions };
-export {
-  calculateBoundaryCrop,
-  exportVideoWithMediabunny,
-  exportVideoWithMediaRecorder,
-};
+export { calculateBoundaryCrop };
+
+/**
+ * Lazy-loads and executes the Mediabunny video export engine.
+ */
+export async function exportVideoWithMediabunny(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  const { exportVideoWithMediabunny: run } = await import(
+    './video-mediabunny-export'
+  );
+  return run(options);
+}
+
+/**
+ * Lazy-loads and executes the MediaRecorder fallback video export engine.
+ */
+export async function exportVideoWithMediaRecorder(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  const { exportVideoWithMediaRecorder: run } = await import(
+    './video-media-recorder-export'
+  );
+  return run(options);
+}
 
 /**
  * Creates a dedicated Web Worker instance for off-thread video export.

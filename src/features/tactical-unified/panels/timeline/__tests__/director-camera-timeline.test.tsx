@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { Profiler, type ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
 import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
@@ -253,6 +253,39 @@ describe('DirectorCameraTimeline Component', () => {
     const timeline = screen.getByTestId('director-camera-timeline');
     const container = timeline.parentElement;
     expect(container?.className).toContain('max-w-6xl');
+  });
+
+  it('playbackStore.setTimeMs の連続更新時に director-scrubber-time と再生ヘッド style.left が DOM 直接更新され、React Profiler 再レンダー回数が 0 であること', () => {
+    const { playStore, renderWithProvider } = setupDirectorStores();
+    const onRender = vi.fn();
+
+    renderWithProvider(
+      <Profiler id="DirectorCameraTimeline" onRender={onRender}>
+        <DirectorCameraTimeline />
+      </Profiler>,
+    );
+
+    const mountRenderCount = onRender.mock.calls.length;
+
+    act(() => {
+      playStore.getState().setTimeMs(500);
+      playStore.getState().setTimeMs(1000);
+      playStore.getState().setTimeMs(1500);
+    });
+
+    expect(onRender.mock.calls.length).toBe(mountRenderCount);
+    expect(screen.getByTestId('director-scrubber-time').textContent).toBe(
+      '1.5s',
+    );
+    expect(
+      (screen.getByTestId('director-scrubber-input') as HTMLInputElement).value,
+    ).toBe('1500');
+    expect(screen.getByTestId('director-global-playhead').style.left).toBe(
+      '50%',
+    );
+    expect(screen.getByTestId('director-action-playhead').style.left).toBe(
+      '50%',
+    );
   });
 });
 

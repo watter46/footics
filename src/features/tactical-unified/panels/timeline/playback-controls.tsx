@@ -17,13 +17,14 @@ import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/director-camera
 
 export function PlaybackControls() {
   useTacticalAnimation();
-  const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const togglePlayback = usePlaybackStore((s) => s.togglePlayback);
-  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
+  const slides = useDocumentStore((s) =>
+    selectDomainActivePhaseSlides(s.project, activePhaseId),
+  );
 
   const activeIndex = slides.findIndex((sl) => sl.id === activeSlideId);
   const currentIndex = activeIndex === -1 ? 0 : activeIndex;

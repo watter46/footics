@@ -1,8 +1,8 @@
-import { applyEasing } from '@/lib/tactical/easing';
 import type {
   DirectorCameraTrack,
   PitchTransform,
 } from '@/lib/types/tactical-unified';
+import { applyEasing } from './easing';
 
 export {
   calculateUnifiedTotalDuration,

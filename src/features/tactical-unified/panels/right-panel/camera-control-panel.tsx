@@ -11,6 +11,7 @@ import {
   useDocumentStore,
   usePlaybackStore,
   useSessionStore,
+  useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   hasActiveDirectorCameraTrack,
@@ -28,9 +29,8 @@ export function CameraControlPanel(): React.ReactElement {
   const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const playbackTimeMs = usePlaybackStore((s) =>
-    s.isPlaying && workspaceMode !== 'director' ? 0 : s.timeMs,
-  );
+  const { playbackStore } = useTacticalStoresContext();
+  const playbackTimeMs = usePlaybackStore((s) => (s.isPlaying ? 0 : s.timeMs));
   const activePhase = useDocumentStore((s) =>
     selectDomainActivePhase(s.project, activePhaseId),
   );
@@ -62,11 +62,9 @@ export function CameraControlPanel(): React.ReactElement {
 
   const tilt = Math.round(currentCamera.tilt ?? 0);
   const yaw = Math.round(currentCamera.yaw ?? 90);
-  const zoom = Number(
-    (
-      (isDirectorMode && activeCue ? activeCue.zoom : currentCamera.zoom) ?? 1
-    ).toFixed(2),
-  );
+  const rawZoom =
+    (isDirectorMode && activeCue ? activeCue.zoom : currentCamera.zoom) ?? 1;
+  const zoom = Number(rawZoom.toFixed(2));
   const panX = Math.round(currentCamera.panX ?? 0);
   const panY = Math.round(currentCamera.panY ?? 0);
 
@@ -84,16 +82,15 @@ export function CameraControlPanel(): React.ReactElement {
     });
   };
 
-  type ActionCuePatch = Partial<{
-    zoom: number;
-    panX: number;
-    panY: number;
-    durationMs: number;
-    autoReturn: boolean;
-  }>;
   const upsertActionCue = (
     startTimeMs: number,
-    patch: ActionCuePatch,
+    patch: Partial<{
+      zoom: number;
+      panX: number;
+      panY: number;
+      durationMs: number;
+      autoReturn: boolean;
+    }>,
     cueId?: string,
   ) => {
     if (!activePhaseId) return;
@@ -120,10 +117,12 @@ export function CameraControlPanel(): React.ReactElement {
     });
   };
 
+  const getPlaybackTimeMs = () => Number(playbackStore.getState().timeMs);
+
   const handleTiltChange = (v: number) => {
     const nextTilt = Math.max(0, Math.min(65, Number.isNaN(v) ? 0 : v));
     if (isDirectorMode) {
-      upsertGlobalKeyframe(currentTimeMs, { tilt: nextTilt });
+      upsertGlobalKeyframe(getPlaybackTimeMs(), { tilt: nextTilt });
     }
     syncSlide({ tilt: nextTilt });
   };
@@ -131,7 +130,7 @@ export function CameraControlPanel(): React.ReactElement {
   const handleYawChange = (v: number) => {
     const nextYaw = (((Number.isNaN(v) ? 90 : v) % 360) + 360) % 360;
     if (isDirectorMode) {
-      upsertGlobalKeyframe(currentTimeMs, { yaw: nextYaw });
+      upsertGlobalKeyframe(getPlaybackTimeMs(), { yaw: nextYaw });
     }
     syncSlide({ yaw: nextYaw });
   };
@@ -139,15 +138,16 @@ export function CameraControlPanel(): React.ReactElement {
   const handlePresetSelect = (preset: { tilt: number; yaw: number }) => {
     const patch = { tilt: preset.tilt, yaw: preset.yaw };
     if (isDirectorMode) {
-      upsertGlobalKeyframe(currentTimeMs, patch);
+      upsertGlobalKeyframe(getPlaybackTimeMs(), patch);
     }
     syncSlide(patch);
   };
 
   const handleResetCamera = () => {
     if (isDirectorMode) {
-      upsertGlobalKeyframe(currentTimeMs, { tilt: 0, yaw: 90 });
-      upsertActionCue(currentTimeMs, { zoom: 1, panX: 0, panY: 0 });
+      const timeMs = getPlaybackTimeMs();
+      upsertGlobalKeyframe(timeMs, { tilt: 0, yaw: 90 });
+      upsertActionCue(timeMs, { zoom: 1, panX: 0, panY: 0 });
     }
     syncSlide({ panX: 0, panY: 0, zoom: 1, tilt: 0, yaw: 90 });
   };
@@ -156,7 +156,7 @@ export function CameraControlPanel(): React.ReactElement {
     const nextZoom = Math.max(0.4, Math.min(3.0, Number.isNaN(v) ? 1 : v));
     if (isDirectorMode) {
       upsertActionCue(
-        currentTimeMs,
+        getPlaybackTimeMs(),
         { zoom: nextZoom, panX, panY },
         activeCue?.id,
       );
@@ -168,7 +168,7 @@ export function CameraControlPanel(): React.ReactElement {
     const nextX = Number.isNaN(newX) ? 0 : Math.round(newX);
     const nextY = Number.isNaN(newY) ? 0 : Math.round(newY);
     if (isDirectorMode) {
-      upsertActionCue(currentTimeMs, { panX: nextX, panY: nextY, zoom });
+      upsertActionCue(getPlaybackTimeMs(), { panX: nextX, panY: nextY, zoom });
     }
     syncSlide({ panX: nextX, panY: nextY });
   };

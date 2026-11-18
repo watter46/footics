@@ -8,9 +8,13 @@ import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 interface UsePreviewWheelZoomParams {
   containerRef: RefObject<HTMLDivElement | null>;
   activeCue?: ActionCameraCue;
-  resolvedCamera: PitchTransform | null;
+  resolvedCamera?: PitchTransform | null;
   activeSlide?: DomainSlide | null;
-  currentTimeMs: number;
+  getCurrentTimeMs: () => number;
+  resolveCameraAtTime?: (timeMs: number) => {
+    activeCue?: ActionCameraCue;
+    resolvedCamera: PitchTransform | null;
+  };
   upsertActionCameraCue: (
     timeMs: number,
     cue: Partial<Omit<ActionCameraCue, 'id'>>,
@@ -27,7 +31,8 @@ export function usePreviewWheelZoom({
   activeCue,
   resolvedCamera,
   activeSlide,
-  currentTimeMs,
+  getCurrentTimeMs,
+  resolveCameraAtTime,
   upsertActionCameraCue,
   updatePitchTransform,
 }: UsePreviewWheelZoomParams) {
@@ -37,6 +42,13 @@ export function usePreviewWheelZoom({
 
     const handleNativeWheel = (e: globalThis.WheelEvent) => {
       e.preventDefault();
+      const timeMs = getCurrentTimeMs();
+      const resolved = resolveCameraAtTime?.(timeMs);
+      const currentActiveCue = resolved ? resolved.activeCue : activeCue;
+      const currentResolvedCamera = resolved
+        ? resolved.resolvedCamera
+        : resolvedCamera;
+
       const rect = container.getBoundingClientRect();
       const clientX = e.clientX ?? 0;
       const clientY = e.clientY ?? 0;
@@ -48,18 +60,18 @@ export function usePreviewWheelZoom({
       const dy = mouseY - centerY;
 
       const currentZoom =
-        activeCue?.zoom ??
-        resolvedCamera?.zoom ??
+        currentActiveCue?.zoom ??
+        currentResolvedCamera?.zoom ??
         activeSlide?.pitchTransform?.zoom ??
         1.0;
       const currentPanX =
-        activeCue?.panX ??
-        resolvedCamera?.panX ??
+        currentActiveCue?.panX ??
+        currentResolvedCamera?.panX ??
         activeSlide?.pitchTransform?.panX ??
         0;
       const currentPanY =
-        activeCue?.panY ??
-        resolvedCamera?.panY ??
+        currentActiveCue?.panY ??
+        currentResolvedCamera?.panY ??
         activeSlide?.pitchTransform?.panY ??
         0;
 
@@ -73,13 +85,13 @@ export function usePreviewWheelZoom({
       const nextPanY = Math.round(currentPanY * k + dy * (1 - k));
 
       upsertActionCameraCue(
-        currentTimeMs,
+        timeMs,
         {
           zoom: nextZoom,
           panX: nextPanX,
           panY: nextPanY,
         },
-        activeCue?.id,
+        currentActiveCue?.id,
       );
       if (activeSlide) {
         updatePitchTransform(activeSlide.id, {
@@ -98,7 +110,8 @@ export function usePreviewWheelZoom({
     activeCue,
     resolvedCamera,
     activeSlide,
-    currentTimeMs,
+    getCurrentTimeMs,
+    resolveCameraAtTime,
     upsertActionCameraCue,
     updatePitchTransform,
     containerRef,

@@ -50,6 +50,16 @@ export const EASING_OPTIONS: EasingOption[] = [
   },
 ];
 
+export const TRANSITION_EASING_OPTIONS: ReadonlyArray<{
+  value: 'ease-in-out' | 'linear' | 'ease-in' | 'ease-out';
+  label: string;
+}> = [
+  { value: 'ease-in-out', label: '滑らか (Ease In/Out)' },
+  { value: 'linear', label: '等速 (Linear)' },
+  { value: 'ease-in', label: '加速 (Ease In)' },
+  { value: 'ease-out', label: '減速 (Ease Out)' },
+];
+
 export const GSAP_EASE_MAP: Record<string, string> = {
   linear: 'none',
   easeInOut: 'power1.inOut',

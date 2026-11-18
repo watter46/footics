@@ -1,4 +1,3 @@
-import { applyEasing } from '@/lib/tactical/easing';
 import {
   computeArrowEffectState,
   computeZonePulseOpacity,
@@ -11,6 +10,7 @@ import type {
   DomainSlide,
   DomainTacticalPhase,
 } from '@/lib/types/tactical/domain-hierarchy';
+import { applyEasing } from './easing';
 import { interpolateSlide } from './slide-interpolator';
 
 export interface EvaluatedTimelineFrame {

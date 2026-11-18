@@ -135,6 +135,37 @@ describe('SlideTransitionPopover Component', () => {
     );
   });
 
+  it('renders and allows selecting all 4 TRANSITION_EASING_OPTIONS', () => {
+    const { docStore, slide2, renderWithProvider } = createTestSetup();
+    const anchor = document.createElement('div');
+
+    renderWithProvider(
+      <SlideTransitionPopover
+        slide={slide2}
+        index={1}
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const select = screen.getByLabelText(/加減速/i) as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((opt) => opt.value);
+    expect(optionValues).toEqual([
+      'ease-in-out',
+      'linear',
+      'ease-in',
+      'ease-out',
+    ]);
+
+    for (const value of ['linear', 'ease-in', 'ease-out', 'ease-in-out']) {
+      fireEvent.change(select, { target: { value } });
+      expect(docStore.getState().project.phases[0]?.slides[1]?.easing).toBe(
+        value,
+      );
+    }
+  });
+
   it('disables duration input for Scene 1 (index === 0) while keeping pause enabled', () => {
     const { slide1, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');

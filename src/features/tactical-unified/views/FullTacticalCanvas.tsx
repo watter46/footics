@@ -43,7 +43,6 @@ function FullTacticalCanvasInner({
 }: FullTacticalCanvasProps) {
   const resolvedImageAspect = imageAspect ?? 16 / 9;
 
-  const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const setStageAspect = useSessionStore((s) => s.setStageAspect);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
@@ -51,7 +50,9 @@ function FullTacticalCanvasInner({
 
   // アクティブフェーズの全スライドの選手写真を一括事前解決・キャッシュ
   // 親コンテキストに写真マップが存在する場合は重複ロードを防ぐため空配列を渡し、単体マウント時のみ自前解決
-  const activeSlides = selectDomainActivePhaseSlides(project, activePhaseId);
+  const activeSlides = useDocumentStore((s) =>
+    selectDomainActivePhaseSlides(s.project, activePhaseId),
+  );
   const allPhasePlayers = useMemo(
     () => activeSlides.flatMap((s) => s.players ?? []),
     [activeSlides],

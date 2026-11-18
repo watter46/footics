@@ -1,8 +1,10 @@
-import { act, render, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import React, { Profiler, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { CameraControlPanel } from '@/features/tactical-unified/panels/right-panel/camera-control-panel';
+import { TacticalSplitPreviewPanel } from '@/features/tactical-unified/panels/split-preview/tactical-split-preview-panel';
+import { DirectorCameraTimeline } from '@/features/tactical-unified/panels/timeline/director-camera-timeline';
 import { PlaybackControls } from '@/features/tactical-unified/panels/timeline/playback-controls';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
 import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
@@ -210,5 +212,97 @@ describe('board-playback-performance', () => {
 
     expect(rafSpy).not.toHaveBeenCalled();
     rafSpy.mockRestore();
+  });
+
+  it('case 4: director モードで startPlayback() 後に setTimeMs を 5 回連続実行しても CameraControlPanel・DirectorCameraTimeline・TacticalSplitPreviewPanel が再レンダーされず DOM が更新される', async () => {
+    const project = createTestProject();
+    for (const slide of project.phases[0].slides) {
+      slide.ball.visible = false;
+    }
+    const documentStore = createDocumentStore(project);
+    const playbackStore = createPlaybackStore();
+    const sessionStore = createSessionStore({
+      activePhaseId: 'phase-1',
+      activeSlideId: 'slide-1',
+    });
+    sessionStore.getState().setWorkspaceMode('director');
+
+    let cameraControlRenders = 0;
+    let directorTimelineRenders = 0;
+    let splitPreviewRenders = 0;
+
+    render(
+      <TacticalStoreProvider
+        stores={{
+          documentStore,
+          playbackStore,
+          sessionStore,
+        }}
+      >
+        <Profiler
+          id="camera-control"
+          onRender={() => {
+            cameraControlRenders += 1;
+          }}
+        >
+          <CameraControlPanel />
+        </Profiler>
+        <Profiler
+          id="director-timeline"
+          onRender={() => {
+            directorTimelineRenders += 1;
+          }}
+        >
+          <DirectorCameraTimeline />
+        </Profiler>
+        <Profiler
+          id="split-preview"
+          onRender={() => {
+            splitPreviewRenders += 1;
+          }}
+        >
+          <TacticalSplitPreviewPanel />
+        </Profiler>
+      </TacticalStoreProvider>,
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    const initialCameraRenders = cameraControlRenders;
+    const initialTimelineRenders = directorTimelineRenders;
+    const initialSplitPreviewRenders = splitPreviewRenders;
+
+    act(() => {
+      playbackStore.getState().startPlayback();
+    });
+
+    const afterStartCameraRenders = cameraControlRenders;
+    const afterStartTimelineRenders = directorTimelineRenders;
+    const afterStartSplitPreviewRenders = splitPreviewRenders;
+
+    act(() => {
+      playbackStore.getState().setTimeMs(300);
+      playbackStore.getState().setTimeMs(600);
+      playbackStore.getState().setTimeMs(900);
+      playbackStore.getState().setTimeMs(1200);
+      playbackStore.getState().setTimeMs(1500);
+    });
+
+    expect(initialCameraRenders).toBeGreaterThan(0);
+    expect(initialTimelineRenders).toBeGreaterThan(0);
+    expect(initialSplitPreviewRenders).toBeGreaterThan(0);
+
+    expect(cameraControlRenders).toBe(afterStartCameraRenders);
+    expect(directorTimelineRenders).toBe(afterStartTimelineRenders);
+    expect(splitPreviewRenders).toBe(afterStartSplitPreviewRenders);
+
+    expect(screen.getByTestId('director-scrubber-time').textContent).toBe(
+      '1.5s',
+    );
+    expect(
+      (screen.getByTestId('director-scrubber-input') as HTMLInputElement).value,
+    ).toBe('1500');
   });
 });
