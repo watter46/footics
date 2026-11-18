@@ -12,7 +12,6 @@ import {
 import { ContextHud } from '../core/components/ContextHud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
 import { PitchGroundLayer } from '../core/components/PitchGroundLayer';
-import { PlayerGhostTrajectoryList } from '../core/components/player-ghost-trajectory-list';
 import { createCanvasNodesRegistry } from '../core/utils/canvas-registry';
 import { resolveSceneGraphFromState } from '../hooks/use-resolved-scene-graph';
 import { createDocumentStore } from '../stores/document-store';
@@ -412,65 +411,6 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
         );
 
         expect(container.firstChild).toBeNull();
-      });
-    });
-
-    describe('PlayerGhostTrajectoryList', () => {
-      it('marker.area === "bench" の選手は除外（null を返却）されゴースト軌道が描画されない', () => {
-        const benchPlayer = {
-          ...createDefaultPlayer(
-            'home',
-            clampToScreenNorm(80),
-            clampToScreenNorm(80),
-            '#034694',
-          ),
-          x: clampToScreenNorm(80),
-          y: clampToScreenNorm(80),
-          trajectory: undefined,
-          id: 'bench-p1',
-          area: 'bench' as const,
-        };
-        const pitchPlayer = {
-          ...createDefaultPlayer(
-            'home',
-            clampToScreenNorm(50),
-            clampToScreenNorm(50),
-            '#034694',
-          ),
-          x: clampToScreenNorm(50),
-          y: clampToScreenNorm(50),
-          trajectory: undefined,
-          id: 'pitch-p1',
-          area: 'pitch' as const,
-        };
-
-        const prevSlide = {
-          players: [
-            {
-              ...benchPlayer,
-              x: clampToScreenNorm(20),
-              y: clampToScreenNorm(20),
-              area: 'pitch' as const,
-            },
-            {
-              ...pitchPlayer,
-              x: clampToScreenNorm(30),
-              y: clampToScreenNorm(30),
-              area: 'pitch' as const,
-            },
-          ],
-        };
-
-        const element = PlayerGhostTrajectoryList({
-          markers: [benchPlayer, pitchPlayer],
-          prevSlide,
-          width: 800,
-          height: 600,
-          activeSlideId: 'slide-1',
-        });
-
-        const children = React.Children.toArray(element?.props.children);
-        expect(children.length).toBe(1);
       });
     });
 

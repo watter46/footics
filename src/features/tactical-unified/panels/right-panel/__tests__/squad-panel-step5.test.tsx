@@ -28,8 +28,6 @@ import * as tacticalStorage from '@/lib/tactical/tactical-storage';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
-import { BenchSwapSelector } from '../bench-swap-selector';
-import { FormationBenchAddForm } from '../formation-bench-add-form';
 import { SquadSubForm } from '../squad-sub-form';
 import { SquadSubPanel } from '../squad-sub-panel';
 
@@ -389,37 +387,6 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
   });
 
   describe('Bench & Squad Forms Primitives & Layout Cleanup', () => {
-    it('BenchSwapSelector applies min-w-0 and truncate to prevent right-edge clipping', () => {
-      const dummyBenchPlayer = dummyBenchPlayers[0];
-      const { container } = render(
-        <BenchSwapSelector
-          benchPlayer={dummyBenchPlayer}
-          pitchPlayers={[
-            {
-              ...createDefaultDomainPlayer(
-                'home',
-                50,
-                50,
-                '#3b82f6',
-                'pitch',
-                'pitch-1',
-              ),
-              name: 'A Very Long Player Name That Might Overflow',
-            },
-          ]}
-          teamColor="#3b82f6"
-          onSwap={vi.fn()}
-          onClose={vi.fn()}
-        />,
-      );
-      const root = container.firstElementChild as HTMLElement;
-      expect(root.className).toContain('min-w-0');
-      const playerText = screen.getByText(
-        'A Very Long Player Name That Might Overflow',
-      );
-      expect(playerText.className).toContain('truncate');
-    });
-
     it('SquadSubForm uses Input and Button UI components', () => {
       const { container } = render(
         <SquadSubForm
@@ -433,25 +400,6 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
         />,
       );
       const submitBtn = screen.getByRole('button', { name: 'Add' });
-      expect(submitBtn.className).toContain('btn-interactive');
-
-      const inputs = container.querySelectorAll('input');
-      expect(inputs.length).toBe(3);
-      for (const input of inputs) {
-        expect(input.className).toContain('focus:ring-1');
-      }
-    });
-
-    it('FormationBenchAddForm uses Input and Button UI components', () => {
-      const { container } = render(
-        <FormationBenchAddForm
-          activeSlideId="s1"
-          activeTeam="home"
-          onAddPlayer={vi.fn()}
-          onClose={vi.fn()}
-        />,
-      );
-      const submitBtn = screen.getByRole('button', { name: 'Add Player' });
       expect(submitBtn.className).toContain('btn-interactive');
 
       const inputs = container.querySelectorAll('input');

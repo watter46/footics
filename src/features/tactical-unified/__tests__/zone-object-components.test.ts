@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ZonePolygonNode } from '@/features/tactical-unified/core/components/zones/ZonePolygonNode';
 import { ZoneShapeNode } from '@/features/tactical-unified/core/components/zones/ZoneShapeNode';
 import { computeTransformedZonePatch } from '@/features/tactical-unified/core/components/zones/zone-geometry';
-import * as PlayerComponents from '@/features/tactical-unified/objects/player/components';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
@@ -19,25 +18,6 @@ import type {
   PolygonZone,
   RectZone,
 } from '@/lib/types/tactical/domain-entities';
-
-describe('Player components exports', () => {
-  it('does not export dead player components', () => {
-    expect('PlayerMarker' in PlayerComponents).toBe(false);
-    expect('PlayerConnectLines' in PlayerComponents).toBe(false);
-    expect('PlayerBadge' in PlayerComponents).toBe(false);
-    expect('PlayerOnionskin' in PlayerComponents).toBe(false);
-  });
-
-  it('exports active player components', () => {
-    expect(PlayerComponents.PlayerFocusSpotlight).toBeDefined();
-    expect(PlayerComponents.PlayerGhostTrajectory).toBeDefined();
-    expect(PlayerComponents.PlayerMarkerCircle).toBeDefined();
-    expect(PlayerComponents.PlayerMarkerLabel).toBeDefined();
-    expect(PlayerComponents.PlayerMarkerRing).toBeDefined();
-    expect(PlayerComponents.PlayerVisionCone).toBeDefined();
-    expect(PlayerComponents.PlayerVisionConeHandles).toBeDefined();
-  });
-});
 
 describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
   it('ZoneShapeNode uses resolvedZone when provided', () => {

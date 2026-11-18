@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PITCH_PERSPECTIVE as TRANSFORM_PERSPECTIVE } from '../../core/utils/canvas-pitch-transform-helper';
-import { DEFAULT_PITCH_PERSPECTIVE as SCREEN_PERSPECTIVE } from '../../core/utils/canvas-screen-coordinates';
+import { DEFAULT_PITCH_PERSPECTIVE as TRANSFORM_PERSPECTIVE } from '../canvas-pitch-transform-helper';
+import { DEFAULT_PITCH_PERSPECTIVE as SCREEN_PERSPECTIVE } from '../canvas-screen-coordinates';
 import {
   distToSegment,
   isPointInPolygon,
   pointerToNormalizedCoord,
   resolveBoundaryBoxPixelRect,
-} from '../../core/utils/geometry';
+} from '../geometry';
 
 describe('geometry-and-viewport', () => {
   describe('DEFAULT_PITCH_PERSPECTIVE unification', () => {

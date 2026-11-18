@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeArrowDimensions } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
-import { getWavyPoints } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
+import { computeArrowDimensions } from '@/lib/tactical/compiler/geometry-primitives';
 import type {
   ArrowEffectConfig,
   MarkerEffectConfig,
@@ -240,11 +239,17 @@ describe('effect-geometry', () => {
     });
 
     it('smooths tip angle and aligns last two points to main heading when isWavy is true', () => {
-      const rawWavy = getWavyPoints(0, 0, 100, 0);
-      const points: NormalizedPoint[] = [];
-      for (let i = 0; i < rawWavy.length; i += 2) {
-        points.push({ x: rawWavy[i], y: rawWavy[i + 1] });
-      }
+      const points: NormalizedPoint[] = [
+        { x: 0, y: 0 },
+        { x: 12.5, y: 5 },
+        { x: 25, y: -5 },
+        { x: 37.5, y: 5 },
+        { x: 50, y: -5 },
+        { x: 62.5, y: 5 },
+        { x: 75, y: -5 },
+        { x: 87.5, y: 5 },
+        { x: 100, y: 0 },
+      ];
 
       // Without isWavy: tipAngle follows local wave derivative (non-zero)
       const normalResult = trimRenderPoints(points, 0.5, false);
