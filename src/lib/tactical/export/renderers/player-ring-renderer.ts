@@ -1,7 +1,7 @@
 import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
-} from '@/lib/tactical/marker-assets';
+} from '@/lib/tactical/shared/marker-assets';
 import type { AnyCanvasRenderingContext2D } from './renderer-context';
 
 export interface PlayerRingRenderState {

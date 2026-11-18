@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
 import {
   calculatePitchGeometryForAspect,
   PITCH_BOUNDARY_CONFIGS,
-} from '../pitch-geometry';
-import { generatePitchSvg, getPitchSvgDataUrl } from '../pitch-svg';
+} from '@/lib/tactical/shared/pitch-geometry';
+import {
+  generatePitchSvg,
+  getPitchSvgDataUrl,
+} from '@/lib/tactical/shared/pitch-svg';
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 describe('pitch-svg generator', () => {
   const allRatios: AspectRatio[] = ['16:9', '9:16', '4:5', '1:1'];

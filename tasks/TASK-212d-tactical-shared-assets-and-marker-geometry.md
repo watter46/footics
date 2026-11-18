@@ -1,6 +1,6 @@
 # TASK-212d: marker-geometry の compiler 移設と視覚アセットの shared/ 切り出し
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): organize marker-geometry into compiler and visual assets into shared`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 4, Phase 5 (parallel)

@@ -14,11 +14,11 @@
  * - Symmetrical pitch markings matching FIFA geometry
  */
 
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 import {
   calculatePitchGeometryForAspect,
   DEFAULT_PITCH_MARGIN_PERCENT,
-} from '@/lib/tactical/shared/pitch-geometry';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
+} from './pitch-geometry';
 
 export interface PitchSvgOptions {
   marginPercent?: number;

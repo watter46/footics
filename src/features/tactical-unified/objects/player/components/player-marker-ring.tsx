@@ -7,7 +7,7 @@ import { Ellipse, Group, Path } from 'react-konva';
 import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
-} from '@/lib/tactical/marker-assets';
+} from '@/lib/tactical/shared/marker-assets';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerMarkerRingProps {

@@ -4,7 +4,7 @@ import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import {
   getMarkerBoundaryPoint,
   getPlayerMarkerRadius,
-} from './marker-geometry';
+} from '../marker-geometry';
 
 describe('marker-geometry', () => {
   const stageSize = { width: 1000, height: 600 };

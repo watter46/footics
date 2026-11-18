@@ -3,7 +3,7 @@
 import type Konva from 'konva';
 import { useEffect, useRef, useState } from 'react';
 import { Circle, Group, Line } from 'react-konva';
-import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
+import { getMarkerBoundaryPoint } from '@/lib/tactical/compiler/marker-geometry';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerConnectingGuideProps {

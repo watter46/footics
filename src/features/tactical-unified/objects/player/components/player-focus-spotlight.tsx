@@ -9,7 +9,7 @@ import {
   SPOTLIGHT_BEAM_BOTTOM_MAX_Y,
   SPOTLIGHT_BEAM_BOTTOM_WIDTH,
   SPOTLIGHT_BEAM_PATH,
-} from '@/lib/tactical/marker-assets';
+} from '@/lib/tactical/shared/marker-assets';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerFocusSpotlightProps {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculatePitchTextureCover } from '../pitch-texture-geometry';
+import { calculatePitchTextureCover } from '../shared/pitch-texture-geometry';
 
 describe('calculatePitchTextureCover', () => {
   const sampleImageSize = { width: 679, height: 800 };
