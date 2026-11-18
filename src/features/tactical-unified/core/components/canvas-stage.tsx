@@ -2,13 +2,22 @@
 
 import type Konva from 'konva';
 import type React from 'react';
+import { useContext, useEffect } from 'react';
 import { Stage } from 'react-konva';
-import { useResolvedSceneGraph } from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
-import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
+import {
+  resolveSceneGraphFromState,
+  useResolvedSceneGraph,
+} from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type {
+  EphemeralSessionState,
+  ResolvedSceneGraphDTO,
+} from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import type { SelectionBox } from '../utils/canvas-selection-helpers';
+import { syncSceneGraphToKonva } from '../utils/playback-konva-sync';
 import { BillboardObjectLayer } from './BillboardObjectLayer';
 import { InteractionPreviewLayer } from './InteractionPreviewLayer';
 import { PitchGroundLayer } from './PitchGroundLayer';
@@ -72,6 +81,37 @@ function CanvasStageInner({
 }: CanvasStageInnerProps) {
   const isInteractive = Boolean(interaction);
   const stageHandlers = interaction?.stageHandlers;
+  const stores = useContext(TacticalStoresContext);
+
+  useEffect(() => {
+    if (!stores) return;
+    return stores.playbackStore.subscribe((state, prevState) => {
+      if (!state.isPlaying || state.timeMs === prevState.timeMs) {
+        return;
+      }
+      const { project } = stores.documentStore.getState();
+      const sessionState = stores.sessionStore.getState();
+      const session: EphemeralSessionState = {
+        activePhaseId: sessionState.activePhaseId,
+        activeSlideId: sessionState.activeSlideId,
+        selectedIds: sessionState.selectedObjects.map((o) => o.id),
+      };
+      const nextSceneGraph = resolveSceneGraphFromState({
+        project,
+        session,
+        isPlaying: true,
+        timeMs: state.timeMs,
+        viewport: {
+          width: vRect.width,
+          height: vRect.height,
+          offsetX: 0,
+          offsetY: 0,
+        },
+        options: { applyPitchTransform: false },
+      });
+      syncSceneGraphToKonva(nodesRegistryRef.current, nextSceneGraph);
+    });
+  }, [stores, vRect.width, vRect.height, nodesRegistryRef]);
 
   return (
     <div

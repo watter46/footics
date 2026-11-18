@@ -7,6 +7,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
 import {
   selectDomainActivePhase,
+  selectDomainActivePhaseAspectRatio,
   selectDomainActiveSlide,
 } from '@/features/tactical-unified/stores/domain-selectors';
 import {
@@ -50,7 +51,6 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   listening = true,
   sceneGraph,
 }: BillboardObjectLayerProps): ReactNode {
-  const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
@@ -65,18 +65,20 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
   const setConnectingPlayerId = useSessionStore((s) => s.setConnectingPlayerId);
 
-  const activePhase = selectDomainActivePhase(project, activePhaseId);
-  const activeSlide = selectDomainActiveSlide(
-    project,
-    activePhaseId,
-    activeSlideId,
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const aspectRatio = useDocumentStore((s) =>
+    selectDomainActivePhaseAspectRatio(s.project, activePhaseId),
+  );
+  const activePhaseBackgroundType = useDocumentStore(
+    (s) => selectDomainActivePhase(s.project, activePhaseId)?.backgroundType,
   );
 
   const selectedIds = useMemo(
     () => selectedObjects.map((o) => o.id),
     [selectedObjects],
   );
-  const aspectRatio = activePhase?.aspectRatio;
 
   const groupTransform = resolvePitchGroupTransform(
     pitchRect,
@@ -97,10 +99,10 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   );
   const capabilities = useMemo(
     () => ({
-      hasBench: activePhase?.backgroundType !== 'image',
+      hasBench: activePhaseBackgroundType !== 'image',
       hasBall: activeSlide?.ball.visible ?? false,
     }),
-    [activePhase?.backgroundType, activeSlide?.ball.visible],
+    [activePhaseBackgroundType, activeSlide?.ball.visible],
   );
 
   const updateMarker = useCallback(

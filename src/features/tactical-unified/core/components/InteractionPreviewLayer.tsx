@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import {
   Arrow,
   Circle,
@@ -206,7 +206,7 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
   return null;
 }
 
-export function InteractionPreviewLayer({
+export const InteractionPreviewLayer = memo(function InteractionPreviewLayer({
   pitchRect,
   selectionBox,
   cleanRender,
@@ -289,4 +289,4 @@ export function InteractionPreviewLayer({
       </Group>
     </Layer>
   );
-}
+});

@@ -3,6 +3,7 @@
 /** Tactical Unified Canvas — Animation Engine Hook (Stream Store Driver) */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
   usePlaybackStore,
@@ -25,13 +26,12 @@ export interface UseTacticalAnimationOptions {
 
 export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   const { playbackStore } = useTacticalStoresContext();
-  const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
+  );
   const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-
-  const activePhase =
-    project.phases.find((p) => p.id === activePhaseId) ?? project.phases[0];
 
   const totalDurationMs = resolvePlaybackDurationMs(activePhase?.slides ?? []);
 

@@ -80,6 +80,8 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
             isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
           }
           visible={resolvedZone.visible}
+          perfectDrawEnabled={false}
+          listening={isInteractive}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
@@ -104,6 +106,8 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
             isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
           }
           visible={resolvedZone.visible}
+          perfectDrawEnabled={false}
+          listening={isInteractive}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}

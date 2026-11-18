@@ -37,12 +37,11 @@ export function HtmlHudOverlay({
   const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const project = useDocumentStore((s) => s.project);
-  const pitchTransform = selectDomainActiveSlide(
-    project,
-    activePhaseId,
-    activeSlideId,
-  )?.pitchTransform;
+  const pitchTransform = useDocumentStore(
+    (s) =>
+      selectDomainActiveSlide(s.project, activePhaseId, activeSlideId)
+        ?.pitchTransform,
+  );
 
   if (cleanRender) return null;
 

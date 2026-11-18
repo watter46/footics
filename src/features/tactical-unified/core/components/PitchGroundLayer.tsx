@@ -6,7 +6,6 @@ import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer } from 'react-konva';
 import {
-  selectDomainActivePhase,
   selectDomainActivePhaseAspectRatio,
   selectDomainActiveSlide,
   selectDomainPreviousSlide,
@@ -55,7 +54,6 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   listening = true,
   sceneGraph,
 }: PitchGroundLayerProps): ReactNode {
-  const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
@@ -66,20 +64,15 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const selectObject = useSessionStore((s) => s.selectObject);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
-  const activePhase = selectDomainActivePhase(project, activePhaseId);
-  const activeSlide = selectDomainActiveSlide(
-    project,
-    activePhaseId,
-    activeSlideId,
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const prevSlide = selectDomainPreviousSlide(
-    project,
-    activePhaseId,
-    activeSlideId,
+  const prevSlide = useDocumentStore((s) =>
+    selectDomainPreviousSlide(s.project, activePhaseId, activeSlideId),
   );
-  const aspectRatio =
-    activePhase?.aspectRatio ??
-    selectDomainActivePhaseAspectRatio(project, activePhaseId);
+  const aspectRatio = useDocumentStore((s) =>
+    selectDomainActivePhaseAspectRatio(s.project, activePhaseId),
+  );
   const selectedIds = useMemo(
     () => selectedObjects.map((o) => o.id),
     [selectedObjects],

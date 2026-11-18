@@ -86,6 +86,8 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
           isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
         }
         visible={resolvedZone.visible}
+        perfectDrawEnabled={false}
+        listening={isInteractive}
         lineCap="round"
         lineJoin="round"
         hitStrokeWidth={20}

@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
   usePlaybackStore,
   useSessionStore,
+  useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
 import type {
@@ -106,12 +108,27 @@ export function resolveSceneGraphFromState(params: {
 export function useResolvedSceneGraph(
   viewport: StageViewport,
 ): ResolvedSceneGraphDTO {
-  const project = useDocumentStore((s) => s.project);
+  const { playbackStore } = useTacticalStoresContext();
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
+  );
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-  const timeMs = usePlaybackStore((s) => s.timeMs);
+
+  const initialTimeMs = useMemo(
+    () => (isPlaying ? playbackStore.getState().timeMs : (0 as Milliseconds)),
+    [isPlaying, playbackStore],
+  );
+
+  const scopedProject = useMemo(
+    () =>
+      ({
+        phases: activePhase ? [activePhase] : [],
+      }) as DomainTacticalProject,
+    [activePhase],
+  );
 
   const selectedIds = useMemo(
     () => selectedObjects.map((o) => o.id),
@@ -130,18 +147,18 @@ export function useResolvedSceneGraph(
   return useMemo(
     () =>
       resolveSceneGraphFromState({
-        project,
+        project: scopedProject,
         session,
         isPlaying,
-        timeMs,
+        timeMs: initialTimeMs,
         viewport,
         options: { applyPitchTransform: false },
       }),
     [
-      project,
+      scopedProject,
       session,
       isPlaying,
-      timeMs,
+      initialTimeMs,
       viewport.width,
       viewport.height,
       viewport.offsetX,

@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import {
@@ -47,22 +47,25 @@ export const ArrowObject = React.memo(function ArrowObject({
   const endHandleRef = useRef<Konva.Circle | null>(null);
   const controlHandleRef = useRef<Konva.Circle | null>(null);
 
-  const entryProps = {
-    startDotNode: startDotRef.current,
-    endDotNode: endDotRef.current,
-    sourcePlayerId: arrow.sourcePlayerId,
-    targetPlayerId: arrow.targetPlayerId,
-    arrowType: arrow.arrowType,
-    curveType: arrow.curveType,
-    startMarker: arrow.startMarker,
-    endMarker: arrow.endMarker,
-    startPx: resolvedArrow.startPointPx,
-    endPx: resolvedArrow.endPointPx,
-    controlPointPx: resolvedArrow.controlHandlePx,
-    sourceRadiusPx: resolvedArrow.sourceRadiusPx,
-    targetRadiusPx: resolvedArrow.targetRadiusPx,
-    dotRadiusPx: resolvedArrow.dotRadiusPx,
-  };
+  const entryProps = useMemo(
+    () => ({
+      startDotNode: startDotRef.current,
+      endDotNode: endDotRef.current,
+      sourcePlayerId: arrow.sourcePlayerId,
+      targetPlayerId: arrow.targetPlayerId,
+      arrowType: arrow.arrowType,
+      curveType: arrow.curveType,
+      startMarker: arrow.startMarker,
+      endMarker: arrow.endMarker,
+      startPx: resolvedArrow.startPointPx,
+      endPx: resolvedArrow.endPointPx,
+      controlPointPx: resolvedArrow.controlHandlePx,
+      sourceRadiusPx: resolvedArrow.sourceRadiusPx,
+      targetRadiusPx: resolvedArrow.targetRadiusPx,
+      dotRadiusPx: resolvedArrow.dotRadiusPx,
+    }),
+    [arrow, resolvedArrow],
+  );
 
   useEffect(() => {
     const registry = nodesRegistryRef?.current;
@@ -74,7 +77,7 @@ export const ArrowObject = React.memo(function ArrowObject({
     return () => {
       registry.arrowNodes.delete(arrow.id);
     };
-  }, [arrow.id, nodesRegistryRef]);
+  }, [arrow.id, nodesRegistryRef, entryProps]);
 
   useEffect(() => {
     const entry = nodesRegistryRef?.current?.arrowNodes.get(arrow.id);
@@ -83,7 +86,7 @@ export const ArrowObject = React.memo(function ArrowObject({
       node: arrowRef.current ?? entry.node,
       ...entryProps,
     });
-  });
+  }, [arrow.id, nodesRegistryRef, entryProps]);
 
   const sPxX = resolvedArrow.startPointPx.x;
   const sPxY = resolvedArrow.startPointPx.y;
