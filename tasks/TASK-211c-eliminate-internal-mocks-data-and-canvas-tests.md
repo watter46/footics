@@ -1,6 +1,6 @@
 # TASK-211c: Eliminate Internal `vi.mock` from Tactical Data, Canvas, and Page Tests
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `test(tactical): replace internal vi.mock with real Dexie and real canvas integration`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5 (parallel)

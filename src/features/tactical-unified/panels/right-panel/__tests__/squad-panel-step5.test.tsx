@@ -35,22 +35,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('matchId=999'),
 }));
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    matches: {
-      get: vi.fn(),
-    },
-  },
-}));
-
-vi.mock('@/lib/tactical/tactical-storage', () => ({
-  clearActiveProjectFromDb: vi.fn().mockResolvedValue(undefined),
-  saveActiveProjectToDb: vi.fn().mockResolvedValue(undefined),
-  loadActiveProjectFromDb: vi.fn().mockResolvedValue(null),
-  getTacticalProjectStorageKey: vi.fn(),
-  TACTICAL_PROJECT_STORAGE_KEY: 'tactical_active_project',
-}));
-
 describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
   const dummyBenchPlayers: DomainPlayer[] = [
     {
@@ -111,7 +95,12 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
   let phaseId: string;
   let slideId: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.matches.clear(),
+      db.tactical_projects.clear(),
+      db.keyval.clear(),
+    ]);
     const mockCtx = new Proxy(
       {
         getImageData: () => ({ data: new Array(4) }),
@@ -311,20 +300,42 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
   it('6. TopBarMoreMenu re-initializes match data when project has matchId', async () => {
     window.confirm = vi.fn().mockReturnValue(true);
 
-    const mockMatch = {
-      id: 999,
-      homeTeam: 'Chelsea',
-      awayTeam: 'Arsenal',
-      homeScore: 2,
-      awayScore: 1,
+    const matchRecord: Parameters<typeof db.matches.put>[0] = {
+      id: 999 as unknown as string,
+      homeTeam: { id: 1, name: 'Chelsea' },
+      awayTeam: { id: 2, name: 'Arsenal' },
+      date: '2026-01-01',
+      matchType: 'club',
+      score: '2 - 1',
+      playerIdNameDictionary: {},
+      teams: {
+        home: {
+          teamId: 1,
+          name: 'Chelsea',
+          players: [],
+        },
+        away: {
+          teamId: 2,
+          name: 'Arsenal',
+          players: [],
+        },
+      },
     };
 
-    (db.matches.get as any).mockResolvedValue(mockMatch);
-
-    stores.documentStore.getState().loadProject({
+    await db.matches.put(matchRecord);
+    const projectWithMatch: DomainTacticalProject = {
       ...stores.documentStore.getState().project,
       matchId: '999',
-    });
+    };
+    await tacticalStorage.saveActiveProjectToDb(projectWithMatch, '999');
+
+    const getMatchSpy = vi.spyOn(db.matches, 'get');
+    const clearProjectSpy = vi.spyOn(
+      tacticalStorage,
+      'clearActiveProjectFromDb',
+    );
+
+    stores.documentStore.getState().loadProject(projectWithMatch);
 
     render(
       <TacticalStoreProvider stores={stores}>
@@ -338,12 +349,13 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
     const newProjBtn = screen.getByRole('menuitem', { name: /New Project/i });
     fireEvent.click(newProjBtn);
 
-    expect(db.matches.get).toHaveBeenCalledWith(999);
+    expect(getMatchSpy).toHaveBeenCalledWith(999);
     await vi.waitFor(() => {
-      expect(tacticalStorage.clearActiveProjectFromDb).toHaveBeenCalledWith(
-        '999',
-      );
+      expect(clearProjectSpy).toHaveBeenCalledWith('999');
     });
+    await expect(
+      tacticalStorage.loadActiveProjectFromDb('999'),
+    ).resolves.toBeNull();
   });
 
   it('7. selecting marker in sub-canvas updates selectedObjects in store', () => {

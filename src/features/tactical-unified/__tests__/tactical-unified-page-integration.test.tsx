@@ -60,24 +60,16 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
 });
 
-// FullTacticalCanvas の描画有無を判定するためスパイ/モック可能に確認
-vi.mock('../views/FullTacticalCanvas', () => {
-  return {
-    FullTacticalCanvas: ({ ref }: { ref?: unknown }) => (
-      <div data-testid="full-tactical-canvas" data-has-ref={Boolean(ref)} />
-    ),
-  };
-});
-
 describe('TacticalUnifiedPage Integration', () => {
   it('TacticalUnifiedPage がマウントされ、TopBar と FullTacticalCanvas が描画されること', async () => {
-    render(<TacticalUnifiedPage />);
+    const { container } = render(<TacticalUnifiedPage />);
 
     expect(screen.getByRole('application')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined();
 
-    const canvasElement = await screen.findByTestId('full-tactical-canvas');
-    expect(canvasElement).toBeDefined();
+    await vi.waitFor(() => {
+      expect(container.querySelector('.konvajs-content')).not.toBeNull();
+    });
   });
 
   it('initialState で projectManagerModalOpen: true を確定注入した場合、モーダルが表示されること', async () => {

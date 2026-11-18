@@ -24,16 +24,6 @@ import {
 } from '@/lib/types/tactical-unified';
 import { FullTacticalCanvas } from '../FullTacticalCanvas';
 
-// jsdom では SVG 画像がロードされないため、ピッチ画像をダミー要素で供給する
-vi.mock('@/lib/tactical/pitch-svg', () => {
-  const img = document.createElement('img');
-  return {
-    getCachedPitchSvgImage: () => img,
-    loadPitchSvgImage: async () => img,
-    preloadAllPitchSvgImages: () => {},
-  };
-});
-
 class MockResizeObserver {
   callback: ResizeObserverCallback;
   constructor(callback: ResizeObserverCallback) {
