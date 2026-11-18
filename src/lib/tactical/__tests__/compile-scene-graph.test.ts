@@ -231,22 +231,92 @@ describe('compileSceneGraph', () => {
     expect(scene.connectLines[0].toPlayerId).toBe('p2');
   });
 
-  it('compiles drawingPreview directly and returns null for null input', () => {
+  it('compiles drawingPreview for zones, arrows, route lines, and returns null for null input', () => {
     const viewport = { width: 1000, height: 500 };
 
-    const preview = compileDrawingPreview(
+    const zonePreview = compileDrawingPreview(
       {
-        tool: 'pass',
+        tool: 'zone',
         startPoint: toScreenNormPoint(10, 10),
-        currentPoint: toScreenNormPoint(25, 25),
+        currentPoint: toScreenNormPoint(30, 40),
       },
       viewport,
+      { color: '#ef4444', strokeWidth: 3 },
     );
-    expect(preview).toBeDefined();
-    expect(preview?.startPointPx).toEqual({ x: 100, y: 50 });
-    expect(preview?.currentPointPx).toEqual({ x: 250, y: 125 });
+    expect(zonePreview).not.toBeNull();
+    if (zonePreview && 'shapeType' in zonePreview) {
+      expect(zonePreview.shapeType).toBe('rect');
+      expect(zonePreview.xPx).toBe(100);
+      expect(zonePreview.yPx).toBe(50);
+      expect(zonePreview.widthPx).toBe(200);
+      expect(zonePreview.heightPx).toBe(150);
+      expect(zonePreview.opacity).toBe(0.25);
+    } else {
+      throw new Error('Expected ResolvedZonePrimitive for zone tool');
+    }
 
-    expect(compileDrawingPreview(null, viewport)).toBeNull();
+    const circlePreview = compileDrawingPreview(
+      {
+        tool: 'zone_circle',
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(30, 40),
+      },
+      viewport,
+      { color: '#ef4444', strokeWidth: 3 },
+    );
+    expect(circlePreview).not.toBeNull();
+    if (circlePreview && 'shapeType' in circlePreview) {
+      expect(circlePreview.shapeType).toBe('ellipse');
+      expect(circlePreview.xPx).toBe(100);
+      expect(circlePreview.yPx).toBe(50);
+      expect(circlePreview.widthPx).toBe(200);
+      expect(circlePreview.heightPx).toBe(150);
+    } else {
+      throw new Error('Expected ResolvedZonePrimitive for zone_circle tool');
+    }
+
+    const wavyPreview = compileDrawingPreview(
+      {
+        tool: 'arrow_wavy',
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(30, 40),
+      },
+      viewport,
+      { color: '#ffffff', strokeWidth: 3 },
+    );
+    expect(wavyPreview).not.toBeNull();
+    if (wavyPreview && 'endMarker' in wavyPreview) {
+      expect(wavyPreview.endMarker).toBe('arrow');
+      expect(wavyPreview.color).toBe('#eab308');
+      expect(wavyPreview.flatPointsPx.length).toBeGreaterThan(4);
+    } else {
+      throw new Error('Expected ResolvedArrowPrimitive for arrow_wavy tool');
+    }
+
+    const routePreview = compileDrawingPreview(
+      {
+        tool: 'route_line',
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(30, 40),
+      },
+      viewport,
+      { color: '#ffffff', strokeWidth: 3 },
+    );
+    expect(routePreview).not.toBeNull();
+    if (routePreview && 'endMarker' in routePreview) {
+      expect(routePreview.startMarker).toBe('dot');
+      expect(routePreview.endMarker).toBe('dot');
+      expect(routePreview.color).toBe('#38bdf8');
+    } else {
+      throw new Error('Expected ResolvedArrowPrimitive for route_line tool');
+    }
+
+    expect(
+      compileDrawingPreview(null, viewport, {
+        color: '#ffffff',
+        strokeWidth: 2,
+      }),
+    ).toBeNull();
   });
 
   it('subdivides quadratic bezier and generates wavy lines', () => {

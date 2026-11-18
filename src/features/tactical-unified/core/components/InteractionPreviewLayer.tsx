@@ -1,7 +1,15 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Ellipse, Group, Rect as KonvaRect, Layer, Line } from 'react-konva';
+import {
+  Arrow,
+  Circle,
+  Ellipse,
+  Group,
+  Rect as KonvaRect,
+  Layer,
+  Line,
+} from 'react-konva';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
@@ -63,7 +71,9 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
           opacity={preview.opacity}
           stroke={preview.strokeColor}
           strokeWidth={preview.strokeWidthPx}
+          dash={[4, 4]}
           listening={false}
+          perfectDrawEnabled={false}
         />
       );
     }
@@ -78,7 +88,10 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
           opacity={preview.opacity}
           stroke={preview.strokeColor}
           strokeWidth={preview.strokeWidthPx}
+          dash={[4, 4]}
+          cornerRadius={4}
           listening={false}
+          perfectDrawEnabled={false}
         />
       );
     }
@@ -96,18 +109,77 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
   }
 
   if (isArrowPrimitive(preview)) {
+    const dash =
+      preview.dashArrayPx.length > 0 ? [...preview.dashArrayPx] : undefined;
+
+    if (preview.endMarker === 'arrow') {
+      return (
+        <Arrow
+          points={[...preview.flatPointsPx]}
+          stroke={preview.color}
+          fill={preview.color}
+          strokeWidth={preview.strokeWidthPx}
+          dash={dash}
+          pointerLength={preview.pointerLengthPx}
+          pointerWidth={preview.pointerWidthPx}
+          opacity={preview.opacity}
+          lineCap="round"
+          lineJoin="round"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      );
+    }
+
+    if (preview.endMarker === 'dot') {
+      return (
+        <Group listening={false}>
+          <Line
+            points={[...preview.flatPointsPx]}
+            stroke={preview.color}
+            strokeWidth={preview.strokeWidthPx}
+            dash={dash}
+            opacity={preview.opacity}
+            lineCap="round"
+            lineJoin="round"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Circle
+            x={preview.startPointPx.x}
+            y={preview.startPointPx.y}
+            radius={preview.dotRadiusPx}
+            stroke={preview.color}
+            strokeWidth={2}
+            fill="transparent"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Circle
+            x={preview.endPointPx.x}
+            y={preview.endPointPx.y}
+            radius={preview.dotRadiusPx}
+            stroke={preview.color}
+            strokeWidth={2}
+            fill="transparent"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        </Group>
+      );
+    }
+
     return (
       <Line
         points={[...preview.flatPointsPx]}
         stroke={preview.color}
         strokeWidth={preview.strokeWidthPx}
-        dash={
-          preview.dashArrayPx.length > 0 ? [...preview.dashArrayPx] : undefined
-        }
+        dash={dash}
         opacity={preview.opacity}
         lineCap="round"
         lineJoin="round"
         listening={false}
+        perfectDrawEnabled={false}
       />
     );
   }
@@ -151,6 +223,8 @@ export function InteractionPreviewLayer({
   const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
   const teamVisibility = useSessionStore((s) => s.teamVisibility);
   const drawingPreview = useSessionStore((s) => s.drawingPreview);
+  const color = useSessionStore((s) => s.color);
+  const strokeWidth = useSessionStore((s) => s.strokeWidth);
   const activeSlide = useDocumentStore((s) =>
     selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
@@ -173,7 +247,11 @@ export function InteractionPreviewLayer({
   const ph = pitchRect.height;
   const baseDim = Math.min(pw, ph);
   const resolvedPreview = drawingPreview
-    ? compileDrawingPreview(drawingPreview, { width: pw, height: ph })
+    ? compileDrawingPreview(
+        drawingPreview,
+        { width: pw, height: ph },
+        { color, strokeWidth },
+      )
     : null;
 
   return (
