@@ -72,7 +72,7 @@ describe('canvas-drawing-factory', () => {
       expect.objectContaining({
         arrowType: 'route_line',
         dashArray: [],
-        startMarker: 'none',
+        startMarker: 'dot',
         endMarker: 'dot',
         color: '#38bdf8',
       }),

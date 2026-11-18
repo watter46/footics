@@ -131,45 +131,7 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
       );
     }
 
-    if (preview.endMarker === 'dot') {
-      return (
-        <Group listening={false}>
-          <Line
-            points={[...preview.flatPointsPx]}
-            stroke={preview.color}
-            strokeWidth={preview.strokeWidthPx}
-            dash={dash}
-            opacity={preview.opacity}
-            lineCap="round"
-            lineJoin="round"
-            listening={false}
-            perfectDrawEnabled={false}
-          />
-          <Circle
-            x={preview.startPointPx.x}
-            y={preview.startPointPx.y}
-            radius={preview.dotRadiusPx}
-            stroke={preview.color}
-            strokeWidth={2}
-            fill="transparent"
-            listening={false}
-            perfectDrawEnabled={false}
-          />
-          <Circle
-            x={preview.endPointPx.x}
-            y={preview.endPointPx.y}
-            radius={preview.dotRadiusPx}
-            stroke={preview.color}
-            strokeWidth={2}
-            fill="transparent"
-            listening={false}
-            perfectDrawEnabled={false}
-          />
-        </Group>
-      );
-    }
-
-    return (
+    const lineNode = (
       <Line
         points={[...preview.flatPointsPx]}
         stroke={preview.color}
@@ -182,6 +144,37 @@ function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
         perfectDrawEnabled={false}
       />
     );
+
+    if (preview.startMarker === 'dot' || preview.endMarker === 'dot') {
+      const dots = [
+        preview.startMarker === 'dot'
+          ? (preview.startMarkerPointPx ?? preview.startPointPx)
+          : null,
+        preview.endMarker === 'dot'
+          ? (preview.endMarkerPointPx ?? preview.endPointPx)
+          : null,
+      ].filter((pt): pt is NonNullable<typeof pt> => pt !== null);
+      return (
+        <Group listening={false}>
+          {lineNode}
+          {dots.map((pt, idx) => (
+            <Circle
+              key={idx === 0 ? 'start-dot' : 'end-dot'}
+              x={pt.x}
+              y={pt.y}
+              radius={preview.dotRadiusPx}
+              stroke={preview.color}
+              strokeWidth={2}
+              fill="transparent"
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          ))}
+        </Group>
+      );
+    }
+
+    return lineNode;
   }
 
   if ('flatPolygonPointsPx' in preview && preview.flatPolygonPointsPx) {

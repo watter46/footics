@@ -3,56 +3,58 @@ import React from 'react';
 import { Circle } from 'react-konva';
 
 export interface ArrowHeadNodeProps {
-  isDotEnd: boolean;
+  hasStartDot: boolean;
+  hasEndDot: boolean;
   startDotRef: React.RefObject<Konva.Circle | null>;
   endDotRef: React.RefObject<Konva.Circle | null>;
-  sPxX: number;
-  sPxY: number;
-  ePxX: number;
-  ePxY: number;
+  startDotPx: { x: number; y: number };
+  endDotPx: { x: number; y: number };
   color: string;
   strokeWidth: number;
   dotRadius: number;
 }
 
 export const ArrowHeadNode = React.memo(function ArrowHeadNode({
-  isDotEnd,
+  hasStartDot,
+  hasEndDot,
   startDotRef,
   endDotRef,
-  sPxX,
-  sPxY,
-  ePxX,
-  ePxY,
+  startDotPx,
+  endDotPx,
   color,
   strokeWidth,
   dotRadius,
 }: ArrowHeadNodeProps) {
-  if (!isDotEnd) return null;
+  if (!hasStartDot && !hasEndDot) return null;
 
   return (
     <>
-      <Circle
-        ref={startDotRef}
-        x={sPxX}
-        y={sPxY}
-        radius={dotRadius}
-        stroke={color}
-        strokeWidth={Math.max(2, strokeWidth)}
-        fill="transparent"
-        perfectDrawEnabled={false}
-        listening={false}
-      />
-      <Circle
-        ref={endDotRef}
-        x={ePxX}
-        y={ePxY}
-        radius={dotRadius}
-        stroke={color}
-        strokeWidth={Math.max(2, strokeWidth)}
-        fill="transparent"
-        perfectDrawEnabled={false}
-        listening={false}
-      />
+      {hasStartDot && (
+        <Circle
+          ref={startDotRef}
+          x={startDotPx.x}
+          y={startDotPx.y}
+          radius={dotRadius}
+          stroke={color}
+          strokeWidth={Math.max(2, strokeWidth)}
+          fill="transparent"
+          perfectDrawEnabled={false}
+          listening={false}
+        />
+      )}
+      {hasEndDot && (
+        <Circle
+          ref={endDotRef}
+          x={endDotPx.x}
+          y={endDotPx.y}
+          radius={dotRadius}
+          stroke={color}
+          strokeWidth={Math.max(2, strokeWidth)}
+          fill="transparent"
+          perfectDrawEnabled={false}
+          listening={false}
+        />
+      )}
     </>
   );
 });

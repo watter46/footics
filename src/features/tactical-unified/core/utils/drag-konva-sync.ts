@@ -205,8 +205,14 @@ export function syncPlayerDragKonvaNodes(params: {
     }
 
     entry.node?.points(points);
-    entry.startDotNode?.position({ x: offset.startX, y: offset.startY });
-    entry.endDotNode?.position({ x: offset.endX, y: offset.endY });
+    entry.startDotNode?.position({
+      x: offset.startMarkerX,
+      y: offset.startMarkerY,
+    });
+    entry.endDotNode?.position({
+      x: offset.endMarkerX,
+      y: offset.endMarkerY,
+    });
     entry.startHandleNode?.position(startPx);
     entry.endHandleNode?.position(endPx);
 

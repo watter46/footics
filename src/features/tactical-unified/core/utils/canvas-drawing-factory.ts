@@ -159,6 +159,7 @@ type ArrowCfg = [
   end: DomainArrowAnnotation['endMarker'],
   color?: string,
   curve?: boolean,
+  start?: DomainArrowAnnotation['startMarker'],
 ];
 
 const createArrowBehavior = (cfg: ArrowCfg): DrawingToolBehavior => ({
@@ -182,7 +183,7 @@ const createArrowBehavior = (cfg: ArrowCfg): DrawingToolBehavior => ({
       color: finalColor,
       strokeWidth,
       dashArray: cfg[2],
-      startMarker: 'none',
+      startMarker: cfg[6] ?? 'none',
       endMarker: cfg[3],
     });
   },
@@ -223,7 +224,7 @@ const createZoneBehavior = (
 
 const ARROW_DEFAULTS: Record<string, ArrowCfg> = {
   line: ['line', 'line', [], 'none'],
-  route_line: ['route_line', 'route_line', [], 'dot', '#38bdf8'],
+  route_line: ['route_line', 'route_line', [], 'dot', '#38bdf8', false, 'dot'],
   arrow_solid: ['arrow_solid', 'pass', [], 'arrow'],
   'arrow-straight': ['arrow_solid', 'pass', [], 'arrow'],
   pass: ['arrow_solid', 'pass', [], 'arrow'],

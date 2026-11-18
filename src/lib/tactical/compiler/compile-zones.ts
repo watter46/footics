@@ -11,6 +11,7 @@ import {
 import {
   computeArrowDimensions,
   generateWavyLinePoints,
+  offsetArrowEndpoints,
 } from './geometry-primitives';
 import type {
   DrawingPreviewInput,
@@ -207,33 +208,52 @@ export function compileDrawingPreview(
       : style.color;
 
     const isWavy = dp.tool === 'arrow_wavy' || dp.tool === 'dribble';
-    const flatPointsPx = isWavy
-      ? generateWavyLinePoints(startPx.x, startPx.y, currentPx.x, currentPx.y)
-      : [startPx.x, startPx.y, currentPx.x, currentPx.y];
 
     let dashArrayPx: readonly number[] = [];
     let startMarker: 'none' | 'arrow' | 'dot' = 'none';
     let endMarker: 'none' | 'arrow' | 'dot' = 'none';
 
-    if (
-      dp.tool === 'dribble' ||
-      dp.tool === 'arrow_dash' ||
-      dp.tool === 'arrow-curved'
-    ) {
+    if (['dribble', 'arrow_dash', 'arrow-curved'].includes(dp.tool)) {
       dashArrayPx = [6, 4];
-      endMarker = 'arrow';
-    } else if (dp.tool === 'arrow_wavy') {
-      endMarker = 'arrow';
-    } else if (
-      dp.tool === 'arrow_solid' ||
-      dp.tool === 'arrow-straight' ||
-      dp.tool === 'pass' ||
-      dp.tool === 'arrow'
-    ) {
       endMarker = 'arrow';
     } else if (dp.tool === 'route_line') {
       startMarker = 'dot';
       endMarker = 'dot';
+    } else {
+      endMarker = 'arrow';
+    }
+
+    let flatPointsPx: number[] = [
+      startPx.x,
+      startPx.y,
+      currentPx.x,
+      currentPx.y,
+    ];
+    let startMarkerPointPx: typeof startPx | undefined;
+    let endMarkerPointPx: typeof currentPx | undefined;
+
+    if (isWavy) {
+      flatPointsPx = generateWavyLinePoints(
+        startPx.x,
+        startPx.y,
+        currentPx.x,
+        currentPx.y,
+      );
+    } else if (dp.tool === 'route_line') {
+      const off = offsetArrowEndpoints({
+        startX: startPx.x,
+        startY: startPx.y,
+        endX: currentPx.x,
+        endY: currentPx.y,
+        sourcePlayerRadius: 0,
+        targetPlayerRadius: 0,
+        startMarker,
+        endMarker,
+        dotRadius: dims.dotRadius,
+      });
+      flatPointsPx = [off.startX, off.startY, off.endX, off.endY];
+      startMarkerPointPx = startPx;
+      endMarkerPointPx = currentPx;
     }
 
     return {
@@ -241,6 +261,8 @@ export function compileDrawingPreview(
       flatPointsPx,
       startPointPx: startPx,
       endPointPx: currentPx,
+      startMarkerPointPx,
+      endMarkerPointPx,
       color: resolvedColor,
       strokeWidthPx: dims.strokeWidth,
       dashArrayPx,

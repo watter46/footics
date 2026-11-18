@@ -140,19 +140,17 @@ function renderArrow(
     ctx.closePath();
     ctx.fill();
   } else if (arrow.endMarker === 'dot') {
-    const headEx = arrow.flatPointsPx[arrow.flatPointsPx.length - 2];
-    const headEy = arrow.flatPointsPx[arrow.flatPointsPx.length - 1];
+    const markerPt = arrow.endMarkerPointPx ?? arrow.endPointPx;
     ctx.beginPath();
-    ctx.arc(headEx, headEy, arrow.dotRadiusPx, 0, Math.PI * 2);
+    ctx.arc(markerPt.x, markerPt.y, arrow.dotRadiusPx, 0, Math.PI * 2);
     ctx.stroke();
   }
 
   // Start Marker
   if (arrow.startMarker === 'dot') {
-    const sx = arrow.flatPointsPx[0];
-    const sy = arrow.flatPointsPx[1];
+    const markerPt = arrow.startMarkerPointPx ?? arrow.startPointPx;
     ctx.beginPath();
-    ctx.arc(sx, sy, arrow.dotRadiusPx, 0, Math.PI * 2);
+    ctx.arc(markerPt.x, markerPt.y, arrow.dotRadiusPx, 0, Math.PI * 2);
     ctx.stroke();
   }
 

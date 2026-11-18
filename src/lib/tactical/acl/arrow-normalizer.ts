@@ -57,7 +57,7 @@ export function normalizeArrows(rawArrows: unknown): DomainArrowAnnotation[] {
       ];
     }
 
-    const startMarker: ArrowMarkerType =
+    const rawStartMarker: ArrowMarkerType =
       a.startMarker === 'arrow' || a.startMarker === 'dot'
         ? a.startMarker
         : 'none';
@@ -72,6 +72,13 @@ export function normalizeArrows(rawArrows: unknown): DomainArrowAnnotation[] {
     } else if (a.arrowHead === false) {
       endMarker = 'none';
     }
+
+    const startMarker: ArrowMarkerType =
+      arrowType === 'route_line' &&
+      rawStartMarker === 'none' &&
+      endMarker === 'dot'
+        ? 'dot'
+        : rawStartMarker;
 
     const color =
       typeof a.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(a.color)

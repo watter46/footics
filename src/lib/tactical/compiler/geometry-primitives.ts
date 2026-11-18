@@ -137,6 +137,10 @@ export function offsetArrowEndpoints(params: OffsetArrowEndpointsParams): {
   readonly startY: number;
   readonly endX: number;
   readonly endY: number;
+  readonly startMarkerX: number;
+  readonly startMarkerY: number;
+  readonly endMarkerX: number;
+  readonly endMarkerY: number;
 } {
   const {
     startX,
@@ -161,20 +165,68 @@ export function offsetArrowEndpoints(params: OffsetArrowEndpointsParams): {
       ? { x: cpX, y: cpY }
       : { x: startX, y: startY };
 
-  const startOffsetTotal =
-    sourcePlayerRadius + (startMarker === 'dot' ? dotRadius : 0);
-  const endOffsetTotal =
-    targetPlayerRadius + (endMarker === 'dot' ? dotRadius : 0);
+  const startMarkerOffset =
+    startMarker === 'dot'
+      ? sourcePlayerRadius > 0
+        ? sourcePlayerRadius + dotRadius
+        : 0
+      : sourcePlayerRadius;
+  const endMarkerOffset =
+    endMarker === 'dot'
+      ? targetPlayerRadius > 0
+        ? targetPlayerRadius + dotRadius
+        : 0
+      : targetPlayerRadius;
+
+  const startLineOffset =
+    startMarker === 'dot'
+      ? sourcePlayerRadius > 0
+        ? sourcePlayerRadius + dotRadius * 2
+        : dotRadius
+      : sourcePlayerRadius;
+  const endLineOffset =
+    endMarker === 'dot'
+      ? targetPlayerRadius > 0
+        ? targetPlayerRadius + dotRadius * 2
+        : dotRadius
+      : targetPlayerRadius;
+
+  const offStartMarker = offsetPointTowards(
+    { x: startX, y: startY },
+    startAim,
+    startMarkerOffset,
+  );
+  const offEndMarker = offsetPointTowards(
+    { x: endX, y: endY },
+    endAim,
+    endMarkerOffset,
+  );
+
+  const totalDist = Math.hypot(endX - startX, endY - startY);
+  if (totalDist > 0 && startLineOffset + endLineOffset >= totalDist) {
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    return {
+      startX: midX,
+      startY: midY,
+      endX: midX,
+      endY: midY,
+      startMarkerX: offStartMarker.x,
+      startMarkerY: offStartMarker.y,
+      endMarkerX: offEndMarker.x,
+      endMarkerY: offEndMarker.y,
+    };
+  }
 
   const offStart = offsetPointTowards(
     { x: startX, y: startY },
     startAim,
-    startOffsetTotal,
+    startLineOffset,
   );
   const offEnd = offsetPointTowards(
     { x: endX, y: endY },
     endAim,
-    endOffsetTotal,
+    endLineOffset,
   );
 
   return {
@@ -182,6 +234,10 @@ export function offsetArrowEndpoints(params: OffsetArrowEndpointsParams): {
     startY: offStart.y,
     endX: offEnd.x,
     endY: offEnd.y,
+    startMarkerX: offStartMarker.x,
+    startMarkerY: offStartMarker.y,
+    endMarkerX: offEndMarker.x,
+    endMarkerY: offEndMarker.y,
   };
 }
 

@@ -24,6 +24,8 @@ export interface ResolvedArrowPrimitive {
   readonly flatPointsPx: readonly number[];
   readonly startPointPx: StagePixelPoint;
   readonly endPointPx: StagePixelPoint;
+  readonly startMarkerPointPx?: StagePixelPoint;
+  readonly endMarkerPointPx?: StagePixelPoint;
   readonly controlHandlePx?: StagePixelPoint;
   readonly color: string;
   readonly strokeWidthPx: number;

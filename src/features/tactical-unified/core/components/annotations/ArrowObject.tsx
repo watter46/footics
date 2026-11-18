@@ -7,6 +7,7 @@ import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import {
   generateWavyLinePoints,
+  offsetArrowEndpoints,
   subdivideQuadraticBezier,
 } from '@/lib/tactical/compiler/geometry-primitives';
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
@@ -119,36 +120,69 @@ export const ArrowObject = React.memo(function ArrowObject({
 
       let nextMidX: number;
       let nextMidY: number;
-      let nextPoints: number[];
+      let cpX: number | undefined;
+      let cpY: number | undefined;
 
-      if (isWavy) {
-        nextMidX = (sX + eX) / 2;
-        nextMidY = (sY + eY) / 2;
-        nextPoints = generateWavyLinePoints(sX, sY, eX, eY);
-      } else if (kind === 'control') {
+      if (kind === 'control') {
         nextMidX = pxX;
         nextMidY = pxY;
-        const cpX = 2 * nextMidX - 0.5 * (sX + eX);
-        const cpY = 2 * nextMidY - 0.5 * (sY + eY);
-        nextPoints = subdivideQuadraticBezier(sX, sY, cpX, cpY, eX, eY);
+        cpX = 2 * nextMidX - 0.5 * (sX + eX);
+        cpY = 2 * nextMidY - 0.5 * (sY + eY);
       } else if (resolvedArrow.controlHandlePx) {
         const origS = resolvedArrow.startPointPx;
         const origE = resolvedArrow.endPointPx;
         const origM = resolvedArrow.controlHandlePx;
-        const cpX = 2 * origM.x - 0.5 * (origS.x + origE.x);
-        const cpY = 2 * origM.y - 0.5 * (origS.y + origE.y);
+        cpX = 2 * origM.x - 0.5 * (origS.x + origE.x);
+        cpY = 2 * origM.y - 0.5 * (origS.y + origE.y);
         nextMidX = 0.25 * sX + 0.5 * cpX + 0.25 * eX;
         nextMidY = 0.25 * sY + 0.5 * cpY + 0.25 * eY;
-        nextPoints = subdivideQuadraticBezier(sX, sY, cpX, cpY, eX, eY);
       } else {
         nextMidX = (sX + eX) / 2;
         nextMidY = (sY + eY) / 2;
-        nextPoints = [sX, sY, eX, eY];
+      }
+
+      const offset = offsetArrowEndpoints({
+        startX: sX,
+        startY: sY,
+        endX: eX,
+        endY: eY,
+        cpX,
+        cpY,
+        startMarker: resolvedArrow.startMarker,
+        endMarker: resolvedArrow.endMarker,
+        dotRadius: resolvedArrow.dotRadiusPx,
+      });
+
+      let nextPoints: number[];
+      if (isWavy) {
+        nextPoints = generateWavyLinePoints(
+          offset.startX,
+          offset.startY,
+          offset.endX,
+          offset.endY,
+        );
+      } else if (cpX !== undefined && cpY !== undefined) {
+        nextPoints = subdivideQuadraticBezier(
+          offset.startX,
+          offset.startY,
+          cpX,
+          cpY,
+          offset.endX,
+          offset.endY,
+        );
+      } else {
+        nextPoints = [offset.startX, offset.startY, offset.endX, offset.endY];
       }
 
       arrowRef.current?.points(nextPoints);
-      startDotRef.current?.position({ x: sX, y: sY });
-      endDotRef.current?.position({ x: eX, y: eY });
+      startDotRef.current?.position({
+        x: offset.startMarkerX,
+        y: offset.startMarkerY,
+      });
+      endDotRef.current?.position({
+        x: offset.endMarkerX,
+        y: offset.endMarkerY,
+      });
       if (kind !== 'control') {
         controlHandleRef.current?.position({ x: nextMidX, y: nextMidY });
       }
@@ -165,12 +199,20 @@ export const ArrowObject = React.memo(function ArrowObject({
     (dxPx: number, dyPx: number) => {
       const baseS = resolvedArrow.startPointPx;
       const baseE = resolvedArrow.endPointPx;
+      const baseStartDot = resolvedArrow.startMarkerPointPx ?? baseS;
+      const baseEndDot = resolvedArrow.endMarkerPointPx ?? baseE;
       const baseM = resolvedArrow.controlHandlePx ?? {
         x: (baseS.x + baseE.x) / 2,
         y: (baseS.y + baseE.y) / 2,
       };
-      startDotRef.current?.position({ x: baseS.x + dxPx, y: baseS.y + dyPx });
-      endDotRef.current?.position({ x: baseE.x + dxPx, y: baseE.y + dyPx });
+      startDotRef.current?.position({
+        x: baseStartDot.x + dxPx,
+        y: baseStartDot.y + dyPx,
+      });
+      endDotRef.current?.position({
+        x: baseEndDot.x + dxPx,
+        y: baseEndDot.y + dyPx,
+      });
       startHandleRef.current?.position({
         x: baseS.x + dxPx,
         y: baseS.y + dyPx,
@@ -190,7 +232,11 @@ export const ArrowObject = React.memo(function ArrowObject({
   const isAttachedToPlayer = Boolean(
     arrow.sourcePlayerId || arrow.targetPlayerId,
   );
-  const isDotEnd = resolvedArrow.endMarker === 'dot';
+  const hasStartDot = resolvedArrow.startMarker === 'dot';
+  const hasEndDot = resolvedArrow.endMarker === 'dot';
+  const startDotPx =
+    resolvedArrow.startMarkerPointPx ?? resolvedArrow.startPointPx;
+  const endDotPx = resolvedArrow.endMarkerPointPx ?? resolvedArrow.endPointPx;
 
   const commonProps = {
     arrow,
@@ -226,13 +272,12 @@ export const ArrowObject = React.memo(function ArrowObject({
         onBodyDragMove={handleBodyDragMove}
       />
       <ArrowHeadNode
-        isDotEnd={isDotEnd}
+        hasStartDot={hasStartDot}
+        hasEndDot={hasEndDot}
         startDotRef={startDotRef}
         endDotRef={endDotRef}
-        sPxX={sPxX}
-        sPxY={sPxY}
-        ePxX={ePxX}
-        ePxY={ePxY}
+        startDotPx={startDotPx}
+        endDotPx={endDotPx}
         color={resolvedArrow.color}
         strokeWidth={resolvedArrow.strokeWidthPx}
         dotRadius={resolvedArrow.dotRadiusPx}

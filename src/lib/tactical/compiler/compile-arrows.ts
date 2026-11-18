@@ -197,9 +197,20 @@ export function compileArrows(
     let dashArrayPx: readonly number[] = [];
     if (arrow.dashArray && arrow.dashArray.length > 0) {
       dashArrayPx = arrow.dashArray.map((d) => Math.round(d * scale));
-    } else if (arrow.arrowType === 'run' || arrow.arrowType === 'route_line') {
+    } else if (arrow.arrowType === 'run') {
       dashArrayPx = [Math.round(8 * scale), Math.round(6 * scale)];
     }
+
+    const startMarkerPointPx = projectStagePixelWithPitchTransform(
+      toStagePixelPoint(offsetRes.startMarkerX, offsetRes.startMarkerY),
+      viewport,
+      pitchTransform,
+    );
+    const endMarkerPointPx = projectStagePixelWithPitchTransform(
+      toStagePixelPoint(offsetRes.endMarkerX, offsetRes.endMarkerY),
+      viewport,
+      pitchTransform,
+    );
 
     const controlHandlePx =
       !isWavy && cpRawPx
@@ -221,6 +232,8 @@ export function compileArrows(
         flatPointsPx[flatPointsPx.length - 2],
         flatPointsPx[flatPointsPx.length - 1],
       ),
+      startMarkerPointPx,
+      endMarkerPointPx,
       controlHandlePx,
       color: arrow.color,
       strokeWidthPx: dims.strokeWidth,
