@@ -1,6 +1,6 @@
 # TASK-211b: Delete Dead `src/lib/tactical/` Modules and Obsolete/Transitional Tests
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): remove dead lib/tactical modules and obsolete transitional tests`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3 (parallel)
