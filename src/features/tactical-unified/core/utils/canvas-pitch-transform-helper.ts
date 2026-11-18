@@ -1,5 +1,5 @@
 import type Konva from 'konva';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchRect } from '@/lib/tactical/shared/pitch-geometry';
 import type {
   AspectRatio,
   BoundaryBox as BoundaryBoxType,

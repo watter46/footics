@@ -8,7 +8,7 @@ import {
   calculateNormalizedPitchBounds,
   getScreenOuterPitchRect,
   getScreenPitchBounds,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import {
   createDefaultPhase,
   createDefaultProject,

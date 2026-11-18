@@ -3,7 +3,7 @@ import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
 import {
   calculatePitchGeometryForAspect,
   calculatePitchRect,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import { renderPitchMarkings3D } from '../pitch-markings-3d';
 import {
   type AnyCanvasRenderingContext2D,

@@ -1,6 +1,6 @@
 # TASK-212c: pitch-geometry の共通ディレクトリ (`shared/`) 切り出し
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): move pitch-geometry into shared tactical directory`
 - **Execution Waves**:
   - Wave 1: Phase 1

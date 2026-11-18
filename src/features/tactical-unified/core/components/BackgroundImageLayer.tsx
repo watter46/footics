@@ -8,12 +8,12 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchRect } from '@/lib/tactical/shared/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
   preloadAllPitchSvgImages,
-} from '@/lib/tactical/pitch-svg';
+} from '@/lib/tactical/shared/pitch-svg';
 import { PitchMarbleBackground } from './pitch-marble-background';
 
 export interface PitchBackgroundImageProps {

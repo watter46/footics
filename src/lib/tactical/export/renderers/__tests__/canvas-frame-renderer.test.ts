@@ -8,7 +8,7 @@ import {
 import {
   calculatePitchGeometryForAspect,
   calculatePitchRect,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 
 function createMockContext(): AnyCanvasRenderingContext2D {
   return {

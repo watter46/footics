@@ -1,8 +1,8 @@
 import {
   calculatePitchGeometryForAspect,
   calculatePitchRect,
-} from '@/lib/tactical/pitch-geometry';
-import { calculatePitchTextureCover } from '@/lib/tactical/pitch-texture-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
+import { calculatePitchTextureCover } from '@/lib/tactical/shared/pitch-texture-geometry';
 import type {
   AspectRatio,
   PitchAppearanceConfig,

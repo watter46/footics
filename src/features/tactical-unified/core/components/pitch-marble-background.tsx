@@ -6,12 +6,12 @@ import { Group, Image as KonvaImage, Rect } from 'react-konva';
 import {
   calculatePitchGeometryForAspect,
   calculatePitchRect,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
-} from '@/lib/tactical/pitch-svg';
-import { calculatePitchTextureCover } from '@/lib/tactical/pitch-texture-geometry';
+} from '@/lib/tactical/shared/pitch-svg';
+import { calculatePitchTextureCover } from '@/lib/tactical/shared/pitch-texture-geometry';
 import type {
   AspectRatio,
   PitchAppearanceConfig,

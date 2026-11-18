@@ -17,7 +17,7 @@
 import {
   calculatePitchGeometryForAspect,
   DEFAULT_PITCH_MARGIN_PERCENT,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 export interface PitchSvgOptions {

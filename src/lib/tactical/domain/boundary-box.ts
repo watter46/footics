@@ -1,7 +1,7 @@
 import {
   getScreenOuterPitchRect,
   PITCH_BOUNDARY_CONFIGS,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import {
   type BoundaryBox,

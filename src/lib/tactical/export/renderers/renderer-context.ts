@@ -1,5 +1,5 @@
 import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchRect } from '@/lib/tactical/shared/pitch-geometry';
 import type { AspectRatio, PitchTransform } from '@/lib/types/tactical-unified';
 
 export type AnyCanvasRenderingContext2D =

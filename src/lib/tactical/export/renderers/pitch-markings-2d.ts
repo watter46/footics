@@ -1,4 +1,4 @@
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchRect } from '@/lib/tactical/shared/pitch-geometry';
 import type { PitchGeometryData } from './pitch-markings-3d';
 import type { FrameRenderContext } from './renderer-context';
 

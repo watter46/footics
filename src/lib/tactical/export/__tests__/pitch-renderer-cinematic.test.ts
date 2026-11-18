@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { buildExportMVPMatrix } from '@/lib/tactical/engine/projection-3d';
-import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchGeometryForAspect } from '@/lib/tactical/shared/pitch-geometry';
 import type { ScreenBackgroundConfig } from '@/lib/types/tactical-unified';
 import * as pitchCacheHelpers from '../pitch-cache-helpers';
 import { renderPitchMarkings3D } from '../renderers/pitch-markings-3d';

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
 import {
   calculateNormalizedPitchBounds,
   calculatePitchGeometry,
   calculatePitchGeometryForAspect,
   DEFAULT_PITCH_MARGIN_PERCENT,
   PITCH_BOUNDARY_CONFIGS,
-} from '../pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 describe('pitch-geometry & 3% default boundary margin geometry', () => {
   const allRatios: AspectRatio[] = ['16:9', '9:16', '4:5', '1:1'];

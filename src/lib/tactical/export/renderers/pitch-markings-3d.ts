@@ -2,7 +2,7 @@ import {
   calculatePitchRect,
   type PitchBoundaryConfig,
   type PitchLayoutGeometry,
-} from '@/lib/tactical/pitch-geometry';
+} from '@/lib/tactical/shared/pitch-geometry';
 import type { FrameRenderContext } from './renderer-context';
 
 export type PitchGeometryData = PitchLayoutGeometry & {

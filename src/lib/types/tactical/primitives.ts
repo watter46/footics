@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
+import { getScreenPitchBounds } from '@/lib/tactical/shared/pitch-geometry';
 
 // ─────────────────────────────────────────
 // § 1. Primitives

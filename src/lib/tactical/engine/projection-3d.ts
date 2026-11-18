@@ -1,5 +1,5 @@
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import { calculatePitchRect } from '@/lib/tactical/shared/pitch-geometry';
 import {
   type StagePixelPoint,
   toStagePixel,
