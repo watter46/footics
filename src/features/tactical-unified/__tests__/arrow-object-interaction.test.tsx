@@ -5,6 +5,10 @@ import { Layer, Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
 import { ArrowObject } from '@/features/tactical-unified/core/components/annotations/ArrowObject';
 import {
+  TacticalStoreProvider,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
   generateWavyLinePoints,
   subdivideQuadraticBezier,
 } from '@/lib/tactical/compiler/geometry-primitives';
@@ -98,18 +102,24 @@ describe('ArrowObject interaction', () => {
     const resolvedArrow = makeResolvedCurvedArrow();
 
     render(
-      <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
-        <Layer>
-          <ArrowObject
-            arrow={arrow}
-            stageSize={STAGE_SIZE}
-            isSelected={true}
-            onSelect={vi.fn()}
-            updateArrow={vi.fn()}
-            resolvedArrow={resolvedArrow}
-          />
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={STAGE_SIZE.width}
+          height={STAGE_SIZE.height}
+        >
+          <Layer>
+            <ArrowObject
+              arrow={arrow}
+              stageSize={STAGE_SIZE}
+              isSelected={true}
+              onSelect={vi.fn()}
+              updateArrow={vi.fn()}
+              resolvedArrow={resolvedArrow}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -134,20 +144,26 @@ describe('ArrowObject interaction', () => {
     const onRender = vi.fn();
 
     render(
-      <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
-        <Layer>
-          <React.Profiler id="arrow-control-drag" onRender={onRender}>
-            <ArrowObject
-              arrow={arrow}
-              stageSize={STAGE_SIZE}
-              isSelected={true}
-              onSelect={vi.fn()}
-              updateArrow={vi.fn()}
-              resolvedArrow={resolvedArrow}
-            />
-          </React.Profiler>
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={STAGE_SIZE.width}
+          height={STAGE_SIZE.height}
+        >
+          <Layer>
+            <React.Profiler id="arrow-control-drag" onRender={onRender}>
+              <ArrowObject
+                arrow={arrow}
+                stageSize={STAGE_SIZE}
+                isSelected={true}
+                onSelect={vi.fn()}
+                updateArrow={vi.fn()}
+                resolvedArrow={resolvedArrow}
+              />
+            </React.Profiler>
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -182,20 +198,26 @@ describe('ArrowObject interaction', () => {
     const onRender = vi.fn();
 
     render(
-      <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
-        <Layer>
-          <React.Profiler id="arrow-wavy-drag" onRender={onRender}>
-            <ArrowObject
-              arrow={arrow}
-              stageSize={STAGE_SIZE}
-              isSelected={true}
-              onSelect={vi.fn()}
-              updateArrow={vi.fn()}
-              resolvedArrow={resolvedArrow}
-            />
-          </React.Profiler>
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={STAGE_SIZE.width}
+          height={STAGE_SIZE.height}
+        >
+          <Layer>
+            <React.Profiler id="arrow-wavy-drag" onRender={onRender}>
+              <ArrowObject
+                arrow={arrow}
+                stageSize={STAGE_SIZE}
+                isSelected={true}
+                onSelect={vi.fn()}
+                updateArrow={vi.fn()}
+                resolvedArrow={resolvedArrow}
+              />
+            </React.Profiler>
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -222,20 +244,26 @@ describe('ArrowObject interaction', () => {
     const onRender = vi.fn();
 
     render(
-      <Stage ref={stageRef} width={STAGE_SIZE.width} height={STAGE_SIZE.height}>
-        <Layer>
-          <React.Profiler id="arrow-body-drag" onRender={onRender}>
-            <ArrowObject
-              arrow={arrow}
-              stageSize={STAGE_SIZE}
-              isSelected={true}
-              onSelect={vi.fn()}
-              updateArrow={vi.fn()}
-              resolvedArrow={resolvedArrow}
-            />
-          </React.Profiler>
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={STAGE_SIZE.width}
+          height={STAGE_SIZE.height}
+        >
+          <Layer>
+            <React.Profiler id="arrow-body-drag" onRender={onRender}>
+              <ArrowObject
+                arrow={arrow}
+                stageSize={STAGE_SIZE}
+                isSelected={true}
+                onSelect={vi.fn()}
+                updateArrow={vi.fn()}
+                resolvedArrow={resolvedArrow}
+              />
+            </React.Profiler>
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -266,5 +294,63 @@ describe('ArrowObject interaction', () => {
       (resolvedArrow.controlHandlePx?.y ?? 0) - 15,
       5,
     );
+  });
+
+  it('case 5: transitions isDragging and isHudOpen and calls onSelect when dragging unselected ArrowObject body', () => {
+    const stageRef = React.createRef<Konva.Stage>();
+    const arrow = makeArrow();
+    const resolvedArrow = makeResolvedCurvedArrow();
+    const onSelect = vi.fn();
+    let latestState = { isDragging: false, isHudOpen: true };
+
+    function SessionObserver() {
+      const isDragging = useSessionStore((s) => s.isDragging);
+      const isHudOpen = useSessionStore((s) => s.isHudOpen);
+      latestState = { isDragging, isHudOpen };
+      return null;
+    }
+
+    render(
+      <TacticalStoreProvider>
+        <SessionObserver />
+        <Stage
+          ref={stageRef}
+          width={STAGE_SIZE.width}
+          height={STAGE_SIZE.height}
+        >
+          <Layer>
+            <ArrowObject
+              arrow={arrow}
+              stageSize={STAGE_SIZE}
+              isSelected={false}
+              onSelect={onSelect}
+              updateArrow={vi.fn()}
+              resolvedArrow={resolvedArrow}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
+    );
+
+    const arrowNode = stageRef.current?.findOne('Arrow') as
+      | Konva.Arrow
+      | undefined;
+    expect(arrowNode).toBeDefined();
+
+    act(() => {
+      arrowNode?.fire('dragstart', { target: arrowNode });
+    });
+
+    expect(latestState.isDragging).toBe(true);
+    expect(latestState.isHudOpen).toBe(false);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      arrowNode?.position({ x: 20, y: 10 });
+      arrowNode?.fire('dragend', { target: arrowNode });
+    });
+
+    expect(latestState.isDragging).toBe(false);
+    expect(latestState.isHudOpen).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
-import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { useObjectDragLifecycle } from '@/features/tactical-unified/core/hooks/use-object-drag-lifecycle';
 import { useZoneShape } from './use-zone-shape';
 import type { ZoneNodeProps } from './ZonePolygonNode';
 
@@ -15,8 +15,11 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
     isInteractive = true,
     resolvedZone,
   } = props;
-  const setIsDragging = useSessionStore((s) => s.setIsDragging);
-  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const { beginDrag, endDrag } = useObjectDragLifecycle({
+    isSelected,
+    onSelect: (_isShift, e) => onSelect(e),
+    reopenHudOnEnd: true,
+  });
   const {
     shapeType,
     transformerRef,
@@ -39,12 +42,7 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   const effectiveStrokeWidth = resolvedZone.strokeWidthPx;
 
   const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
-    setIsDragging(true);
-    setIsHudOpen(false);
-    if (!isSelected) {
-      onSelect(e);
-      setIsHudOpen(false);
-    }
+    beginDrag(e);
   };
 
   const handleDragMove = () => {
@@ -53,19 +51,16 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     rawHandleDragEnd(e);
-    setIsDragging(false);
-    setIsHudOpen(true);
+    endDrag();
   };
 
-  const handleTransformStart = () => {
-    setIsDragging(true);
-    setIsHudOpen(false);
+  const handleTransformStart = (e: KonvaEventObject<Event>) => {
+    beginDrag(e as KonvaEventObject<DragEvent>);
   };
 
   const handleTransformEnd = () => {
     rawHandleTransformEnd();
-    setIsDragging(false);
-    setIsHudOpen(true);
+    endDrag();
   };
 
   return (

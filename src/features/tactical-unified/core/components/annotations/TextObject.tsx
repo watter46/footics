@@ -3,8 +3,8 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
+import { useObjectDragLifecycle } from '@/features/tactical-unified/core/hooks/use-object-drag-lifecycle';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
-import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedBillboardTextItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainTextAnnotation } from '@/lib/types/tactical/domain-entities';
@@ -40,8 +40,10 @@ export const TextObject = React.memo(function TextObject({
   resolvedText,
 }: TextObjectProps) {
   const { width, height } = stageSize;
-  const setIsDragging = useSessionStore((s) => s.setIsDragging);
-  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const { beginDrag, endDrag } = useObjectDragLifecycle({
+    isSelected,
+    onSelect: (_isShift, e) => onSelect(e),
+  });
   const fontStyle =
     [resolvedText.bold ? 'bold' : '', resolvedText.italic ? 'italic' : '']
       .filter(Boolean)
@@ -73,17 +75,9 @@ export const TextObject = React.memo(function TextObject({
       onDblTap={onDblClick}
       perfectDrawEnabled={false}
       draggable={isInteractive && !isEditing && !locked}
-      onDragStart={(e) => {
-        setIsDragging(true);
-        setIsHudOpen(false);
-        if (!isSelected) {
-          onSelect(e);
-          setIsHudOpen(false);
-        }
-      }}
+      onDragStart={beginDrag}
       onDragEnd={(e) => {
-        setIsDragging(false);
-        setIsHudOpen(false);
+        endDrag();
         e.cancelBubble = true;
         const node = e.target;
         const newX = clampToScreenNorm(pxToNormX(node.x(), width));

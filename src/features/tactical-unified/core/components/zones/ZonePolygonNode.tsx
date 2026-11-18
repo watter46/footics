@@ -3,8 +3,8 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Group, Line } from 'react-konva';
+import { useObjectDragLifecycle } from '@/features/tactical-unified/core/hooks/use-object-drag-lifecycle';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
-import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
 import { useZonePolygon } from './use-zone-polygon';
@@ -15,7 +15,7 @@ export interface ZoneNodeProps {
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive?: boolean;
-  onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
+  onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent | DragEvent>) => void;
   updateZone: (zoneId: string, patch: Partial<DomainZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   resolvedZone: ResolvedZonePrimitive;
@@ -31,8 +31,11 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     isInteractive = true,
     resolvedZone,
   } = props;
-  const setIsDragging = useSessionStore((s) => s.setIsDragging);
-  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const { beginDrag, endDrag } = useObjectDragLifecycle({
+    isSelected,
+    onSelect: (_isShift, e) => onSelect(e),
+    reopenHudOnEnd: true,
+  });
   const polygonZone =
     zone.shapeType === 'polygon'
       ? zone
@@ -60,20 +63,14 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
 
   const handleGroupDragEnd = (e: KonvaEventObject<DragEvent>) => {
     rawHandleGroupDragEnd(e);
-    setIsDragging(false);
-    setIsHudOpen(true);
+    endDrag();
   };
 
   return (
     <Group
       draggable={isInteractive && isComplete && !zone.locked}
       onDragStart={(e) => {
-        setIsDragging(true);
-        setIsHudOpen(false);
-        if (!isSelected) {
-          onSelect(e);
-          setIsHudOpen(false);
-        }
+        beginDrag(e);
         handleGroupDragStart(e);
       }}
       onDragEnd={handleGroupDragEnd}

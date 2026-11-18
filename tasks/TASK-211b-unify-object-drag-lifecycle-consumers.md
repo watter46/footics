@@ -1,6 +1,6 @@
 # TASK-211b: 全盤面オブジェクトへの共通ドラッグライフサイクル適用
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): apply useObjectDragLifecycle across all board objects`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2, Phase 3 (parallel; `TASK-211a` 完了後に実行)

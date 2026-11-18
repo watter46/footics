@@ -2,6 +2,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Arrow } from 'react-konva';
+import { useObjectDragLifecycle } from '@/features/tactical-unified/core/hooks/use-object-drag-lifecycle';
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
@@ -40,6 +41,10 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
   onBodyDragMove,
 }: ArrowLineNodeProps) {
   const { width, height } = stageSize;
+  const { beginDrag, endDrag } = useObjectDragLifecycle({
+    isSelected,
+    onSelect: (_isShift, e) => onSelect(e),
+  });
   const hasArrowHead = resolvedArrow.endMarker === 'arrow';
   const strokeColor = isSelected ? '#60a5fa' : resolvedArrow.color;
 
@@ -84,8 +89,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
       }}
       onDragStart={(e) => {
         if (isAttachedToPlayer) return;
-        e.cancelBubble = true;
-        if (!isSelected) onSelect(e);
+        beginDrag(e);
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = 'grabbing';
       }}
@@ -96,6 +100,9 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         onBodyDragMove?.(node.x(), node.y());
       }}
       onDragEnd={(e) => {
+        if (!isAttachedToPlayer) {
+          endDrag();
+        }
         e.cancelBubble = true;
         const node = e.target;
         const dx = node.x();

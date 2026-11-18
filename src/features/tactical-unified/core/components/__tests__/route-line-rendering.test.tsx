@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import React from 'react';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { compileArrows } from '@/lib/tactical/compiler/compile-arrows';
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
@@ -58,19 +59,21 @@ function renderArrowObject(arrow: DomainArrowAnnotation) {
   const stageRef = React.createRef<Konva.Stage>();
 
   render(
-    <Stage ref={stageRef} width={VIEWPORT.width} height={VIEWPORT.height}>
-      <Layer>
-        <ArrowObject
-          arrow={arrow}
-          stageSize={VIEWPORT}
-          isSelected={false}
-          isInteractive={false}
-          onSelect={vi.fn()}
-          updateArrow={vi.fn()}
-          resolvedArrow={resolvedArrow}
-        />
-      </Layer>
-    </Stage>,
+    <TacticalStoreProvider>
+      <Stage ref={stageRef} width={VIEWPORT.width} height={VIEWPORT.height}>
+        <Layer>
+          <ArrowObject
+            arrow={arrow}
+            stageSize={VIEWPORT}
+            isSelected={false}
+            isInteractive={false}
+            onSelect={vi.fn()}
+            updateArrow={vi.fn()}
+            resolvedArrow={resolvedArrow}
+          />
+        </Layer>
+      </Stage>
+    </TacticalStoreProvider>,
   );
 
   return {

@@ -7,6 +7,7 @@ import type {
   DomainPlayer,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
+import { resolveEffectiveDragSelectedIds } from '../hooks/use-object-drag-lifecycle';
 import type { CanvasCapabilities, SelectedObject } from '../types';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -63,8 +64,8 @@ export function useMarkerDragHandlers({
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      const isShift = Boolean((e.evt as MouseEvent | undefined)?.shiftKey);
       if (!selectedIds.includes(markerId)) {
-        const isShift = Boolean((e.evt as MouseEvent)?.shiftKey);
         selectObject(markerId, isShift);
       }
 
@@ -76,9 +77,11 @@ export function useMarkerDragHandlers({
         ? { markerId, normX: draggedMarker.x, normY: draggedMarker.y }
         : null;
 
-      const effectiveSelectedIds = selectedIds.includes(markerId)
-        ? selectedIds
-        : [markerId];
+      const effectiveSelectedIds = resolveEffectiveDragSelectedIds(
+        selectedIds,
+        markerId,
+        isShift,
+      );
 
       if (
         effectiveSelectedIds.length > 1 &&
