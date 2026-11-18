@@ -45,10 +45,12 @@ export function subdivideQuadraticBezier(
   endX: number,
   endY: number,
   steps = 30,
+  maxT = 1,
 ): number[] {
+  const clampedMaxT = Math.max(0, Math.min(1, maxT));
   const points: number[] = [];
   for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
+    const t = (i / steps) * clampedMaxT;
     const oneMinusT = 1 - t;
     const x =
       oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * cpX + t * t * endX;

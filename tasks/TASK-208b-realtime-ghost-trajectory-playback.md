@@ -1,6 +1,6 @@
 # TASK-208b: ゴースト軌道のリアルタイム伸長描画 & ボール軌道デフォルトOFF統一
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): render player and ball ghost trajectories progressively during movement`
 - **Execution Waves**:
   - Wave 1: Phase 1 (TimelineEvaluator の遷移元・終点・イージング進行率出力)

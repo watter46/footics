@@ -67,6 +67,7 @@ describe('tactical-unified Zone Features', () => {
       slideIndex: 0,
       nextSlideIndex: 0,
       progress: 0,
+      easedProgress: 0,
       isPaused: false,
       timeInSlideMs: 0,
       arrowProgressMap: {},

@@ -4,14 +4,17 @@ import {
 } from '@/lib/tactical/engine/coordinates';
 import { projectStagePixelWithPitchTransform } from '@/lib/tactical/engine/projection-3d';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
+import { getBezierControlPointPx } from '@/lib/tactical/trajectory';
 import {
-  type ScreenNormPoint,
   type StagePixelPoint,
   toScreenNormPoint,
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchTransform } from '@/lib/types/tactical/camera-config';
-import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
+import type {
+  DomainPlayerTrajectory,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { compileArrows, compileConnectLines } from './compile-arrows';
 import {
@@ -29,54 +32,55 @@ import type {
 function computeTrajectoryPoints(
   startRawPx: StagePixelPoint,
   endRawPx: StagePixelPoint,
-  type: 'straight' | 'arc_left' | 'arc_right' | 'custom',
-  curveOffsetPercent: number | undefined,
-  controlPointNorm: ScreenNormPoint | undefined,
+  trajectory: DomainPlayerTrajectory | undefined,
   viewport: StageViewport,
   pitchTransform: PitchTransform | null | undefined,
+  maxT = 1,
 ): readonly number[] {
+  const clampedMaxT = Math.max(0, Math.min(1, maxT));
+  const type = trajectory?.type ?? 'straight';
   let rawPoints: readonly number[];
 
-  if (type === 'custom' && controlPointNorm) {
-    const rawCpPx = screenNormToStagePixel(controlPointNorm, viewport);
-    rawPoints = subdivideQuadraticBezier(
-      startRawPx.x,
-      startRawPx.y,
-      rawCpPx.x,
-      rawCpPx.y,
-      endRawPx.x,
-      endRawPx.y,
-      30,
+  if (
+    type === 'arc_left' ||
+    type === 'arc_right' ||
+    (type === 'custom' && trajectory?.controlPoint)
+  ) {
+    const dist = Math.hypot(
+      endRawPx.x - startRawPx.x,
+      endRawPx.y - startRawPx.y,
     );
-  } else if (type === 'arc_left' || type === 'arc_right') {
-    const midX = (startRawPx.x + endRawPx.x) / 2;
-    const midY = (startRawPx.y + endRawPx.y) / 2;
-    const dx = endRawPx.x - startRawPx.x;
-    const dy = endRawPx.y - startRawPx.y;
-    const dist = Math.hypot(dx, dy);
     if (dist < 1) {
-      rawPoints = [startRawPx.x, startRawPx.y, endRawPx.x, endRawPx.y];
+      const endX = startRawPx.x + (endRawPx.x - startRawPx.x) * clampedMaxT;
+      const endY = startRawPx.y + (endRawPx.y - startRawPx.y) * clampedMaxT;
+      rawPoints = [startRawPx.x, startRawPx.y, endX, endY];
     } else {
-      const offsetFactor = (curveOffsetPercent ?? 25) / 100;
-      const offset = dist * offsetFactor;
-      const sign = type === 'arc_left' ? 1 : -1;
-      const nx = (dy / dist) * sign;
-      const ny = (-dx / dist) * sign;
-      const cpX = midX + nx * offset;
-      const cpY = midY + ny * offset;
+      const normalizedTrajectory: DomainPlayerTrajectory = {
+        ...trajectory,
+        type,
+        curveOffset: trajectory?.curveOffset ?? 25,
+      };
+      const cp = getBezierControlPointPx(
+        startRawPx,
+        endRawPx,
+        normalizedTrajectory,
+        viewport,
+      );
       rawPoints = subdivideQuadraticBezier(
         startRawPx.x,
         startRawPx.y,
-        cpX,
-        cpY,
+        cp.x,
+        cp.y,
         endRawPx.x,
         endRawPx.y,
         30,
+        clampedMaxT,
       );
     }
   } else {
-    // default / straight
-    rawPoints = [startRawPx.x, startRawPx.y, endRawPx.x, endRawPx.y];
+    const endX = startRawPx.x + (endRawPx.x - startRawPx.x) * clampedMaxT;
+    const endY = startRawPx.y + (endRawPx.y - startRawPx.y) * clampedMaxT;
+    rawPoints = [startRawPx.x, startRawPx.y, endX, endY];
   }
 
   const projected: number[] = [];
@@ -102,103 +106,118 @@ export function compileTrajectories(
   const selectedIds = new Set(session?.selectedIds ?? []);
   const pitchTransform = frame.slide.pitchTransform;
 
-  if (prevSlide) {
-    const prevPlayersMap = new Map(
-      prevSlide.players
-        .filter((p) => p.area === 'pitch')
-        .map((p) => [p.id, p as PitchPlayer]),
+  const isTransitioning =
+    !frame.isPaused &&
+    Boolean(frame.transitionSourceSlide && frame.transitionTargetSlide);
+  const sourceSlide = isTransitioning ? frame.transitionSourceSlide : prevSlide;
+  const targetSlide = isTransitioning
+    ? frame.transitionTargetSlide
+    : frame.slide;
+  const maxT = isTransitioning ? frame.easedProgress : 1;
+
+  if (!sourceSlide || !targetSlide || (isTransitioning && maxT <= 0)) {
+    return trajectories;
+  }
+
+  const sourcePlayersMap = new Map(
+    sourceSlide.players
+      .filter((p) => p.area === 'pitch')
+      .map((p) => [p.id, p as PitchPlayer]),
+  );
+  const targetPlayersMap = new Map(
+    targetSlide.players
+      .filter((p) => p.area === 'pitch')
+      .map((p) => [p.id, p as PitchPlayer]),
+  );
+
+  for (const [playerId, resolvedPlayer] of resolvedPlayersMap.entries()) {
+    const sourcePlayer = sourcePlayersMap.get(playerId);
+    const targetPlayer = isTransitioning
+      ? targetPlayersMap.get(playerId)
+      : resolvedPlayer.player;
+    if (!sourcePlayer || !targetPlayer) continue;
+
+    const endNorm = isTransitioning
+      ? toScreenNormPoint(targetPlayer.x, targetPlayer.y, false)
+      : resolvedPlayer.screenNormPos;
+    const dist = Math.hypot(
+      endNorm.x - sourcePlayer.x,
+      endNorm.y - sourcePlayer.y,
+    );
+    if (dist < 1) continue;
+
+    const effect = targetPlayer.trajectoryEffect;
+    const isEnabled = isTransitioning
+      ? effect?.enabled === true || selectedIds.has(playerId)
+      : selectedIds.has(playerId) ||
+        (effect?.enabled === true && effect.exitAction !== 'auto-hide');
+    if (!isEnabled) continue;
+
+    const startNorm = toScreenNormPoint(sourcePlayer.x, sourcePlayer.y, false);
+    const rawStartPx = screenNormToStagePixel(startNorm, viewport);
+    const rawEndPx = screenNormToStagePixel(endNorm, viewport);
+
+    const flatPointsPx = computeTrajectoryPoints(
+      rawStartPx,
+      rawEndPx,
+      targetPlayer.trajectory,
+      viewport,
+      pitchTransform,
+      maxT,
     );
 
-    for (const [playerId, resolvedPlayer] of resolvedPlayersMap.entries()) {
-      const prevPlayer = prevPlayersMap.get(playerId);
-      if (!prevPlayer) continue;
+    const isDashed = effect?.lineStyle === 'dashed';
+    const dashArrayPx = isDashed ? [6, 4] : [];
+    const color = effect?.color ?? targetPlayer.style.color;
 
-      const currPlayer = resolvedPlayer.player;
-      const effPos = resolvedPlayer.screenNormPos;
-      const dist = Math.hypot(effPos.x - prevPlayer.x, effPos.y - prevPlayer.y);
-      if (dist < 1) continue;
+    trajectories.push({
+      playerId,
+      flatPointsPx,
+      color,
+      dashArrayPx,
+      visible: true,
+    });
+  }
 
-      const isEnabled =
-        currPlayer.trajectoryEffect?.enabled === true ||
-        selectedIds.has(playerId);
-      if (!isEnabled) continue;
+  const sourceBall = sourceSlide.ball;
+  const targetBall = targetSlide.ball;
+  if (sourceBall && targetBall) {
+    const endBallNorm = toScreenNormPoint(targetBall.x, targetBall.y, false);
+    const ballDist = Math.hypot(
+      endBallNorm.x - sourceBall.x,
+      endBallNorm.y - sourceBall.y,
+    );
+    const ballEffect = targetBall.trajectoryEffect;
+    const isBallEnabled = isTransitioning
+      ? ballEffect?.enabled === true || selectedIds.has('ball')
+      : selectedIds.has('ball') ||
+        (ballEffect?.enabled === true && ballEffect.exitAction !== 'auto-hide');
 
-      const prevPosNorm = toScreenNormPoint(prevPlayer.x, prevPlayer.y, false);
-      const rawStartPx = screenNormToStagePixel(prevPosNorm, viewport);
-      const rawEndPx = screenNormToStagePixel(effPos, viewport);
+    if (ballDist >= 1 && isBallEnabled) {
+      const startBallNorm = toScreenNormPoint(
+        sourceBall.x,
+        sourceBall.y,
+        false,
+      );
+      const rawBallStartPx = screenNormToStagePixel(startBallNorm, viewport);
+      const rawBallEndPx = screenNormToStagePixel(endBallNorm, viewport);
 
-      const trajType = currPlayer.trajectory?.type ?? 'straight';
       const flatPointsPx = computeTrajectoryPoints(
-        rawStartPx,
-        rawEndPx,
-        trajType,
-        currPlayer.trajectory?.curveOffset,
-        currPlayer.trajectory?.controlPoint
-          ? toScreenNormPoint(
-              currPlayer.trajectory.controlPoint.x,
-              currPlayer.trajectory.controlPoint.y,
-              false,
-            )
-          : undefined,
+        rawBallStartPx,
+        rawBallEndPx,
+        targetBall.trajectory,
         viewport,
         pitchTransform,
+        maxT,
       );
-
-      const isDashed = currPlayer.trajectoryEffect?.lineStyle === 'dashed';
-      const dashArrayPx = isDashed ? [6, 4] : [];
-      const color =
-        currPlayer.trajectoryEffect?.color ?? currPlayer.style.color;
 
       trajectories.push({
-        playerId,
+        playerId: 'ball',
         flatPointsPx,
-        color,
-        dashArrayPx,
-        visible: true,
+        color: ballEffect?.color ?? targetBall.color ?? '#ffffff',
+        dashArrayPx: ballEffect?.lineStyle === 'dashed' ? [6, 4] : [],
+        visible: targetBall.visible,
       });
-    }
-
-    if (prevSlide.ball) {
-      const prevBall = prevSlide.ball;
-      const currBall = frame.slide.ball;
-      const effBallPos = toScreenNormPoint(currBall.x, currBall.y, false);
-      const ballDist = Math.hypot(
-        effBallPos.x - prevBall.x,
-        effBallPos.y - prevBall.y,
-      );
-      if (
-        ballDist >= 1 &&
-        (selectedIds.has('ball') || Boolean(currBall.trajectory))
-      ) {
-        const prevBallNorm = toScreenNormPoint(prevBall.x, prevBall.y, false);
-        const rawBallStartPx = screenNormToStagePixel(prevBallNorm, viewport);
-        const rawBallEndPx = screenNormToStagePixel(effBallPos, viewport);
-
-        const trajType = currBall.trajectory?.type ?? 'straight';
-        const flatPointsPx = computeTrajectoryPoints(
-          rawBallStartPx,
-          rawBallEndPx,
-          trajType,
-          currBall.trajectory?.curveOffset,
-          currBall.trajectory?.controlPoint
-            ? toScreenNormPoint(
-                currBall.trajectory.controlPoint.x,
-                currBall.trajectory.controlPoint.y,
-                false,
-              )
-            : undefined,
-          viewport,
-          pitchTransform,
-        );
-
-        trajectories.push({
-          playerId: 'ball',
-          flatPointsPx,
-          color: currBall.color ?? '#ffffff',
-          dashArrayPx: [6, 4],
-          visible: currBall.visible,
-        });
-      }
     }
   }
 

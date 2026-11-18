@@ -17,9 +17,12 @@ export interface EvaluatedTimelineFrame {
   readonly slideIndex: number;
   readonly nextSlideIndex: number;
   readonly progress: number;
+  readonly easedProgress: number;
   readonly isPaused: boolean;
   readonly timeInSlideMs: number;
   readonly slide: DomainSlide;
+  readonly transitionSourceSlide?: DomainSlide | null;
+  readonly transitionTargetSlide?: DomainSlide | null;
   readonly arrowProgressMap: Readonly<
     Record<
       string,
@@ -121,9 +124,12 @@ export function evaluateStaticSlideFrame(
     slideIndex,
     nextSlideIndex: slideIndex,
     progress: 0,
+    easedProgress: 0,
     isPaused: true,
     timeInSlideMs: 0,
     slide,
+    transitionSourceSlide: null,
+    transitionTargetSlide: null,
     arrowProgressMap,
     zoneOpacityMap,
     playerOpacityMap,
@@ -200,16 +206,18 @@ export function evaluateTimelineFrame(
       slideIndex: lastIndex,
       nextSlideIndex: lastIndex,
       progress: 1,
+      easedProgress: 1,
       isPaused: true,
       timeInSlideMs,
       slide: lastSlide,
+      transitionSourceSlide: null,
+      transitionTargetSlide: null,
       ...effects,
     };
   }
 
   let accumulatedMs = 0;
   let activeSeg = { ...segments[0], startMs: 0 };
-
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
     const isLast = i === segments.length - 1;
@@ -226,8 +234,11 @@ export function evaluateTimelineFrame(
   const slideB = slides[activeSeg.segIndex + 1];
 
   let progress = 0;
+  let easedProgress = 0;
   let isPaused = false;
   let slide: DomainSlide;
+  let transitionSourceSlide: DomainSlide | null = null;
+  let transitionTargetSlide: DomainSlide | null = null;
   let baseArrowMap: Record<
     string,
     { progress: number; dashOffset: number; opacity: number; visible: boolean }
@@ -237,9 +248,9 @@ export function evaluateTimelineFrame(
 
   if (elapsedInSeg < activeSeg.pauseMs) {
     progress = 0;
+    easedProgress = 0;
     isPaused = true;
     slide = slideA;
-
     const staticFrame = evaluateStaticSlideFrame(slideA, activeSeg.segIndex);
     baseArrowMap = { ...staticFrame.arrowProgressMap };
     baseZoneMap = { ...staticFrame.zoneOpacityMap };
@@ -252,6 +263,11 @@ export function evaluateTimelineFrame(
     progress = rawT;
     isPaused = rawT >= 1;
     const ease = applyEasing(rawT, slideA.easing ?? 'linear');
+    easedProgress = ease;
+    if (rawT < 1) {
+      transitionSourceSlide = slideA;
+      transitionTargetSlide = slideB;
+    }
 
     const interpolated = interpolateSlide(slideA, slideB, ease);
     slide = interpolated.slide;
@@ -259,7 +275,6 @@ export function evaluateTimelineFrame(
     baseZoneMap = interpolated.zoneOpacityMap;
     basePlayerMap = interpolated.playerOpacityMap;
   }
-
   const effects = applyEffectsToMaps(
     slide,
     timeInSlideMs,
@@ -272,9 +287,12 @@ export function evaluateTimelineFrame(
     slideIndex: activeSeg.segIndex,
     nextSlideIndex: activeSeg.segIndex + 1,
     progress,
+    easedProgress,
     isPaused,
     timeInSlideMs,
     slide,
+    transitionSourceSlide,
+    transitionTargetSlide,
     ...effects,
   };
 }
