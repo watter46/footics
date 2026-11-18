@@ -13,7 +13,10 @@ import { createPlaybackStore } from '@/features/tactical-unified/stores/playback
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
-import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/director-camera';
+import {
+  hasActiveDirectorCameraTrack,
+  resolvePlaybackDurationMs,
+} from '@/lib/tactical/engine/director-camera';
 import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
 import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
@@ -133,11 +136,6 @@ export function useExportPreviewAnimation({
       const ctx = canvas.getContext('2d');
       if (!ctx || !phase) return;
 
-      const effectiveBoundaryBox =
-        shouldCropPreview && boundaryBox?.enabled !== false
-          ? boundaryBox
-          : null;
-
       renderTacticalPhaseFrameToCanvas({
         ctx,
         phase,
@@ -147,9 +145,15 @@ export function useExportPreviewAnimation({
         baseWidth: basePreviewDim.width,
         baseHeight: basePreviewDim.height,
         aspectRatio,
-        boundaryBox: effectiveBoundaryBox,
+        boundaryBox:
+          shouldCropPreview && boundaryBox?.enabled !== false
+            ? boundaryBox
+            : null,
         transparent: false,
-        pitchTransform,
+        pitchTransform:
+          effectiveIsPlaying && hasActiveDirectorCameraTrack(directorCamera)
+            ? undefined
+            : pitchTransform,
         pitchTransformOverride: !effectiveIsPlaying
           ? pitchTransform
           : undefined,
@@ -163,22 +167,19 @@ export function useExportPreviewAnimation({
         ...(effectTimeMs !== undefined ? { effectTimeMs } : {}),
       });
 
-      if (timeLabelRef.current) {
+      if (timeLabelRef.current)
         timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
-      }
-      if (sliderRef.current) {
+      if (sliderRef.current)
         sliderRef.current.value = String(Math.round(timeMs));
-      }
 
       if (
         stateRef.current.effectiveIsPlaying &&
-        stateRef.current.workspaceMode === 'director'
+        stateRef.current.workspaceMode === 'director' &&
+        Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60
       ) {
-        if (Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60) {
-          lastSeekNoticeTimeRef.current = timeMs;
-          lastDispatchedSeekMsRef.current = Math.max(0, timeMs);
-          stateRef.current.seekTo?.(timeMs);
-        }
+        lastSeekNoticeTimeRef.current = timeMs;
+        lastDispatchedSeekMsRef.current = Math.max(0, timeMs);
+        stateRef.current.seekTo?.(timeMs);
       }
     },
     [

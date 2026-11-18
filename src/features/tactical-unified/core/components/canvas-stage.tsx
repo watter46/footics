@@ -12,6 +12,7 @@ import type { SelectionBox } from '../utils/canvas-selection-helpers';
 import { BillboardObjectLayer } from './BillboardObjectLayer';
 import { InteractionPreviewLayer } from './InteractionPreviewLayer';
 import { PitchGroundLayer } from './PitchGroundLayer';
+import { PitchBackgroundLayer } from './pitch-background-layer';
 
 export interface CanvasStageInteraction {
   stageHandlers: Pick<
@@ -95,6 +96,7 @@ function CanvasStageInner({
         onDragEnd={stageHandlers?.onDragEnd}
         listening={isInteractive}
       >
+        <PitchBackgroundLayer stageSize={size} pitchRect={vRect} />
         <PitchGroundLayer
           stageSize={size}
           pitchRect={vRect}

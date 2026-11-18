@@ -8,6 +8,7 @@ import {
   IOS_ENCODER_PRESETS,
   type IosEncoderPresetKey,
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
+import { hasActiveDirectorCameraTrack } from '@/lib/tactical/engine/director-camera';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
@@ -115,10 +116,15 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
     setExportedBlob(null);
 
     try {
+      const isDirectorActive = hasActiveDirectorCameraTrack(
+        shareData?.directorCamera,
+      );
       const isSingleSlide = slides.length <= 1;
-      const effectivePitchTransform = isSingleSlide
-        ? (shareData?.pitchTransform ?? null)
-        : null;
+      const effectivePitchTransform = isDirectorActive
+        ? null
+        : isSingleSlide
+          ? (shareData?.pitchTransform ?? null)
+          : null;
 
       const blob = await exportMultiSlideMp4Video({
         slides,

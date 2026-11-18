@@ -11,6 +11,7 @@ import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { hasActiveDirectorCameraTrack } from '@/lib/tactical/engine/director-camera';
 import { ExportPreviewPlayer } from './export-preview-player';
 import type { ExportModalState } from './use-export-modal-state';
 
@@ -268,7 +269,11 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
         aspectRatio={aspectRatio}
         canvasAspectRatio="16:9"
         boundaryBox={boundaryBox}
-        pitchTransform={activeSlide?.pitchTransform}
+        pitchTransform={
+          hasActiveDirectorCameraTrack(activePhase?.directorCamera)
+            ? null
+            : activeSlide?.pitchTransform
+        }
         directorCamera={activePhase?.directorCamera}
         playerPhotos={playerPhotos}
         pitchAppearance={pitchAppearance}

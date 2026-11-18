@@ -9,12 +9,12 @@ import {
   useSessionStore,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/slide-timing';
 import {
   type EvaluatedTimelineFrame,
   evaluateTimelineFrame,
 } from '@/lib/tactical/engine/timeline-evaluator';
 import { toMilliseconds } from '@/lib/types/tactical/branded';
-import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 
 export interface UseTacticalAnimationOptions {
   pitchSize?: { width: number; height: number };
@@ -23,34 +23,17 @@ export interface UseTacticalAnimationOptions {
   onFrameEvaluated?: (frame: EvaluatedTimelineFrame) => void;
 }
 
-export function calculatePhaseTotalDuration(
-  phase?: DomainTacticalPhase,
-): number {
-  if (!phase || !phase.slides || phase.slides.length === 0) return 0;
-  if (phase.slides.length === 1) {
-    const s = phase.slides[0];
-    const dur = s.transitionDurationMs ?? 1000;
-    const pause = s.pauseMs ?? 500;
-    return Math.max(1000, dur + pause);
-  }
-  return phase.slides.slice(0, -1).reduce((sum, s) => {
-    const dur = s.transitionDurationMs ?? 1000;
-    const pause = s.pauseMs ?? 500;
-    return sum + dur + pause;
-  }, 0);
-}
-
 export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   const { playbackStore } = useTacticalStoresContext();
   const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-  const currentPlaybackTime = usePlaybackStore((s) => s.timeMs);
 
   const activePhase =
     project.phases.find((p) => p.id === activePhaseId) ?? project.phases[0];
 
-  const totalDurationMs = calculatePhaseTotalDuration(activePhase);
+  const totalDurationMs = resolvePlaybackDurationMs(activePhase?.slides ?? []);
 
   const rafIdRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
@@ -137,9 +120,11 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
         playbackStore.getState().setTimeMs(toMilliseconds(0));
       }
       playbackStore.getState().startPlayback();
-      startAnimationLoop();
+      if (workspaceMode !== 'director') {
+        startAnimationLoop();
+      }
     },
-    [playbackStore, startAnimationLoop],
+    [playbackStore, startAnimationLoop, workspaceMode],
   );
 
   const pauseAnimation = useCallback(() => {
@@ -173,8 +158,12 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     [seekTo],
   );
 
-  // isPlaying が外部から切り替えられた場合の同期
+  // isPlaying が外部から切り替えられた場合の同期（director モード時は rAF ループを起動しない）
   useEffect(() => {
+    if (workspaceMode === 'director') {
+      stopAnimationLoop();
+      return;
+    }
     if (isPlaying && rafIdRef.current === null) {
       const currentTime = playbackStore.getState().timeMs;
       const total = totalDurationRef.current;
@@ -185,7 +174,13 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     } else if (!isPlaying && rafIdRef.current !== null) {
       stopAnimationLoop();
     }
-  }, [isPlaying, playbackStore, startAnimationLoop, stopAnimationLoop]);
+  }, [
+    isPlaying,
+    playbackStore,
+    startAnimationLoop,
+    stopAnimationLoop,
+    workspaceMode,
+  ]);
 
   // RAII: アンマウント時のクリーンアップ
   useEffect(() => {
@@ -201,6 +196,5 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     seekTo,
     applyFrameToCanvas,
     totalDurationMs,
-    currentPlaybackTime,
   };
 }

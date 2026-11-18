@@ -1,6 +1,6 @@
 # TASK-210: エクスポート・共有画面プレビュー再生のカメラワーク同期修正
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `fix(tactical): apply directorCamera in export and share previews matching layout playback`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2 (parallel)

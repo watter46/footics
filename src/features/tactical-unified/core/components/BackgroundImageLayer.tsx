@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Image as KonvaImage, Layer, Rect } from 'react-konva';
 import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
 import {
@@ -21,7 +21,7 @@ export interface PitchBackgroundImageProps {
   height: number;
 }
 
-export function PitchBackgroundImage({
+export const PitchBackgroundImage = memo(function PitchBackgroundImage({
   width,
   height,
 }: PitchBackgroundImageProps): ReactNode {
@@ -140,7 +140,7 @@ export function PitchBackgroundImage({
   }
 
   return null;
-}
+});
 
 export interface BackgroundImageLayerProps {
   width: number;

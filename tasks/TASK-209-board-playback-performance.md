@@ -1,6 +1,6 @@
 # TASK-209: ボード画面再生カクつき解消 & 再生ループ・総再生時間の一元化
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `perf(tactical): eliminate board playback stutter via layer isolation and render-loop deduplication`
 - **Execution Waves**:
   - Wave 1: Phase 1, Phase 2 (parallel)

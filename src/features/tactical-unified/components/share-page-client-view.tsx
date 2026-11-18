@@ -21,6 +21,7 @@ import {
   IOS_COMPARISON_PRESET_KEYS,
   IOS_ENCODER_PRESETS,
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
+import { hasActiveDirectorCameraTrack } from '@/lib/tactical/engine/director-camera';
 import { useSharePageExport } from './use-share-page-export';
 
 export interface SharePageClientViewProps {
@@ -98,7 +99,11 @@ export function SharePageClientView({
               slides={exp.slides}
               aspectRatio={exp.effectiveAspectRatio}
               boundaryBox={shareData.boundaryBox}
-              pitchTransform={shareData.pitchTransform}
+              pitchTransform={
+                hasActiveDirectorCameraTrack(shareData.directorCamera)
+                  ? null
+                  : shareData.pitchTransform
+              }
               directorCamera={shareData.directorCamera}
               screenBackground={shareData.screenBackground ?? undefined}
               photos={shareData.photos}

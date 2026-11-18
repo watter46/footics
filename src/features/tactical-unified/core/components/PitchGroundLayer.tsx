@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Group, Layer, Line, Rect } from 'react-konva';
+import { Group, Layer, Line } from 'react-konva';
 import {
   selectDomainActivePhase,
   selectDomainActivePhaseAspectRatio,
@@ -27,7 +27,6 @@ import {
 } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { ArrowObject } from './annotations/ArrowObject';
-import { PitchBackgroundImage } from './BackgroundImageLayer';
 import { PlayerConnectLines } from './PlayerConnectLines';
 import { PitchGroundGhosts } from './pitch-ground-ghosts';
 import {
@@ -178,25 +177,12 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
 
   return (
     <Layer id="pitch-ground-layer" listening={listening}>
-      <Rect
-        x={0}
-        y={0}
-        width={stageSize.width}
-        height={stageSize.height}
-        fill="#000000"
-        listening={false}
-      />
       <Group
         x={groupTransform.x}
         y={groupTransform.y}
         scaleX={groupTransform.scaleX}
         scaleY={groupTransform.scaleY}
       >
-        <PitchBackgroundImage
-          width={pitchRect.width}
-          height={pitchRect.height}
-        />
-
         {/* ゾーンオブジェクト群 */}
         {sortedZones.map((resolvedZone) => {
           const zone = activeSlide?.zones.find((z) => z.id === resolvedZone.id);

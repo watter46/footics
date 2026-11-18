@@ -247,7 +247,7 @@ describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
 
       // slide-1 (1000+500=1500)
       expect(result.current.totalDurationMs).toBe(1500);
-      expect(result.current.currentPlaybackTime).toBe(0);
+      expect(playStore.getState().timeMs).toBe(0);
 
       // 1. play
       act(() => {

@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type MutableRefObject, memo } from 'react';
+import { type MutableRefObject, memo, useCallback } from 'react';
 import { Group } from 'react-konva';
 import { usePlayerPhotoImage } from '@/features/tactical-unified/core/hooks/player-photo-context';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
@@ -69,21 +69,26 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
 
   const photoImage = usePlayerPhotoImage(marker);
 
+  const setGroupRef = useCallback(
+    (node: Konva.Group | null) => {
+      const reg = nodesRegistryRef?.current as
+        | { playerNodes?: Map<string, Konva.Group> }
+        | undefined;
+      if (reg?.playerNodes) {
+        if (node) reg.playerNodes.set(marker.id, node);
+        else reg.playerNodes.delete(marker.id);
+      }
+    },
+    [marker.id, nodesRegistryRef],
+  );
+
   if (marker.area !== 'pitch') return null;
 
   const effectiveIsSelected = !cleanRender && isSelected;
 
   return (
     <Group
-      ref={(node: Konva.Group | null) => {
-        const reg = nodesRegistryRef?.current as
-          | { playerNodes?: Map<string, Konva.Group> }
-          | undefined;
-        if (reg?.playerNodes) {
-          if (node) reg.playerNodes.set(marker.id, node);
-          else reg.playerNodes.delete(marker.id);
-        }
-      }}
+      ref={setGroupRef}
       x={resolvedPlayer.positionPx.x}
       y={resolvedPlayer.positionPx.y}
       opacity={opacity}

@@ -28,7 +28,9 @@ export function CameraControlPanel(): React.ReactElement {
   const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const playbackTimeMs = usePlaybackStore((s) => s.timeMs);
+  const playbackTimeMs = usePlaybackStore((s) =>
+    s.isPlaying && workspaceMode !== 'director' ? 0 : s.timeMs,
+  );
   const activePhase = useDocumentStore((s) =>
     selectDomainActivePhase(s.project, activePhaseId),
   );

@@ -47,47 +47,43 @@ export const ArrowObject = React.memo(function ArrowObject({
   const endHandleRef = useRef<Konva.Circle | null>(null);
   const controlHandleRef = useRef<Konva.Circle | null>(null);
 
+  const entryProps = {
+    startDotNode: startDotRef.current,
+    endDotNode: endDotRef.current,
+    sourcePlayerId: arrow.sourcePlayerId,
+    targetPlayerId: arrow.targetPlayerId,
+    arrowType: arrow.arrowType,
+    curveType: arrow.curveType,
+    startMarker: arrow.startMarker,
+    endMarker: arrow.endMarker,
+    startPx: resolvedArrow.startPointPx,
+    endPx: resolvedArrow.endPointPx,
+    controlPointPx: resolvedArrow.controlHandlePx,
+    sourceRadiusPx: resolvedArrow.sourceRadiusPx,
+    targetRadiusPx: resolvedArrow.targetRadiusPx,
+    dotRadiusPx: resolvedArrow.dotRadiusPx,
+  };
+
   useEffect(() => {
     const registry = nodesRegistryRef?.current;
-    if (!registry) return;
-    if (arrowRef.current) {
-      registry.arrowNodes.set(arrow.id, {
-        node: arrowRef.current,
-        startDotNode: startDotRef.current,
-        endDotNode: endDotRef.current,
-        sourcePlayerId: arrow.sourcePlayerId,
-        targetPlayerId: arrow.targetPlayerId,
-        arrowType: arrow.arrowType,
-        curveType: arrow.curveType,
-        startMarker: arrow.startMarker,
-        endMarker: arrow.endMarker,
-        startPx: resolvedArrow.startPointPx,
-        endPx: resolvedArrow.endPointPx,
-        controlPointPx: resolvedArrow.controlHandlePx,
-        sourceRadiusPx: resolvedArrow.sourceRadiusPx,
-        targetRadiusPx: resolvedArrow.targetRadiusPx,
-        dotRadiusPx: resolvedArrow.dotRadiusPx,
-      });
-    }
+    if (!registry || !arrowRef.current) return;
+    registry.arrowNodes.set(arrow.id, {
+      node: arrowRef.current,
+      ...entryProps,
+    });
     return () => {
       registry.arrowNodes.delete(arrow.id);
     };
-  }, [
-    arrow.id,
-    arrow.sourcePlayerId,
-    arrow.targetPlayerId,
-    arrow.arrowType,
-    arrow.curveType,
-    arrow.startMarker,
-    arrow.endMarker,
-    resolvedArrow.startPointPx,
-    resolvedArrow.endPointPx,
-    resolvedArrow.controlHandlePx,
-    resolvedArrow.sourceRadiusPx,
-    resolvedArrow.targetRadiusPx,
-    resolvedArrow.dotRadiusPx,
-    nodesRegistryRef,
-  ]);
+  }, [arrow.id, nodesRegistryRef]);
+
+  useEffect(() => {
+    const entry = nodesRegistryRef?.current?.arrowNodes.get(arrow.id);
+    if (!entry) return;
+    Object.assign(entry, {
+      node: arrowRef.current ?? entry.node,
+      ...entryProps,
+    });
+  });
 
   const sPxX = resolvedArrow.startPointPx.x;
   const sPxY = resolvedArrow.startPointPx.y;
