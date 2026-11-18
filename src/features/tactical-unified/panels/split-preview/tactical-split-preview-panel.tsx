@@ -1,6 +1,6 @@
 'use client';
 
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, useMemo, useRef, useState } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -104,6 +104,11 @@ export function TacticalSplitPreviewPanel() {
     [allPhasePlayers, playerPhotoMap],
   );
 
+  const directorCameraOptions = useMemo(
+    () => ({ isEditing: !isPlaying }),
+    [isPlaying],
+  );
+
   const { previewWidth, previewHeight } = useExportPreviewAnimation({
     slides,
     aspectRatio,
@@ -116,7 +121,7 @@ export function TacticalSplitPreviewPanel() {
           ? null
           : (activeSlide?.pitchTransform ?? null))),
     directorCamera: activePhase?.directorCamera ?? null,
-    directorCameraOptions: { isEditing: !isPlaying },
+    directorCameraOptions,
     playerPhotos,
     pitchAppearance,
     screenBackground,

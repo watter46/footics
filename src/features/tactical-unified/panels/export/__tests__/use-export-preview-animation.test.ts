@@ -5,6 +5,7 @@ import { createPlaybackStore } from '@/features/tactical-unified/stores/playback
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as frameRendererModule from '@/lib/tactical/export/tactical-phase-frame-renderer';
+import { toMilliseconds } from '@/lib/types/tactical/branded';
 import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import {
   type DomainSlide,
@@ -521,5 +522,90 @@ describe('useExportPreviewAnimation', () => {
     const lastCall = calls[calls.length - 1];
     expect(lastCall?.[0].phase).toBeDefined();
     expect(lastCall?.[0].phase?.slides.length).toBe(2);
+  });
+
+  it('renders initial frame at playbackStore.timeMs instead of 0ms on mount', () => {
+    const playbackStore = createPlaybackStore(toMilliseconds(1800));
+    const sessionStore = createSessionStore();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(TacticalStoreProvider, {
+        stores: { playbackStore, sessionStore },
+        children,
+      });
+
+    renderHook(
+      () =>
+        useExportPreviewAnimation({
+          slides: [mockSlide1, mockSlide2],
+          aspectRatio: '16:9',
+          externalIsPlaying: false,
+          canvasRef,
+          timeLabelRef,
+          sliderRef,
+        }),
+      { wrapper },
+    );
+
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((call) => call[0].timeMs === 1800)).toBe(true);
+  });
+
+  it('keeps timeMs at 1800ms when directorCameraOptions is recreated and pitchTransform changes', () => {
+    const playbackStore = createPlaybackStore(toMilliseconds(1800));
+    const sessionStore = createSessionStore();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(TacticalStoreProvider, {
+        stores: { playbackStore, sessionStore },
+        children,
+      });
+
+    const initialPitchTransform: PitchTransform = {
+      tilt: 15,
+      yaw: 0,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      isLocked: false,
+    };
+    const updatedPitchTransform: PitchTransform = {
+      tilt: 25,
+      yaw: 10,
+      zoom: 1.2,
+      panX: 0,
+      panY: 0,
+      isLocked: false,
+    };
+
+    const { rerender } = renderHook(
+      ({ pitchTransform }: { pitchTransform?: PitchTransform }) =>
+        useExportPreviewAnimation({
+          slides: [mockSlide1, mockSlide2],
+          aspectRatio: '16:9',
+          pitchTransform,
+          directorCameraOptions: { isEditing: true },
+          externalIsPlaying: false,
+          canvasRef,
+          timeLabelRef,
+          sliderRef,
+        }),
+      {
+        wrapper,
+        initialProps: {
+          pitchTransform: initialPitchTransform as PitchTransform | undefined,
+        },
+      },
+    );
+
+    rerender({ pitchTransform: updatedPitchTransform });
+    rerender({ pitchTransform: undefined });
+
+    const calls = vi.mocked(
+      frameRendererModule.renderTacticalPhaseFrameToCanvas,
+    ).mock.calls;
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls.every((call) => call[0].timeMs === 1800)).toBe(true);
   });
 });

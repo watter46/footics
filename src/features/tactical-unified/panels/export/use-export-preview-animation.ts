@@ -61,11 +61,14 @@ export function useExportPreviewAnimation({
   const [isPlaying, setIsPlaying] = useState(false);
   const effectiveIsPlaying = externalIsPlaying ?? isPlaying;
   const totalDurationMs = resolvePlaybackDurationMs(slides) || 1000;
-  const currentTimeMsRef = useRef<number>(0);
 
   const stores = useContext(TacticalStoresContext);
   const sessionStore = stores?.sessionStore ?? fallbackSessionStore;
   const playbackStore = stores?.playbackStore ?? fallbackPlaybackStore;
+  const initialPlaybackTimeMs = stores
+    ? Number(playbackStore.getState().timeMs)
+    : 0;
+  const currentTimeMsRef = useRef<number>(initialPlaybackTimeMs);
 
   const seekTo = useStore(playbackStore, (s) =>
     stores ? s.seekTo : undefined,
@@ -77,7 +80,7 @@ export function useExportPreviewAnimation({
     teamVisibility ?? storeTeamVisibility ?? 'both';
   const lastSeekNoticeTimeRef = useRef<number>(-9999);
   const lastDispatchedSeekMsRef = useRef<number | null>(null);
-  const lastStoreTimeMsRef = useRef<number>(playbackTimeMs);
+  const lastStoreTimeMsRef = useRef<number>(initialPlaybackTimeMs);
   const stateRef = useRef({ workspaceMode, effectiveIsPlaying, seekTo });
   stateRef.current = { workspaceMode, effectiveIsPlaying, seekTo };
 
@@ -110,9 +113,16 @@ export function useExportPreviewAnimation({
       () => resolveExportPreviewCropInfo(boundaryBox, basePreviewDim),
       [boundaryBox, basePreviewDim],
     );
-  const effectiveDirectorCameraOptions = directorCameraOptions ?? {
-    isEditing: !effectiveIsPlaying,
-  };
+  const isEditingCamera =
+    directorCameraOptions?.isEditing ?? !effectiveIsPlaying;
+  const selectedCueId = directorCameraOptions?.selectedCueId;
+  const effectiveDirectorCameraOptions = useMemo(
+    () => ({
+      isEditing: isEditingCamera,
+      ...(selectedCueId !== undefined ? { selectedCueId } : {}),
+    }),
+    [isEditingCamera, selectedCueId],
+  );
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
@@ -193,8 +203,12 @@ export function useExportPreviewAnimation({
   );
 
   // ── アニメーション停止中、カメラやスライド・外観設定の更新を即座に静止キャンバスへ反映 ──
+  const hasRenderedInitialRef = useRef(false);
   useEffect(() => {
-    if (!effectiveIsPlaying) drawFrame(currentTimeMsRef.current);
+    if (!effectiveIsPlaying || !hasRenderedInitialRef.current) {
+      hasRenderedInitialRef.current = true;
+      drawFrame(currentTimeMsRef.current);
+    }
   }, [
     effectiveIsPlaying,
     drawFrame,
@@ -231,6 +245,7 @@ export function useExportPreviewAnimation({
     effectiveIsPlaying,
     totalDurationMs,
     drawFrame,
+    initialPlaybackTimeMs,
   );
 
   useEffect(() => {

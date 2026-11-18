@@ -4,10 +4,11 @@ export function useAnimationFrameLoop(
   isPlaying: boolean,
   totalDurationMs: number,
   onFrame: (timeMs: number) => void,
+  initialTimeMs: number,
 ) {
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const currentTimeRef = useRef<number>(0);
+  const currentTimeRef = useRef<number>(initialTimeMs);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -41,10 +42,6 @@ export function useAnimationFrameLoop(
       }
     };
   }, [isPlaying, totalDurationMs, onFrame]);
-
-  useEffect(() => {
-    onFrame(currentTimeRef.current);
-  }, [onFrame]);
 
   const seek = useCallback(
     (time: number) => {
