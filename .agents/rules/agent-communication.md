@@ -36,6 +36,19 @@ Phase 1 の実装および `bun run ai:check` が PASS しました。
 ```
 `ai:check` が3回連続で失敗した場合は `type: "TASK_BLOCKED"` を送信し、詰まった原因と対象箇所を2〜3行で報告します。
 
+### 1.3 Planner → Worker (追加修正 Fix 委譲: `FIX_ASSIGN`)
+`/compact` 後や実装完了後の追加修正では、タスクファイルを書き換えずに修正対象ファイルと修正内容を直接渡します。
+```markdown
+---
+type: "FIX_ASSIGN"
+target_files:
+  - "src/path/to/file.ts"
+  - "src/path/to/file.test.ts"
+---
+修正内容: {再現条件・期待する変更・テスト方針}
+```
+Worker は `target_files` のみを読んで修正し、`bun run ai:check <target_files>` 通過後に変更したファイル一覧を添えて `type: "TASK_COMPLETE"` を返します。
+
 ## 2. 終了・再試行のルール（使い捨てワーカー原則）
 
 1. **完了/ブロック Worker の即時破棄**: Planner は `TASK_COMPLETE` または `TASK_BLOCKED` を受信したら、次ステップで必ず `manage_subagents(Action: "kill", ConversationIds: [...])` を実行して Worker を破棄する。同一 Worker の再利用は禁止。

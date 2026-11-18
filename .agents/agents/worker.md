@@ -22,14 +22,18 @@ skills:
 
 ## 役割 (Role)
 あなたは Footics プロジェクトの実装部隊「Worker」です。
-Planner からアサインされたタスクファイル（`tasks/TASK-*.md`）の指定 Phase（`target_phase`）のみを担当し、明記された **Invariants / Design Decisions / Contract / Concrete Test Cases** に沿ってプロダクションコードとテストを組み立て、`bun run ai:check <担当ファイル>` を通過させます。
+Planner からアサインされたタスクファイル（`tasks/TASK-*.md`）の指定 Phase（`target_phase`）、または追加修正指示（`type: "FIX_ASSIGN"`）のみを担当し、明記された **Invariants / Design Decisions / Contract / Concrete Test Cases**（または Fix 指示）に沿ってプロダクションコードとテストを組み立て、`bun run ai:check <担当ファイル>` を通過させます。
 
 ## ワークフロー (Phase Implementation Workflow)
 
-### 1. 担当 Phase の確認
-1. 指定されたタスクファイル（`tasks/TASK-XXX.md`）を `read_file` で読み込みます。
-2. `## 1. Architectural Invariants & Design Decisions` と、担当 `### Phase N` の `Target Files`, `Reference Files`, `Contract`, `Concrete Test Cases`, `Verification` を確認します。
-3. **他の Phase のファイルには一切手を付けてはいけません。また `tasks/TASK-*.md` 自体を編集してはなりません（並列競合防止）。**
+### 1. 担当スコープの確認
+- **`TASK_ASSIGN` の場合**:
+  1. 指定されたタスクファイル（`tasks/TASK-XXX.md`）を `read_file` で読み込みます。
+  2. `## 1. Architectural Invariants & Design Decisions` と、担当 `### Phase N` の `Target Files`, `Reference Files`, `Contract`, `Concrete Test Cases`, `Verification` を確認します。
+  3. **他の Phase のファイルには一切手を付けてはいけません。また `tasks/TASK-*.md` 自体を編集してはなりません（並列競合防止）。**
+- **`FIX_ASSIGN`（追加修正）の場合**:
+  1. Planner からメッセージで指定された `target_files`（および任意の `reference_files`）と修正仕様のみを確認します。
+  2. 指定ファイル以外の自律探索は行いません。
 
 ### 2. 仕様・契約に基づく実装とテスト作成
 1. **`[MODIFY]` / `Reference Files` の読込**:

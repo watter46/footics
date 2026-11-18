@@ -234,6 +234,20 @@ export function analyzePhaseTargets(markdown: string): PhaseTargetAnalysis[] {
   return results;
 }
 
+/**
+ * タスクファイル内の全 Phase から対象ファイル（[ADD]/[MODIFY] と [DELETE]）を抽出する
+ */
+export function extractTaskTargetFiles(markdown: string): {
+  active: string[];
+  deleted: string[];
+} {
+  const active = [
+    ...new Set(analyzePhaseTargets(markdown).flatMap((p) => p.activeFiles)),
+  ];
+  const deleted = extractDeletedTargetFiles(markdown);
+  return { active, deleted };
+}
+
 export function validateTaskMarkdown(
   filePath: string,
   content: string,
@@ -405,29 +419,30 @@ export function validateTaskMarkdown(
   };
 }
 
-export function findLatestActiveTaskFile(cwd = process.cwd()): string | null {
+export function listActiveTaskFiles(cwd = process.cwd()): string[] {
   const tasksDir = path.join(cwd, 'tasks');
-  if (!fs.existsSync(tasksDir)) return null;
+  if (!fs.existsSync(tasksDir)) return [];
 
   try {
     const statusOut =
-      spawnSync('git', ['status', '--porcelain', 'tasks/'], {
+      spawnSync('git', ['status', '--porcelain', '-uall', 'tasks/'], {
         cwd,
         encoding: 'utf8',
       }).stdout ?? '';
 
-    const modifiedTasks = statusOut
+    return statusOut
       .split('\n')
       .filter((l) => l.length > 3 && !l.startsWith(' D') && !l.startsWith('D '))
       .map((l) => l.slice(3).split(' -> ').pop()?.trim() ?? '')
       .filter((f) => f.includes('TASK-') && f.endsWith('.md'));
+  } catch {
+    return [];
+  }
+}
 
-    if (modifiedTasks.length > 0) {
-      return modifiedTasks[0];
-    }
-  } catch {}
-
-  return null;
+export function findLatestActiveTaskFile(cwd = process.cwd()): string | null {
+  const modifiedTasks = listActiveTaskFiles(cwd);
+  return modifiedTasks.length > 0 ? modifiedTasks[0] : null;
 }
 
 if (import.meta.main) {

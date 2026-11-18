@@ -92,12 +92,26 @@ skills:
 
 1. **最終差分確認**:
    - `GIT_EXTERNAL_DIFF=difft rtk git diff` を実行し、フォールバック残存や契約逸脱がないことを確認する。
-2. **`Status: DONE` 更新と `bun run ai:commit`**:
-   - タスクファイルの `- **Status**: \`DONE\`` を Planner が更新した上で、`bun run ai:commit`（または `-m "<Commit Message>"`）を実行する。
-   - 内部で ① `task:validate --verify-contracts --require-done`（`Negative Contracts` `rg:`/`absent:` 機械検証、`[DELETE]` 物理削除確認、フォーマット確認）、② `tsc`、③ `vitest`、④ `depcruise` が自動実行され、合格時のみコミットされる。
+2. **`Status: DONE` 更新と `bun run ai:commit --task`**:
+   - タスクファイルの `- **Status**: \`DONE\`` を Planner が更新した上で、**`bun run ai:commit --task tasks/TASK-XXX.md`**（または `-m "<Commit Message>"` 付き）を実行する。
+   - `--task` 指定により、作業ツリーに他の未コミット変更が残っていても**対象タスクのファイル群のみ**で ① `task:validate --verify-contracts --require-done`、② `preflight`（`size` / `biome` / `tsc` / `depcruise` / `vitest`）、③ `git add` & `git commit` が実行される。
    - 型不整合やテスト失敗が出た場合は、該当箇所のみ修正する新規 Fix Worker を1回起動して解決する。
 3. **2項目完了サマリーの出力**:
-   - 「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順」の2項目のみを端的に報告して終了する。
+   - 「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順」の2項目のみを端的に報告して終了する（追加修正が必要な場合は、同一チャットで `/compact` 後に修正内容を指示できる旨を1行添えてよい）。
+
+---
+
+## 4. 同一コンテキストでの追加修正（`/compact` 後 Fix ループ）と「コミットして」対応
+
+1. **`/compact` 後のスコープ再同期と Fix Worker 委譲**:
+   - ユーザーから追加修正の指示を受けたら（特に `/compact` 直後）、最初に `git status -s` と `git log -1 --stat` で変更状況と直前コミット対象を1ターンで把握する。
+   - 完了済 Worker の再利用は厳禁のため、必ず新規の **Fix Worker** を `invoke_subagent(TypeName: "worker")` で起動し、`type: "FIX_ASSIGN"` で修正対象ファイル・関連テスト・修正内容を明示して委譲する。
+   - `TASK_COMPLETE` 受信後、直ちに `manage_subagents(Action: "kill", ConversationIds: [worker_id])` で破棄する。
+2. **「コミットして」指示時のスコープ分離コミット**:
+   - ユーザーから「コミットして」と指示されたら、他ファイルの変更を巻き込まないよう以下を使い分ける（作業ツリーに無関係な変更がある状態での引数なし `bun run ai:commit` 実行は禁止）：
+     - タスク完了コミット: `bun run ai:commit --task tasks/TASK-XXX.md`
+     - 追加修正（タスク外 / コミット後の Fix）: `bun run ai:commit -m "<type>(scope): <summary>" <Fix対象ファイル群>`
+     - ユーザーが手動で `git add` 済みの場合: `bun run ai:commit --staged -m "<type>(scope): <summary>"`
 
 ## 制約事項
 - Planner 自身が `src/**`, `extension/**`, `tests/**` を直接編集してはならない（`agent-access-guard` により遮断）。
