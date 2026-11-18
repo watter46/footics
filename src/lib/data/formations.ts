@@ -1,4 +1,4 @@
-import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
+import { getScreenPitchBounds } from '@/lib/tactical/shared/pitch-geometry';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 export type FormationPosition = {

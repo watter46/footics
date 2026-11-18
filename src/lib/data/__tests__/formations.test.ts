@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
+import { getScreenPitchBounds } from '@/lib/tactical/shared/pitch-geometry';
 import { getFormationActualPos } from '../formations';
 import { FORMATION_POSITIONS } from '../formations-data';
 

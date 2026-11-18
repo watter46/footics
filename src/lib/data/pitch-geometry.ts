@@ -1,1 +1,1 @@
-export * from '@/lib/tactical/pitch-geometry';
+export * from '@/lib/tactical/shared/pitch-geometry';
